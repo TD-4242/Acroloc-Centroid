@@ -1,0 +1,2961 @@
+;-------------------------------------------------------------------------------
+; File:        Centroid_ALLIN1DC_Mill_Standard-r12.src
+; Corresponding Schematic: S15105.DWG - 110VAC w/ Optional 4th-Axis (DC1)
+;                          S14745.DWG - 220/110VAC w/ 110VAC Rectification
+;                          S14746.DWG - 220/110VAC w/ Stepdown 83VAC
+; Programmer:  Scott Pratt, Keith Dennison, Marc Leonard, Christopher Bowser
+; Date:        18 May 2018
+; Purpose:     PLC for ALLIN1DC w/ Wireless MPG and VCP
+; Requires:    Requires CNC12 v5.06
+
+; AuxKeys:
+; Aux  7 Key: Worklight Toggle
+
+; Revisions:
+; 26 Jul 2023 CTB Can now change Incr/Cont, Fast/Slow, and/or X1, X10, X100
+;                 on Jog Panel with an active WMPG while MPG LED is off.
+; 23 May 2023 CTB Corrected 75, 50, 25% Feedrate override buttons for VCP.
+; 04 May 2023 CTB Updated WMPG Behavior for X100, X10, X1
+;                   X1 = Incremental + Slow Jog
+;                   X10 = Continuous + Slow Jog
+;                   X100 = Continuous + Fast Jog
+;                 Added Skin and WMPG Jog Functions for Axis 5 and 6.
+; 20 Apr 2023 CTB Changed functionality of coolant auto/man button to turn
+;                  off flood/mist when switching from auto to manual.
+; 22 Feb 2023 CTB Introduced Timer to wait 100ms before resetting SV_SYS_MACRO
+;                 back to 0 for WMPG Macro keys, makes it more reliable.
+; 15 Feb 2023 CTB Added Z Axis MPG X100 Lockout Functionality via Parameter 19.
+; 23 JAN 2023 CTB Updated PLC to "Standard"
+; 25 OCT 2022 CTB Implimented Label Specific Drive Errors
+; 22 APR 2022 CTB Corrected Invert and Swap Jog Key Bits for Parameter 1.
+; 04 FEB 2022 CTB Consolidated VCP Reset and Estop into "Estop and Reset Section"
+;                 Moved Jog Panel Functions from MPG Stages to JogPanelStage
+;                 Removed W31 Echo for Feedrate
+; 05 AUG 2020 CTB Added OUT1107 for Reset Button "LED" for VCP2
+; 24 JUL 2020 CTB Echoed W4 to W31 for VCP2 FeedRate Display
+; 30 MAY 2019 CDR Changed "DoorInterlock" references to "SafetySwitch"
+; 28 MAY 2019 CDR Added door interlock logic, standardized variable names
+; 30 APR 2019 CEM Added logic to limit FeedrateKnob_W by SV_MACHINE_PARAMETER_39
+; 19 MAR 2019 MML Moved brake release into the MainStage
+; 08 MAR 2019 MML Added x1, x10, x100 from VCP to WirelessMpgStage
+; 26 FEB 2019 MML Red button on wireless MPG acts like Cycle Cancel
+; 20 NOV 2018 MML Removed EstopOk from setting ResetSet
+; 16 OCT 2018 MML	Updated USB MPG feedrate logic
+; 25 SEP 2018 MML	Added logic for VCP increments
+
+; Params:
+; SV_MACHINE_PARAMETER_1   : Add 2 = Invert Ax2 Jog Keys,
+;                            Add 4 = Swap Ax1 and Ax2
+; SV_MACHINE_PARAMETER_19  : MPG Modes
+;                            Add 1 = MPG Ignore Encoder Error
+;                            Add 2 = Lock Out Z Axis X100 with WMPG
+;                            Add 4 = Enable Independent Z-Axis MPG Jogging 
+; SV_MACHINE_PARAMETER_39  : Feedrate Override Percentage Limit
+; SV_MACHINE_PARAMETER_65  : Low Range Gear Ratio
+; SV_MACHINE_PARAMETER_66  : Medium-Low Range Gear Ratio
+; SV_MACHINE_PARAMETER_67  : Medium-High Range Gear Ratio
+; SV_MACHINE_PARAMETER_146 : FeedHold Threshold, Sets FeedHold Under Value
+; SV_MACHINE_PARAMETER_148 : 0 = Keyboard Jogging Allowed, 2 = Prohibit Keyboard Jogging
+; SV_MACHINE_PARAMETER_153 : 0 = Disable Probe Protection, 1 = Enable Probe Protection
+; SV_MACHINE_PARAMETER_170 : Add 1 = Keyboard Jogging Enable,
+;							 Add 2 = Feedrate Override Jog Panel Only,
+;							 Add 4 = Feedrate Override Keyboard Only
+; SV_MACHINE_PARAMETER_179 : LubePump Settings, MMMSS (Minutes, Seconds)
+; SV_MACHINE_PARAMETER_218 : 0 = Wired MPG, > 0 = Wireless MPG 
+; SV_MACHINE_PARAMETER_219 : 0 = No VCP, 1 = Start VCP on boot
+; SV_MACHINE_PARAMETER_348 : MPG 1 Encoder
+; SV_MACHINE_PARAMETER_351 : MPG 2 Encoder
+; SV_MACHINE_PARAMETER_354 : MPG 3 Encoder
+; SV_MACHINE_PARAMETER_441 : MPG 1 Axis Select
+; SV_MACHINE_PARAMETER_442 : MPG 2 Axis Select
+; SV_MACHINE_PARAMETER_443 : MPG 3 Axis Select
+; SV_MACHINE_PARAMETER_900 : PLC ADD Installed
+; SV_MACHINE_PARAMETER_911-915 : Invert Inputs 1-16, 17-32, 33-48, 49-64, 65-80
+; SV_MACHINE_PARAMETER_916-920 : Force Inputs 1-16, 17-32, 33-48, 49-64, or 65-80
+; SV_MACHINE_PARAMETER_921-925 : Force OUTPUTS 1-16, 17-32, 33-48, 49-64, or 65-80 ON
+; SV_MACHINE_PARAMETER_926-930 : Force OUTPUTS 1-16, 17-32, 33-48, 49-64, or 65-80 OFF
+; SV_MACHINE_PARAMETER_931-940 : Used for MEM Bit Force On/Off
+
+; Mpu11 based systems have the ability to invert, force and/or select a custom
+; debounce time on PLC inputs 1-240 using SV_PLC_DEBOUNCE_1-SV_PLC_DEBOUNCE_64.
+; Jog Panel inputs are modified in the same manner using SV_JOG_LINK_DEBOUNCE_1
+; -SV_JOG_LINK_DEBOUNCE_64. See system variable section for more information.
+
+; The Mpu11 board includes connections for several types of auxiliary I/O.
+; 4 digital "high speed" inputs (INP769-772) typically used for probe/TT1
+; related functions, 3 auxiliary digital inputs (INP784-786), 11 Digital inputs
+; used for MPG increment and axis selection and 2 auxiliary digital outputs
+; (Out770-771).
+
+; ALLIN1DC Physical I/O: While each ALLIN1DC that is installed reserves (maps)
+; 16 inputs and 16 Outputs, only 16 inputs and 9 outputs are accessible through
+; hardware.
+
+; Digital Inputs: The ALLIN1DC provides 16 inputs, 10 of which are available for
+; general purpose use.  The first 6 inputs (1-6) are dedicated for limit switch
+; use and must be either wired to a NC limit switch or defeated.  All 16 inputs
+; can be configured (in banks of 4) for 5, 12 or 24VDC operation in either a
+; sourcing or sinking configuration.
+
+; Analog input: The ALLIN1DC provides a single 12 bit analog input which is
+; mapped to inputs 241-252.  LSB = 241.  This input can be configured for the
+; following input:
+
+;  1. 0 - 5VDC
+;  2. 0 - 10VDC
+;  3. -5 - +5VDC
+;  4. -10 - +10VDC
+
+; Please see the ALLIN1DC manual for configuration information
+
+; Outputs: The ALLIN1DC has 9 relay contact closure outputs.  Outputs 1-7 are
+; are SPST type relays while Outputs 8 & 9 are SPDT type relays.
+
+; Analog outputs: The 12 bit 0-10VDC analog output on the ALLIN1DC
+; is mapped to outputs 241-252.  NOTE: The spindle speed command that comes down
+; from the PC (SV_PC_DAC_SPINDLE_SPEED) is a 16 bit integer value from 0-65535
+; that must be converted to a 12 bit value from 0-4095 by the PLC.  The PLC
+; handles gear ranges by looking at the state of inputs and reading parameters
+; (or hard coded values) to determine the ratio needed for adjusting the spindle
+; speed display system variable
+
+;------------------------------------------------------------------------------
+;                        CONSTANT DEFINITIONS
+;------------------------------------------------------------------------------
+MIN_FROR_PCT_C                  IS 1    ;Minimum allowed feedrate override percentage
+ASYNC_MSG_CLEAR_C               IS 2    ;(2+256*0)
+PLC_EXECUTOR_FLT_MSG_C          IS 257  ;(1+256*1)
+AXIS_FLT_CLR_C                  IS 770  ;(2+256*3)
+KB_JOG_MSG_C                    IS 1026 ;(2+256*4)
+
+X_AXIS_INFLT_C                  IS 1282;(2+256*5) Fiber to MPU11 from axis drive has a problem
+Y_AXIS_INFLT_C                  IS 1538;(2+256*6)
+Z_AXIS_INFLT_C                  IS 1794;(2+256*7)
+A_AXIS_INFLT_C                  IS 2050;(2+256*8)
+B_AXIS_INFLT_C                  IS 2306;(2+256*9)
+C_AXIS_INFLT_C                  IS 2562;(2+256*10)
+U_AXIS_INFLT_C                  IS 2818;(2+256*11)
+V_AXIS_INFLT_C                  IS 3074;(2+256*12)
+W_AXIS_INFLT_C                  IS 3330;(2+256*13)
+
+X_AXIS_OUTFLT_C                 IS 3586;(2+256*14) Fiber to axis drive from MPU11 has a problem
+Y_AXIS_OUTFLT_C                 IS 3842;(2+256*15)
+Z_AXIS_OUTFLT_C                 IS 4098;(2+256*16)
+A_AXIS_OUTFLT_C                 IS 4354;(2+256*17)
+B_AXIS_OUTFLT_C                 IS 4610;(2+256*18)
+C_AXIS_OUTFLT_C                 IS 4866;(2+256*19)
+U_AXIS_OUTFLT_C                 IS 5122;(2+256*20)
+V_AXIS_OUTFLT_C                 IS 5378;(2+256*21)
+W_AXIS_OUTFLT_C                 IS 5634;(2+256*22)
+
+PLC_INFLT_C                     IS 5890;(2+256*23)
+PLC_OUTFLT_C                    IS 6146;(2+256*24)
+PLC_FLT_CLR_C                   IS 6401;(1+256*25)
+
+LUBE_FAULT_MSG_C                IS 6657;(1+256*26)
+PROBE_JOG_TRIP_MSG_C            IS 6914;(2+256*27)
+SPINDLE_FAULT_MSG_C             IS 7169;(1+256*28)
+JOGBOARD_INFLT_C                IS 7425;(1+256*29)
+JOGBOARD_OUTFLT_C               IS 7681;(1+256*30)
+PROBE_FAULT_MSG_C               IS 7937;(1+256*31)
+
+RESET_CLEARED_C                 IS 8194;(2+256*32)
+RESET_DETECTED_C                IS 8449;(1+256*33)
+
+AUTO_COOL_MSG_C                 IS 8705;(1+256*34)
+MAN_COOL_MSG_C                  IS 8962;(2+256*35)
+LUBE_WARNING_MSG_C              IS 9217;(1+256*36)
+AUTO_SPINDLE_PROMPT_C           IS 9474;(2+256*37)
+AUTO_COOLANT_PROMPT_C           IS 9730;(2+256*38)
+SOFTWARE_EXIT_MSG_C             IS 9985;(1+256*39)
+MIN_SPEED_MSG_C                 IS 10242;(2+256*40)
+RAPID_OVERRIDE_ENABLED_C        IS 10498;(2+256*41)
+RAPID_OVERRIDE_DISABLED_C       IS 10754;(2+256*42)
+
+SAFETY_SWITCH_OPEN_MSG          IS 23553;(1+256*92)
+SAFETY_SWITCH_SPINDLE_MSG       IS 23809;(1+256*93)
+
+MSG_CLEARED_MSG_C               IS 25345;(1+256*99)
+BAD_MESSAGE_MSG_C               IS 25602;(2+256*100)
+
+MINI_PLC_1_FLT_MSG_C            IS 39169;(1+256*153)
+MINI_PLC_2_FLT_MSG_C            IS 39425;(1+256*154)
+MINI_PLC_3_FLT_MSG_C            IS 39681;(1+256*155)
+MINI_PLC_4_FLT_MSG_C            IS 39937;(1+256*156)
+MINI_PLC_5_FLT_MSG_C            IS 40193;(1+256*157)
+MINI_PLC_6_FLT_MSG_C            IS 40449;(1+256*158)
+MINI_PLC_7_FLT_MSG_C            IS 40705;(1+256*159)
+MINI_PLC_8_FLT_MSG_C            IS 40961;(1+256*160)
+MINI_PLC_1_WARNING_C            IS 41218;(2+256*161)
+MINI_PLC_2_WARNING_C            IS 41474;(2+256*162)
+MINI_PLC_3_WARNING_C            IS 41730;(2+256*163)
+MINI_PLC_4_WARNING_C            IS 41986;(2+256*164)
+MINI_PLC_5_WARNING_C            IS 42242;(2+256*165)
+MINI_PLC_6_WARNING_C            IS 42498;(2+256*166)
+MINI_PLC_7_WARNING_C            IS 42754;(2+256*167)
+MINI_PLC_8_WARNING_C            IS 43010;(2+256*168)
+
+;------------------------------------------------------------------------------
+;                        INPUT DEFINITIONS
+;               Closed = 1 (green)  Open = 0 (red)
+;------------------------------------------------------------------------------
+Ax1_MinusLimitOk_I              IS INP1
+Ax1_PlusLimitOk_I               IS INP2
+Ax2_MinusLimitOk_I              IS INP3
+Ax2_PlusLimitOk_I               IS INP4
+Ax3_MinusLimitOk_I              IS INP5
+Ax3_PlusLimitOk_I               IS INP6
+RotaryTableHome_I               IS INP7
+DoorClosed_I                    IS INP8
+LubeOk_I                        IS INP9  ;Lube_O is "OK" when input is closed
+SpindleInverterOk_I             IS INP10 ;Inverter is "OK" when input is closed
+EStopOk_I                       IS INP11
+ZeroSpeed_I                     IS INP12
+SpinLowRange_I                  IS INP13
+SpinMedRange_I                  IS INP14
+SpinHighRange_I                 IS INP15
+;spare                          IS INP16
+
+;If a PLC expansion board (PLCADD1616) is used, the additional inputs will
+;begin at input 17.
+;spare                          IS INP17
+;spare                          IS INP18
+;spare                          IS INP19
+;spare                          IS INP20
+;spare                          IS INP21
+;spare                          IS INP22
+;spare                          IS INP23
+
+
+;ALLIN1DC Analog Section
+AnalogIn1Bit0_I                 IS INP241
+AnalogIn1Bit1_I                 IS INP242
+AnalogIn1Bit2_I                 IS INP243
+AnalogIn1Bit3_I                 IS INP244
+AnalogIn1Bit4_I                 IS INP245
+AnalogIn1Bit5_I                 IS INP246
+AnalogIn1Bit6_I                 IS INP247
+AnalogIn1Bit7_I                 IS INP248
+AnalogIn1Bit8_I                 IS INP249
+AnalogIn1Bit9_I                 IS INP250
+AnalogIn1Bit10_I                IS INP251
+AnalogIn1Bit11_I                IS INP252
+AnalogIn1Bit12_I                IS INP253
+AnalogIn1Bit13_I                IS INP254
+AnalogIn1Bit14_I                IS INP255
+AnalogIn1Bit15_I                IS INP256
+
+;------------------------------------------------------------------------------
+; INP769 - INP784 encompass the MPU11 onboard input connections
+; which are generally used for MPG and probing functions.
+;------------------------------------------------------------------------------
+MechanicalProbe_I               IS INP769
+DSPProbe_I                      IS INP770
+ProbeDetect_I                   IS INP771
+ProbeAux_I                      IS INP772
+MPG_Inc_X_1_I                   IS INP773
+MPG_Inc_X_10_I                  IS INP774
+MPG_Inc_X_100_I                 IS INP775
+MPG_AXIS_1_I                    IS INP776
+MPG_AXIS_2_I                    IS INP777
+MPG_AXIS_3_I                    IS INP778
+MPG_AXIS_4_I                    IS INP779
+MPG_AXIS_5_I                    IS INP780
+MPG_AXIS_6_I                    IS INP781
+MPG_AXIS_7_I                    IS INP782
+MPG_AXIS_8_I                    IS INP783
+
+;------------------------------------------------------------------------------
+; Jog panel are mapped to INP1057-INP1312. Alternatively,
+; jog panel inputs can also be referenced as JPI1 through JPI256.
+;------------------------------------------------------------------------------
+; Definitions follow JOGBOARD layout top to bottom, left to right
+
+SpinOverPlusKey_I               IS INP1057  ; Row  1 Column 1
+SpinAutoManKey_I                IS INP1058  ; Row  1 Column 2
+Aux1Key_I                       IS INP1059  ; Row  1 Column 3
+Aux2Key_I                       IS INP1060  ; Row  1 Column 4
+Aux3Key_I                       IS INP1061  ; Row  1 Column 5
+
+SpinOver100Key_I                IS INP1062  ; Row  2 Column 1
+SpinCWKey_I                     IS INP1063  ; Row  2 Column 2
+Aux4Key_I                       IS INP1064  ; Row  2 Column 3
+Aux5Key_I                       IS INP1065  ; Row  2 Column 4
+Aux6Key_I                       IS INP1066 ; Row  2 Column 5
+
+SpinOverMinusKey_I              IS INP1067 ; Row  3 Column 1
+SpinCCWKey_I                    IS INP1068 ; Row  3 Column 2
+Aux7Key_I                       IS INP1069 ; Row  3 Column 3
+Aux8Key_I                       IS INP1070 ; Row  3 Column 4
+Aux9Key_I                       IS INP1071 ; Row  3 Column 5
+
+SpinStopKey_I                   IS INP1072 ; Row  4 Column 1
+SpinStartKey_I                  IS INP1073 ; Row  4 Column 2
+Aux10Key_I                      IS INP1074 ; Row  4 Column 3
+Aux11Key_I                      IS INP1075 ; Row  4 Column 4
+Aux12Key_I                      IS INP1076 ; Row  4 Column 5
+
+CoolAutoManKey_I                IS INP1077 ; Row  5 Column 1
+CoolFloodKey_I                  IS INP1078 ; Row  5 Column 2
+CoolMistKey_I                   IS INP1079 ; Row  5 Column 3
+Aux13Key_I                      IS INP1080 ; Row  5 Column 4
+Aux14Key_I                      IS INP1081 ; Row  5 Column 5
+
+IncrContKey_I                   IS INP1082  ; Row  6 Column 1
+x1JogKey_I                      IS INP1083  ; Row  6 Column 2
+x10JogKey_I                     IS INP1084  ; Row  6 Column 3
+x100JogKey_I                    IS INP1085  ; Row  6 Column 4
+MPGKey_I                        IS INP1086  ; Row  6 Column 5
+
+Ax4PlusJogKey_I                 IS INP1087  ; Row  7 Column 1
+UnusedR7C2Key_I                 IS INP1088  ; Row  7 Column 2
+Ax2PlusJogKey_I                 IS INP1089  ; Row  7 Column 3
+UnusedR7C4Key_I                 IS INP1090  ; Row  7 Column 4
+Ax3PlusJogKey_I                 IS INP1091  ; Row  7 Column 5
+
+UnusedR8C1Key_I                 IS INP1092  ; Row  8 Column 1
+Ax1MinusJogKey_I                IS INP1093  ; Row  8 Column 2
+FastSlowKey_I                   IS INP1094  ; Row  8 Column 3
+Ax1PlusJogKey_I                 IS INP1095  ; Row  8 Column 4
+UnusedR8C5Key_I                 IS INP1096  ; Row  8 Column 5
+
+Ax4MinusJogKey_I                IS INP1097  ; Row  9 Column 1
+UnusedR9C2Key_I                 IS INP1098  ; Row  9 Column 2
+Ax2MinusJogKey_I                IS INP1099  ; Row  9 Column 3
+UnusedR9C4Key_I                 IS INP1100  ; Row  9 Column 4
+Ax3MinusJogKey_I                IS INP1101  ; Row  9 Column 5
+
+CycleCancelKey_I                IS INP1102  ; Row 10 Column 1
+SingleBlockKey_I                IS INP1103  ; Row 10 Column 2
+ToolCheckKey_I                  IS INP1104  ; Row 10 Column 3
+FeedHoldKey_I                   IS INP1105  ; Row 10 Column 4
+CycleStartKey_I                 IS INP1106  ; Row 10 Column 5
+
+;No Physical Key Available
+Aux15Key_I                      IS INP1110
+Aux16Key_I                      IS INP1111
+
+;------------------------------------------------------------------------------
+;                    Feedrate Override Knob
+;------------------------------------------------------------------------------
+JpFeedOrKnobBit0_I              IS INP1249
+JpFeedOrKnobBit1_I              IS INP1250
+JpFeedOrKnobBit2_I              IS INP1251
+JpFeedOrKnobBit3_I              IS INP1252
+JpFeedOrKnobBit4_I              IS INP1253
+JpFeedOrKnobBit5_I              IS INP1254
+JpFeedOrKnobBit6_I              IS INP1255
+JpFeedOrKnobBit7_I              IS INP1256
+JpFeedOrKnobBit8_I              IS INP1257 ; Current jog panels send first 8 bits
+JpFeedOrKnobBit9_I              IS INP1258 ; unused
+JpFeedOrKnobBit10_I             IS INP1259 ; unused
+JpFeedOrKnobBit11_I             IS INP1260 ; unused
+JpFeedOrKnobBit12_I             IS INP1261 ; unused
+JpFeedOrKnobBit13_I             IS INP1262 ; unused
+JpFeedOrKnobBit14_I             IS INP1263 ; unused
+JpFeedOrKnobBit15_I             IS INP1264 ; unused
+
+;------------------------------------------------------------------------------
+;                 ALLIN1DC PLC Output Definitions
+;       Logic 1 = OUTPUT ON (Green), 0 = OUTPUT OFF (Red)
+;------------------------------------------------------------------------------
+NoFaultOut_O                    IS OUT1  ;SPST Type
+Lube_O                          IS OUT2  ;SPST Type
+Flood_O                         IS OUT3  ;SPST Type
+Mist_O                          IS OUT4  ;SPST Type
+InverterResetOut_O              IS OUT5  ;SPST Type
+WorkLightOut_O                  IS OUT6  ;SPST Type
+SpindleEnableOut_O              IS OUT7  ;SPST Type
+SpindleDirectionOut_O           IS OUT8  ;SPDT Type
+ZBrakeRelease_O                 IS OUT9  ;SPDT Type
+
+;Outputs 10-16 are unavailable on hardware. Logic use only
+
+;If a PLC expansion board (PLCADD1616) is used, the additional outputs will
+;begin at output17.
+;spare                          IS OUT17 ;SPST Type
+;spare                          IS OUT18 ;SPST Type
+;spare                          IS OUT19 ;SPST Type
+;spare                          IS OUT20 ;SPDT Type
+;spare                          IS OUT21 ;SPST Type
+;spare                          IS OUT22 ;SPST Type
+;spare                          IS OUT23 ;SPST Type
+;spare                          IS OUT24 ;SPDT Type
+;spare                          IS OUT25 ;SPDT Type
+;spare                          IS OUT26 ;SPST Type
+;spare                          IS OUT27 ;SPST Type
+;spare                          IS OUT28 ;SPST Type
+;spare                          IS OUT29 ;SPST Type
+;spare                          IS OUT30 ;SPST Type
+;spare                          IS OUT31 ;SPST Type
+;spare                          IS OUT32 ;SPST Type
+
+; These bits control the actual analog hardware output on the ALLIN1DC.
+; Output = 12bit (0-4095) 0-10VDC.
+; WTB 12 Bits
+SpinAnalogOutBit0_O             IS OUT241
+SpinAnalogOutBit1_O             IS OUT242
+SpinAnalogOutBit2_O             IS OUT243
+SpinAnalogOutBit3_O             IS OUT244
+SpinAnalogOutBit4_O             IS OUT245
+SpinAnalogOutBit5_O             IS OUT246
+SpinAnalogOutBit6_O             IS OUT247
+SpinAnalogOutBit7_O             IS OUT248
+SpinAnalogOutBit8_O             IS OUT249
+SpinAnalogOutBit9_O             IS OUT250
+SpinAnalogOutBit10_O            IS OUT251
+SpinAnalogOutBit11_O            IS OUT252
+
+MPG_LED_OUT_O                   IS OUT769
+
+;------------------------------------------------------------------------------
+;              Jog Panel Output (LED) Definitions
+;       Jog Panel LED's can be addressed as OUT1057 - OUT1312
+;                              OR
+;                         JPO1 - JPO256
+;------------------------------------------------------------------------------
+; Definitions follow JOGBOARD layout top to bottom, left to right
+;
+SpinOverPlusLED_O               IS OUT1057; Row  1 Column 1
+SpinAutoModeLED_O               IS OUT1058; Row  1 Column 2
+Aux1LED_O                       IS OUT1059; Row  1 Column 3
+Aux2LED_O                       IS OUT1060; Row  1 Column 4
+Aux3LED_O                       IS OUT1061; Row  1 Column 5
+
+SpinOver100LED_O                IS OUT1062; Row  2 Column 1
+SpindleCWLED_O                  IS OUT1063; Row  2 Column 2
+Aux4LED_O                       IS OUT1064; Row  2 Column 3
+Aux5LED_O                       IS OUT1065; Row  2 Column 4
+Aux6LED_O                       IS OUT1066; Row  2 Column 5
+
+SpinOverMinusLED_O              IS OUT1067; Row  3 Column 1
+SpindleCCWLED_O                 IS OUT1068; Row  3 Column 2
+Aux7LED_O                       IS OUT1069; Row  3 Column 3
+Aux8LED_O                       IS OUT1070; Row  3 Column 4
+Aux9LED_O                       IS OUT1071; Row  3 Column 5
+
+SpinStopLED_O                   IS OUT1072; Row  4 Column 1
+SpinStartLED_O                  IS OUT1073; Row  4 Column 2
+Aux10LED_O                      IS OUT1074; Row  4 Column 3
+Aux11LED_O                      IS OUT1075; Row  4 Column 4
+Aux12LED_O                      IS OUT1076; Row  4 Column 5
+
+CoolAutoModeLED_O               IS OUT1077; Row  5 Column 1
+CoolFloodLED_O                  IS OUT1078; Row  5 Column 2
+CoolMistLED_O                   IS OUT1079; Row  5 Column 3
+Aux13LED_O                      IS OUT1080; Row  5 Column 4
+Aux14LED_O                      IS OUT1081; Row  5 Column 5
+
+IncrContLED_O                   IS OUT1082 ; Row  6 Column 1
+x1JogLED_O                      IS OUT1083 ; Row  6 Column 2
+x10JogLED_O                     IS OUT1084 ; Row  6 Column 3
+x100JogLED_O                    IS OUT1085 ; Row  6 Column 4
+MPGLED_O                        IS OUT1086 ; Row  6 Column 5
+
+Ax4PlusJogLED_O                 IS OUT1087 ; Row  7 Column 1
+UnusedR7C2LED_O                 IS OUT1088 ; Row  7 Column 2
+Ax2PlusJogLED_O                 IS OUT1089 ; Row  7 Column 3
+UnusedR7C4LED_O                 IS OUT1090 ; Row  7 Column 4
+Ax3PlusJogLED_O                 IS OUT1091 ; Row  7 Column 5
+
+UnusedR8C1LED_O                 IS OUT1092 ; Row  8 Column 1
+Ax1MinusJogLED_O                IS OUT1093 ; Row  8 Column 2
+FastSlowLED_O                   IS OUT1094 ; Row  8 Column 3
+Ax1PlusJogLED_O                 IS OUT1095 ; Row  8 Column 4
+UnusedR8C5LED_O                 IS OUT1096 ; Row  8 Column 5
+
+Ax4MinusJogLED_O                IS OUT1097 ; Row  9 Column 1
+UnusedR9C2LED_O                 IS OUT1098 ; Row  9 Column 2
+Ax2MinusJogLED_O                IS OUT1099 ; Row  9 Column 3
+UnusedR9C4LED_O                 IS OUT1100 ; Row  9 Column 4
+Ax3MinusJogLED_O                IS OUT1101 ; Row  9 Column 5
+
+CycleCancelLED_O                IS OUT1102 ; Row 10 Column 1
+SingleBlockLED_O                IS OUT1103 ; Row 10 Column 2
+ToolCheckLED_O                  IS OUT1105 ; Row 10 Column 3
+FeedHoldLED_O                   IS OUT1104 ; Row 10 Column 4
+
+;LED for VCP 2.0
+SkinResetSet_O                  IS OUT1107 ; VCP Reset Button "LED"
+FeedOver100LED_O                IS OUT1137
+FeedOver75LED_O                 IS OUT1138
+FeedOver50LED_O                 IS OUT1139
+FeedOver25LED_O                 IS OUT1140
+
+;------------------------------------------------------------------------------
+;                        Memory Bit Definitions
+;------------------------------------------------------------------------------
+PLCExecutorFault_M            IS MEM1
+SoftwareNotReady_M            IS MEM2   ; 0 = okay, 1 = CNC11 not running/ready
+MPGManOffFlag_M               IS MEM3
+
+SafetySwitch_M                IS MEM29
+SafetySwitchToolCheck_M       IS MEM30
+
+MasterEnable_M                IS MEM40  ; 1 = enabled (echo of SV_MASTER_ENABLE)
+PLCBus_Oe_M                   IS MEM41  ; 1 = okay, 0 = incoming PLC fiber problem
+PLCBusExtDevEn_M              IS MEM42  ; 1 = okay, 0 = PLC reports bad output fiber
+JogLinkOk_M                   IS MEM43  ; 1 = okay, 0 = incoming jog panel data problem
+JogPanelOnline_M              IS MEM44  ; 1 = okay, 0 = JogBoard reports bad connection
+ActivateFeedHold_M            IS MEM45  ; 0 = idle, 1 = trigger feed hold on
+ErrorFlag_M                   IS MEM46  ; 0 = okay, 1 = error (but not a fault)
+Stop_M                        IS MEM47  ; 0 = okay, 1 = fault (echo of SV_STOP)
+Stall_M                       IS MEM48  ; 0 = okay, 1 = stall (echo of SV_STALL_ERROR)
+LubeFault_M                   IS MEM49  ; 0 = okay, 1 = Lube_O fault
+PLCFault_M                    IS MEM50  ; 0 = okay, 1 = PLC fault
+AxisFault_M                   IS MEM51  ; 0 = okay, 1 = drive or drive fiber problem
+DriveComFltIn_M               IS MEM52  ; 0 = okay, 1 = incoming drive fiber problem
+DriveComFltOut_M              IS MEM53  ; 0 = okay, 1 = outgoing drive fiber problem
+ProbeFault_M                  IS MEM54  ; 0 = okay, 1 = tried to start spindle w/probe
+JogProbeFault_M               IS MEM55  ; 0 = okay, 1 = tripped probe while jogging
+SpindleFault_M                IS MEM56  ; 0 = okay, 1 = spindle drive fault
+OtherFault_M                  IS MEM57
+
+;Axis1FiberOk_M                IS MEM70
+;Axis2FiberOk_M                IS MEM71
+;Axis3FiberOk_M                IS MEM72
+;Axis4FiberOk_M                IS MEM73
+;Axis5FiberOk_M                IS MEM74
+;Axis6FiberOk_M                IS MEM75
+;Axis7FiberOk_M                IS MEM76
+;Axis8FiberOk_M                IS MEM77
+
+ProbeMsgSent_M                IS MEM78
+True_M                        IS MEM81
+SpinRangeReversed_M           IS MEM82
+SpindleDirection_M            IS MEM83
+SpindlePause_M                IS MEM84
+LimitTripped_M                IS MEM85
+SpinStart_M                   IS MEM86
+SpinStop_M                    IS MEM87
+
+BadCfg_M                      IS MEM88
+UpdatingConfig_M              IS MEM89
+ConfigFaultTrigger_M          IS MEM90
+ClampEnabled_M                IS MEM91
+
+KbJpActive_M                  IS MEM100 ;aka SV_PC_VIRTUAL_JOGPANEL_ACTIVE
+DisableKbInput_M              IS MEM101 ;If 1, disable kb jogging
+AllowKbInput_M                IS MEM102 ;If 1, allow kb jogging
+JogOverOnly_M                 IS MEM103
+KbOverOnly_M                  IS MEM104
+UsingFeedrateKnob_M           IS MEM105
+WaitingForSleepTimer_M        IS MEM106
+JogPanelRequired_M            IS MEM107
+UsingVirtualOverride_M        IS MEM108
+
+X1_M                          IS MEM111
+X10_M                         IS MEM112
+X100_M                        IS MEM113
+
+;WTB 8 Bits
+MiniPLCOk1_M                  IS MEM121
+MiniPLCOk2_M                  IS MEM122
+MiniPLCOk3_M                  IS MEM123
+MiniPLCOk4_M                  IS MEM124
+MiniPLCOk5_M                  IS MEM125
+MiniPLCOk6_M                  IS MEM126
+MiniPLCOk7_M                  IS MEM127
+MiniPLCOk8_M                  IS MEM128
+
+;WTB 8 Bits
+MiniPLCExpected1_M            IS MEM137
+MiniPLCExpected2_M            IS MEM138
+MiniPLCExpected3_M            IS MEM139
+MiniPLCExpected4_M            IS MEM140
+MiniPLCExpected5_M            IS MEM141
+MiniPLCExpected6_M            IS MEM142
+MiniPLCExpected7_M            IS MEM143
+MiniPLCExpected8_M            IS MEM144
+
+Ax1PlusJogDisabled_M          IS MEM150
+Ax1MinusJogDisabled_M         IS MEM151
+Ax2PlusJogDisabled_M          IS MEM152
+Ax2MinusJogDisabled_M         IS MEM153
+Ax3MinusJogDisabled_M         IS MEM154
+Ax4PlusJogDisabled_M          IS MEM155
+Ax4MinusJogDisabled_M         IS MEM156
+Ax5PlusJogDisabled_M          IS MEM157
+Ax5MinusJogDisabled_M         IS MEM158
+Ax6PlusJogDisabled_M          IS MEM159
+Ax6MinusJogDisabled_M         IS MEM160
+Ax7PlusJogDisabled_M          IS MEM161
+Ax7MinusJogDisabled_M         IS MEM162
+Ax8PlusJogDisabled_M          IS MEM163
+Ax8MinusJogDisabled_M         IS MEM164
+
+OnAtPowerUp_M                 IS MEM200
+EstopOk_M                     IS MEM201
+ResetArmed_M                  IS MEM202
+ResetSet_M                    IS MEM203
+
+LastProbeMode_M               IS MEM210
+JogModeSaved_M                IS MEM211
+JogKeyPressed_M               IS MEM212
+ProbeProtectionEnable_M       IS MEM213
+InvertXJogKeys_M              IS MEM214
+SwapAxes_M                    IS MEM215
+MPG_M                         IS MEM216
+HandWheel_M                   IS MEM217
+
+;MPG bits 32 bits reserved 32 bits open for further use start at
+;Reserved 230-262
+;WTB 13 Bits
+MpgResetKey_M                   IS MEM230
+MpgFeedHold_M                   IS MEM231
+MpgCycleStart_M                 IS MEM232
+UsbMpgJogPlus_M                 IS MEM233
+UsbMpgJogMinus_M                IS MEM234
+UsbMpgSpinAutoMan_M             IS MEM235
+UsbMpgSpinOnOff_M               IS MEM236
+MpgMacro1_M                     IS MEM237
+MpgMacro2_M                     IS MEM238
+MpgMacro3_M                     IS MEM239
+MpgMacro4_M                     IS MEM240
+MpgToolCheck_M                  IS MEM241
+MpgSetAxisZero_M                IS MEM242
+;WTB 8 Bits
+UsbMpgAxis1Active_M             IS MEM243
+UsbMpgAxis2Active_M             IS MEM244
+UsbMpgAxis3Active_M             IS MEM245
+UsbMpgAxis4Active_M             IS MEM246
+UsbMpgAxis5Active_M             IS MEM247
+UsbMpgAxis6Active_M             IS MEM248
+UsbMpgAxis7Active_M             IS MEM249
+UsbMpgAxis8Active_M             IS MEM250
+
+;Glue Logic   254+
+UsbMpgSpinOnOffPressed_M        IS MEM254
+UsbMpgSpinOn_M                  IS MEM255
+UsbMpgSpinOff_M                 IS MEM256
+UsbMpgSpinOnState_M             IS MEM257
+UsbMpgAxis1Selected_M           IS MEM258
+UsbMpgAxis2Selected_M           IS MEM259
+UsbMpgAxis3Selected_M           IS MEM260
+UsbMpgAxis4Selected_M           IS MEM261
+UsbMpgAxis5Selected_M           IS MEM262
+UsbMpgAxis6Selected_M           IS MEM263
+UsbMpgAxis7Selected_M           IS MEM264
+UsbMpgAxis8Selected_M           IS MEM265
+UsbMpgSpinWheelSelect_M         IS MEM266
+UsbMpgSpinWheelSet_M            IS MEM267
+UsbMpgFeedWheelSelect_M         IS MEM268
+UsbMpgFeedWheelSet_M            IS MEM269
+UsbMpgAxis1JogPlus_M            IS MEM270
+UsbMpgAxis1JogMinus_M           IS MEM271
+UsbMpgAxis2JogPlus_M            IS MEM272
+UsbMpgAxis2JogMinus_M           IS MEM273
+UsbMpgAxis3JogPlus_M            IS MEM274
+UsbMpgAxis3JogMinus_M           IS MEM275
+UsbMpgAxis4JogPlus_M            IS MEM276
+UsbMpgAxis4JogMinus_M           IS MEM277
+UsbMpgAxis5JogPlus_M            IS MEM278
+UsbMpgAxis5JogMinus_M           IS MEM279
+UsbMpgAxis6JogPlus_M            IS MEM280
+UsbMpgAxis6JogMinus_M           IS MEM281
+UsbMpgAxis7JogPlus_M            IS MEM282
+UsbMpgAxis7JogMinus_M           IS MEM283
+UsbMpgAxis8JogPlus_M            IS MEM284
+UsbMpgAxis8JogMinus_M           IS MEM285
+UsbMpgOn_M                      IS MEM286
+UsbAxisKnobChanged_M            IS MEM287
+MpgX100LockOut_M                IS MEM288
+MpgZAxisLocked_M                IS MEM289
+
+;Keyboard
+KbCycleStart_M                IS MEM400 ; "alt" + "s"
+KbCycleCancel_M               IS MEM401 ; escape
+KbToolCheck_M                 IS MEM402 ; "Ctrl" + "t"
+KbTogSingleBlock_M            IS MEM403 ; "Ctrl" + "b"
+KbIncreaseJogInc_M            IS MEM404 ; "Insert"
+KbDecreaseJogInc_M            IS MEM405 ; "Delete"
+KbIncFeedOver_M               IS MEM406 ; "ctrl" + "keyboard "+" ("=")
+KbDecFeedOver_M               IS MEM407 ; "ctrl" + "keyboard "-"
+KbFeedOver100_M               IS MEM450 ; "ctrl" + "\"
+KbTogIncContJog_M             IS MEM408 ; "ctrl" + "i"
+KbTogFastSlowJog_M            IS MEM409 ; "ctrl" + "f"
+KbJogAx1Plus_M                IS MEM411 ; right arrow + KbJpActive_M
+KbJogAx1Minus_M               IS MEM412 ; left arrow + KbJpActive_M
+KbJogAx2Plus_M                IS MEM413 ; up arrow + KbJpActive_M
+KbJogAx2Minus_M               IS MEM414 ; down arrow + KbJpActive_M
+KbJogAx3Plus_M                IS MEM415 ; page up + KbJpActive_M
+KbJogAx3Minus_M               IS MEM416 ; page down + KbJpActive_M
+KbJogAx4Plus_M                IS MEM417 ; "home"+ KbJpActive_M
+KbJogAx4Minus_M               IS MEM418 ; "end" + KbJpActive_M
+KbAux1Key_M                   IS MEM419 ; "ctrl" + "F1"
+KbAux2Key_M                   IS MEM420 ; "ctrl" + "F2"
+KbAux3Key_M                   IS MEM421 ; "ctrl" + "F3"
+KbAux4Key_M                   IS MEM422 ; "ctrl" + "F4"
+KbAux5Key_M                   IS MEM423 ; "ctrl" + "F5"
+KbAux6Key_M                   IS MEM424 ; "ctrl" + "F6"
+KbAux7Key_M                   IS MEM425 ; "ctrl" + "F7"
+KbAux8Key_M                   IS MEM426 ; "ctrl" + "F8"
+KbAux9Key_M                   IS MEM427 ; "ctrl" + "F9"
+KbAux10Key_M                  IS MEM428 ; "ctrl" + "F10"
+KbAux11Key_M                  IS MEM429 ; "ctrl" + "F11"
+KbAux12Key_M                  IS MEM430 ; "ctrl" + "F12"
+KbTogRapidOver_M              IS MEM431 ; "ctrl" + "r"
+KbTogSpinAutoMan_M            IS MEM432 ; "ctrl" + "a"
+KbSpinCW_M                    IS MEM433 ; "ctrl" + "c"
+KbSpinCCW_M                   IS MEM434 ; "ctrl" + "w"
+KbSpinStart_M                 IS MEM435 ; "ctrl" + "s"
+KbSpinStop_M                  IS MEM436 ; "ctrl" + "q"
+KbFloodOnOff_M                IS MEM437 ; "ctrl" + "n"
+KbMistOnOff_M                 IS MEM451 ; "ctrl" + "k"
+KbTogCoolAutoMan_M            IS MEM438 ; "ctrl" + "m"
+KbFeedHold_M                  IS MEM439 ; space bar
+KbIncSpinOver_M               IS MEM440 ; "ctrl" + ">" (.)
+KbDecSpinOver_M               IS MEM441 ; "ctrl" + "<" (,)
+KbSpinOver100_M               IS MEM442 ; "ctrl" + "?" (/)
+KbAux13Key_M                  IS MEM444 ; "ctrl" + "1"
+KbAux14Key_M                  IS MEM445 ; "ctrl" + "2"
+KbAux15Key_M                  IS MEM446 ; "ctrl" + "3"
+KbAux16Key_M                  IS MEM447 ; "ctrl" + "4"
+
+;------------------------------------------------------------------------------
+;                     ---------SYSTEM VARIABLES--------
+;
+; For a complete list of System Variables and their functions, please see the
+; MPU11 PLC manual.
+;------------------------------------------------------------------------------
+; MPU11 based systems provide the PLC with the ability to read/write to a
+; limited number of "System Variables".  While the use of System Variables
+; greatly expands PLC functionality, it comes with additional responsibility on
+; the part of the PLC programmer.  Functionality that was once implemented as
+; default behavior such as jogging, spindle speed, feedrate override, spindle
+; gear ranges etc... is now implemented through System Variables in the PLC
+; program.  It is now the sole responsibility of the PLC program to provide a
+; method to jog an axis, override the spindle speed or feedrates or even map a
+; jog panel keypress to a specific function.  Pressing a jog key or Aux key
+; won't DO anything unless the PLC assigns an action to the keypress.  All jog
+; panel functions MUST be explicitly implemented in the PLC program.
+;                                 ----IMPORTANT----
+; Menu navigation in the CNC software requires that the escape key or Cycle
+; Cancel key is used to back out of menus and screens.  You must use the PLC
+; program to map a jog panel key and/or a keyboard key to the Cycle Cancel
+; System Variable (SV_PLC_FUNCTION_1 has been declared as "DoCycleCancel")
+; in order to use the control.  For example:
+; The following lines map the escape key and Jog Panel Cycle Cancel key to
+; produce a Cycle Cancel event:
+
+; 1. Map escape keypress event to identifier to describe what key was pressed.
+;    Kb_Escape    IS SV_PC_Keyboard_Key_1
+
+; 2. Map MEM bit to identifier that describes what the keypress is used for.
+;    KbCycleCancel_M  IS MEM401
+
+; 3. Logic to "SET" KbCycleCancel_M any time the escape key is pressed.
+;    IF Kb_Escape THEN(KbCycleCancel_M)
+
+; 4. Logic to cancel job if the escape key or cycle cancel key is pressed.
+;    IF (CycleCancelKey || KbCycleCancel_M) && SV_PROGRAM_RUNNING
+;      THEN (DoCycleCancel)
+
+;   Some of the information made available to the PLC through System Variables:
+; 1. Encoder positions: SV_MPU11_ABS_POS_1 - SV_MPU11_ABS_POS_7
+; 2. Parameter values: SV_MACHINE_PARAMETER_1 - SV_MACHINE_PARAMETER_999
+; 3. Spindle Speed command from PC: SV_PC_DAC_SPINDLE_SPEED
+; 4. PC Keyboard Keypress: SV_PC_FUNCTION_1 - SV_PC_FUNCTION_127
+; 5. ...
+
+;   Some of the functionality controlled by the PLC through System Variables:
+; 1. Axis jogging: SV_PLC_FUNCTION_12 - SV_PLC_FUNCTION_23
+; 2. "Final" Spindle speed reported to PC: SV_PLC_SPINDLE_SPEED -provides nearly
+;     unlimited gear ranges
+; 3. Feedrate (through override knob): SV_PLC_FeedrateKnob_W
+; 4. Custom debounce, invert/force inputs: SV_PLC_DEBOUNCE_1-SV_PLC_DEBOUNCE_64
+; 5. ...
+;------------------------------------------------------------------------------
+;  System variables:  Jog Panel Functions
+;------------------------------------------------------------------------------
+; Jog panel functions
+;Invalid                      IS SV_PLC_FUNCTION_0
+DoCycleCancel_SV                 IS SV_PLC_FUNCTION_1
+DoCycleStart_SV                  IS SV_PLC_FUNCTION_2
+DoToolCheck_SV                   IS SV_PLC_FUNCTION_3
+SelectSingleBlock_SV             IS SV_PLC_FUNCTION_4
+SelectX1JogInc_SV                IS SV_PLC_FUNCTION_5
+SelectX10JogInc_SV               IS SV_PLC_FUNCTION_6
+SelectX100JogInc_SV              IS SV_PLC_FUNCTION_7
+SelectUserJogInc_SV              IS SV_PLC_FUNCTION_8
+SelectIncContJog_SV              IS SV_PLC_FUNCTION_9
+SelectFastSlowJog_SV             IS SV_PLC_FUNCTION_10
+SelectMpgMode_SV                 IS SV_PLC_FUNCTION_11
+DoAx1PlusJog_SV                  IS SV_PLC_FUNCTION_12
+DoAx1MinusJog_SV                 IS SV_PLC_FUNCTION_13
+DoAx2PlusJog_SV                  IS SV_PLC_FUNCTION_14
+DoAx2MinusJog_SV                 IS SV_PLC_FUNCTION_15
+DoAx3PlusJog_SV                  IS SV_PLC_FUNCTION_16
+DoAx3MinusJog_SV                 IS SV_PLC_FUNCTION_17
+DoAx4PlusJog_SV                  IS SV_PLC_FUNCTION_18
+DoAx4MinusJog_SV                 IS SV_PLC_FUNCTION_19
+DoAx5PlusJog_SV                  IS SV_PLC_FUNCTION_20
+DoAx5MinusJog_SV                 IS SV_PLC_FUNCTION_21
+DoAx6PlusJog_SV                  IS SV_PLC_FUNCTION_22
+DoAx6MinusJog_SV                 IS SV_PLC_FUNCTION_23
+DoAux1Key_SV                     IS SV_PLC_FUNCTION_24
+DoAux2Key_SV                     IS SV_PLC_FUNCTION_25
+DoAux3Key_SV                     IS SV_PLC_FUNCTION_26
+DoAux4Key_SV                     IS SV_PLC_FUNCTION_27
+DoAux5Key_SV                     IS SV_PLC_FUNCTION_28
+DoAux6Key_SV                     IS SV_PLC_FUNCTION_29
+DoAux7Key_SV                     IS SV_PLC_FUNCTION_30
+DoAux8Key_SV                     IS SV_PLC_FUNCTION_31
+DoAux9Key_SV                     IS SV_PLC_FUNCTION_32
+DoAux10Key_SV                    IS SV_PLC_FUNCTION_33
+SelectRapidOverride_SV           IS SV_PLC_FUNCTION_34
+SelectManAutoSpindle_SV          IS SV_PLC_FUNCTION_35
+DoSpindleStart_SV                IS SV_PLC_FUNCTION_37
+DoSpindleStop_SV                 IS SV_PLC_FUNCTION_38
+DoAux11Key_SV                    IS SV_PLC_FUNCTION_39
+DoAux12Key_SV                    IS SV_PLC_FUNCTION_40
+;SelectCoolantMan             IS SV_PLC_FUNCTION_41 ;deprecated
+;SelectCoolantAuto            IS SV_PLC_FUNCTION_42 ;deprecated
+SelectCoolantFlood_SV            IS SV_PLC_FUNCTION_43
+SelectCoolantMist_SV             IS SV_PLC_FUNCTION_44
+DoFeedHold_SV                    IS SV_PLC_FUNCTION_45
+SelectSpindleCCW_SV              IS SV_PLC_FUNCTION_98
+SelectSpindleCW_SV               IS SV_PLC_FUNCTION_99
+SelectCoolAutoMan_SV             IS SV_PLC_FUNCTION_104
+DoIncreaseSpindleOR_SV           IS SV_PLC_FUNCTION_106
+DoDecreaseSpindleOR_SV           IS SV_PLC_FUNCTION_107
+SelectSpinOR100_SV               IS SV_PLC_FUNCTION_108
+DoEscapeKey_SV                   IS SV_PLC_FUNCTION_109
+DoAux13Key_SV                    IS SV_PLC_FUNCTION_114
+DoAux14Key_SV                    IS SV_PLC_FUNCTION_115
+DoAux15Key_SV                    IS SV_PLC_FUNCTION_116
+DoAux16Key_SV                    IS SV_PLC_FUNCTION_117
+
+;------------------------------------------------------------------------------
+;  System variables:  Keyboard jogging functions
+;------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+; Keyboard Jogging Keys - The System Variables in this section inform the PLC
+; that a PC keyboard keypress has occurred.  Keep in mind that some key presses
+; only come down while the keyboard jogging screen is enabled (alt-j) and that
+; NONE of these keys not perform ANY default actions unless programmed to do so.
+; The assignments provided below are for reference only.  For an example of
+; mapping a keyboard key press to an MPU11 action, see the logic assigned to
+; KbCycleStart_M or KbCycleCancel_M.
+;
+;Note:
+; Keypresses are sent down as individual keys.  It is the responsibility of
+; the PLC programmer to insure that a keypress is only acted on at the
+; appropriate times.
+; The "SV_PC_VIRTUAL_JOGPANEL_ACTIVE" system variable can be used to prevent
+; a keypress form being acted on unless the keyboard jog screen is being
+; displayed.  NOTE The above,29 character sys variable is mapped to
+; KbJpActive_M (MEM80) to make it a "little" shorter......
+;------------------------------------------------------------------------------
+Kb_a_SV                          IS SV_PC_KEYBOARD_KEY_60
+Kb_b_SV                          IS SV_PC_KEYBOARD_KEY_79
+Kb_c_SV                          IS SV_PC_KEYBOARD_KEY_77
+Kb_d_SV                          IS SV_PC_KEYBOARD_KEY_62
+Kb_e_SV                          IS SV_PC_KEYBOARD_KEY_41
+Kb_f_SV                          IS SV_PC_KEYBOARD_KEY_63
+Kb_g_SV                          IS SV_PC_KEYBOARD_KEY_64
+Kb_h_SV                          IS SV_PC_KEYBOARD_KEY_65
+Kb_i_SV                          IS SV_PC_KEYBOARD_KEY_46
+Kb_j_SV                          IS SV_PC_KEYBOARD_KEY_66
+Kb_k_SV                          IS SV_PC_KEYBOARD_KEY_67
+Kb_l_SV                          IS SV_PC_KEYBOARD_KEY_68
+Kb_m_SV                          IS SV_PC_KEYBOARD_KEY_81
+Kb_n_SV                          IS SV_PC_KEYBOARD_KEY_80
+Kb_o_SV                          IS SV_PC_KEYBOARD_KEY_47
+Kb_p_SV                          IS SV_PC_KEYBOARD_KEY_48
+Kb_q_SV                          IS SV_PC_KEYBOARD_KEY_39
+Kb_r_SV                          IS SV_PC_KEYBOARD_KEY_42
+Kb_s_SV                          IS SV_PC_KEYBOARD_KEY_61
+Kb_t_SV                          IS SV_PC_KEYBOARD_KEY_43
+Kb_u_SV                          IS SV_PC_KEYBOARD_KEY_45
+Kb_v_SV                          IS SV_PC_KEYBOARD_KEY_78
+Kb_w_SV                          IS SV_PC_KEYBOARD_KEY_40
+Kb_x_SV                          IS SV_PC_KEYBOARD_KEY_76
+Kb_y_SV                          IS SV_PC_KEYBOARD_KEY_44
+Kb_z_SV                          IS SV_PC_KEYBOARD_KEY_75
+Kb_spacebar_SV                   IS SV_PC_KEYBOARD_KEY_95
+Kb_L_Shift_SV                    IS SV_PC_KEYBOARD_KEY_74
+Kb_R_Shift_SV                    IS SV_PC_KEYBOARD_KEY_85
+Kb_L_Alt_SV                      IS SV_PC_KEYBOARD_KEY_94
+Kb_R_Alt_SV                      IS SV_PC_KEYBOARD_KEY_96
+Kb_L_Ctrl_SV                     IS SV_PC_KEYBOARD_KEY_92
+Kb_R_Ctrl_SV                     IS SV_PC_KEYBOARD_KEY_99
+Kb_Ins_SV                        IS SV_PC_KEYBOARD_KEY_31
+Kb_Home_SV                       IS SV_PC_KEYBOARD_KEY_32
+Kb_End_SV                        IS SV_PC_KEYBOARD_KEY_53
+Kb_PgDown_SV                     IS SV_PC_KEYBOARD_KEY_54
+Kb_PgUp_SV                       IS SV_PC_KEYBOARD_KEY_33
+Kb_Del_SV                        IS SV_PC_KEYBOARD_KEY_52
+Kb_Back_SV                       IS SV_PC_KEYBOARD_KEY_30
+Kb_Tab_SV                        IS SV_PC_KEYBOARD_KEY_38
+Kb_Up_SV                         IS SV_PC_KEYBOARD_KEY_87
+Kb_Down_SV                       IS SV_PC_KEYBOARD_KEY_101
+Kb_Left_SV                       IS SV_PC_KEYBOARD_KEY_100
+Kb_Right_SV                      IS SV_PC_KEYBOARD_KEY_102
+Kb_Escape_SV                     IS SV_PC_KEYBOARD_KEY_1 ;Performs Cycle Cancel
+Kb_F1_SV                         IS SV_PC_KEYBOARD_KEY_2
+Kb_F2_SV                         IS SV_PC_KEYBOARD_KEY_3
+Kb_F3_SV                         IS SV_PC_KEYBOARD_KEY_4
+Kb_F4_SV                         IS SV_PC_KEYBOARD_KEY_5
+Kb_F5_SV                         IS SV_PC_KEYBOARD_KEY_6
+Kb_F6_SV                         IS SV_PC_KEYBOARD_KEY_7
+Kb_F7_SV                         IS SV_PC_KEYBOARD_KEY_8
+Kb_F8_SV                         IS SV_PC_KEYBOARD_KEY_9
+Kb_F9_SV                         IS SV_PC_KEYBOARD_KEY_10
+Kb_F10_SV                        IS SV_PC_KEYBOARD_KEY_11
+Kb_F11_SV                        IS SV_PC_KEYBOARD_KEY_12
+Kb_F12_SV                        IS SV_PC_KEYBOARD_KEY_13
+Kb_Prt_Scrn_SV                   IS SV_PC_KEYBOARD_KEY_14
+Kb_Scrl_Lck_SV                   IS SV_PC_KEYBOARD_KEY_15
+Kb_Break_SV                      IS SV_PC_KEYBOARD_KEY_16
+Kb_Num_Lock_SV                   IS SV_PC_KEYBOARD_KEY_34
+Kb_1_SV                          IS SV_PC_KEYBOARD_KEY_18
+Kb_2_SV                          IS SV_PC_KEYBOARD_KEY_19
+Kb_3_SV                          IS SV_PC_KEYBOARD_KEY_20
+Kb_4_SV                          IS SV_PC_KEYBOARD_KEY_21
+Kb_5_SV                          IS SV_PC_KEYBOARD_KEY_22
+Kb_6_SV                          IS SV_PC_KEYBOARD_KEY_23
+Kb_7_SV                          IS SV_PC_KEYBOARD_KEY_24
+Kb_8_SV                          IS SV_PC_KEYBOARD_KEY_25
+Kb_9_SV                          IS SV_PC_KEYBOARD_KEY_26
+Kb_0_SV                          IS SV_PC_KEYBOARD_KEY_27
+Kb_10_Key_Div_SV                 IS SV_PC_KEYBOARD_KEY_35
+Kb_10_Key_Mlt_SV                 IS SV_PC_KEYBOARD_KEY_36
+Kb_10_Key_Sub_SV                 IS SV_PC_KEYBOARD_KEY_37
+Kb_10_Key_0_SV                   IS SV_PC_KEYBOARD_KEY_103
+Kb_10_Key_1_SV                   IS SV_PC_KEYBOARD_KEY_88
+Kb_10_Key_2_SV                   IS SV_PC_KEYBOARD_KEY_89
+Kb_10_Key_3_SV                   IS SV_PC_KEYBOARD_KEY_90
+Kb_10_Key_4_SV                   IS SV_PC_KEYBOARD_KEY_71
+Kb_10_Key_5_SV                   IS SV_PC_KEYBOARD_KEY_72
+Kb_10_Key_6_SV                   IS SV_PC_KEYBOARD_KEY_73
+Kb_10_Key_7_SV                   IS SV_PC_KEYBOARD_KEY_55
+Kb_10_Key_8_SV                   IS SV_PC_KEYBOARD_KEY_56
+Kb_10_Key_9_SV                   IS SV_PC_KEYBOARD_KEY_57
+Kb_10_Key_Dec_Pt_SV              IS SV_PC_KEYBOARD_KEY_104
+Kb_10_Key_Plus_SV                IS SV_PC_KEYBOARD_KEY_58
+Kb_Num_Enter_SV                  IS SV_PC_KEYBOARD_KEY_91
+Kb_L_Sq_Bracket_SV               IS SV_PC_KEYBOARD_KEY_49
+Kb_R_Sq_Bracket_SV               IS SV_PC_KEYBOARD_KEY_50
+Kb_Hyphen_SV                     IS SV_PC_KEYBOARD_KEY_28
+Kb_Equals_SV                     IS SV_PC_KEYBOARD_KEY_29
+Kb_Comma_SV                      IS SV_PC_KEYBOARD_KEY_82
+Kb_Period_SV                     IS SV_PC_KEYBOARD_KEY_83
+Kb_Slash_SV                      IS SV_PC_KEYBOARD_KEY_84
+Kb_Backslash_SV                  IS SV_PC_KEYBOARD_KEY_86
+
+;------------------------------------------------------------------------------
+;                       System Variable Skin Events
+;------------------------------------------------------------------------------
+SkinSpinOverPlus_M_SV            IS SV_SKIN_EVENT_1  ; Row  1 Column 1
+SkinSpinAutoMan_M_SV             IS SV_SKIN_EVENT_2  ; Row  1 Column 2
+SkinAux1_M_SV                    IS SV_SKIN_EVENT_3  ; Row  1 Column 3
+SkinAux2_M_SV                    IS SV_SKIN_EVENT_4  ; Row  1 Column 4
+SkinAux3_M_SV                    IS SV_SKIN_EVENT_5  ; Row  1 Column 5
+SkinSpin100_M_SV                 IS SV_SKIN_EVENT_6  ; Row  2 Column 1
+SkinSpinCW_M_SV                  IS SV_SKIN_EVENT_7  ; Row  2 Column 2
+SkinAux4_M_SV                    IS SV_SKIN_EVENT_8  ; Row  2 Column 3
+SkinAux5_M_SV                    IS SV_SKIN_EVENT_9  ; Row  2 Column 4
+SkinAux6_M_SV                    IS SV_SKIN_EVENT_10 ; Row  2 Column 5
+SkinSpinOverMinus_M_SV           IS SV_SKIN_EVENT_11 ; Row  3 Column 1
+SkinSpinCCW_M_SV                 IS SV_SKIN_EVENT_12 ; Row  3 Column 2
+SkinAux7_M_SV                    IS SV_SKIN_EVENT_13 ; Row  3 Column 3
+SkinAux8_M_SV                    IS SV_SKIN_EVENT_14 ; Row  3 Column 4
+SkinAux9_M_SV                    IS SV_SKIN_EVENT_15 ; Row  3 Column 5
+SkinSpinStop_M_SV                IS SV_SKIN_EVENT_16 ; Row  4 Column 1
+SkinSpinStart_M_SV               IS SV_SKIN_EVENT_17 ; Row  4 Column 2
+SkinAux10_M_SV                   IS SV_SKIN_EVENT_18 ; Row  4 Column 3
+SkinAux11_M_SV                   IS SV_SKIN_EVENT_19 ; Row  4 Column 4
+SkinAux12_M_SV                   IS SV_SKIN_EVENT_20 ; Row  4 Column 5
+SkinCoolAutoMan_M_SV             IS SV_SKIN_EVENT_21 ; Row  5 Column 1
+SkinCoolFlood_M_SV               IS SV_SKIN_EVENT_22 ; Row  5 Column 2
+SkinCoolMist_M_SV                IS SV_SKIN_EVENT_23 ; Row  5 Column 3
+SkinAux13_SV                     IS SV_SKIN_EVENT_24 ; Row  5 Column 4
+SkinAux14_SV                     IS SV_SKIN_EVENT_25 ; Row  5 Column 5
+SkinIncCont_M_SV                 IS SV_SKIN_EVENT_26 ; Row  6 Column 1
+SkinX1_M_SV                      IS SV_SKIN_EVENT_27 ; Row  6 Column 2
+SkinX10_M_SV                     IS SV_SKIN_EVENT_28 ; Row  6 Column 3
+SkinX100_M_SV                    IS SV_SKIN_EVENT_29 ; Row  6 Column 4
+SkinMPG_M_SV                     IS SV_SKIN_EVENT_30 ; Row  6 Column 5
+SkinJogAx4Plus_M_SV              IS SV_SKIN_EVENT_31 ; Row  7 Column 1
+SkinR7C2_M_SV                    IS SV_SKIN_EVENT_32 ; Row  7 Column 2
+SkinJogAx2Plus_M_SV              IS SV_SKIN_EVENT_33 ; Row  7 Column 3
+SkinR7C4_M_SV                    IS SV_SKIN_EVENT_34 ; Row  7 Column 4
+SkinJogAx3Plus_M_SV              IS SV_SKIN_EVENT_35 ; Row  7 Column 5
+SkinR8C1_M_SV                    IS SV_SKIN_EVENT_36 ; Row  8 Column 1
+SkinJogAx1Minus_M_SV             IS SV_SKIN_EVENT_37 ; Row  8 Column 2
+SkinFastSlowJog_M_SV             IS SV_SKIN_EVENT_38 ; Row  8 Column 3
+SkinJogAx1Plus_M_SV              IS SV_SKIN_EVENT_39 ; Row  8 Column 4
+SkinR8C5_M_SV                    IS SV_SKIN_EVENT_40 ; Row  8 Column 5
+SkinJogAx4Minus_M_SV             IS SV_SKIN_EVENT_41 ; Row  9 Column 1
+SkinR9C2_M_SV                    IS SV_SKIN_EVENT_42 ; Row  9 Column 2
+SkinJogAx2Minus_M_SV             IS SV_SKIN_EVENT_43 ; Row  9 Column 3
+SkinR9C4_M_SV                    IS SV_SKIN_EVENT_44 ; Row  9 Column 4
+SkinJogAx3Minus_M_SV             IS SV_SKIN_EVENT_45 ; Row  9 Column 5
+SkinCycleCancel_M_SV             IS SV_SKIN_EVENT_46 ; Row 10 Column 1
+SkinSingleBlock_M_SV             IS SV_SKIN_EVENT_47 ; Row 10 Column 2
+SkinToolCheck_M_SV               IS SV_SKIN_EVENT_48 ; Row 10 Column 3
+SkinFeedHold_M_SV                IS SV_SKIN_EVENT_49 ; Row 10 Column 4
+SkinCycleStart_M_SV              IS SV_SKIN_EVENT_50 ; Row 10 Column 5
+SkinResetOk_M_SV                 IS SV_SKIN_EVENT_51
+SkinFeedOverMinus_M_SV           IS SV_SKIN_EVENT_52
+SkinFeedOver100_SV               IS SV_SKIN_EVENT_53
+SkinFeedOverPlus_M_SV            IS SV_SKIN_EVENT_54
+SkinResetSet_M_SV                IS SV_SKIN_EVENT_55
+SkinResetKey_M_SV                IS SV_SKIN_EVENT_56
+SkinJogAx5Plus_SV                IS SV_SKIN_EVENT_57
+SkinJogAx5Minus_SV               IS SV_SKIN_EVENT_58
+SkinJogAx6Plus_SV                IS SV_SKIN_EVENT_59
+SkinJogAx6Minus_SV               IS SV_SKIN_EVENT_60
+SkinJogAx7Plus_SV                IS SV_SKIN_EVENT_61
+SkinJogAx7Minus_SV               IS SV_SKIN_EVENT_62
+SkinJogAx8Plus_SV                IS SV_SKIN_EVENT_63
+SkinJogAx8Minus_SV               IS SV_SKIN_EVENT_64
+;                                IS SV_SKIN_EVENT_65
+;                                IS SV_SKIN_EVENT_66
+;                                IS SV_SKIN_EVENT_67
+SkinAux15_SV                     IS SV_SKIN_EVENT_68
+SkinAux16_SV                     IS SV_SKIN_EVENT_69
+;                                IS SV_SKIN_EVENT_70
+;                                IS SV_SKIN_EVENT_71
+;                                IS SV_SKIN_EVENT_72
+;                                IS SV_SKIN_EVENT_73
+;                                IS SV_SKIN_EVENT_74
+;                                IS SV_SKIN_EVENT_75
+;                                IS SV_SKIN_EVENT_76
+;                                IS SV_SKIN_EVENT_77
+;                                IS SV_SKIN_EVENT_78
+;                                IS SV_SKIN_EVENT_79
+;                                IS SV_SKIN_EVENT_80
+;                                IS SV_SKIN_EVENT_81
+;                                IS SV_SKIN_EVENT_82
+;                                IS SV_SKIN_EVENT_83
+;                                IS SV_SKIN_EVENT_84
+;                                IS SV_SKIN_EVENT_85
+;                                IS SV_SKIN_EVENT_86
+;                                IS SV_SKIN_EVENT_87
+;                                IS SV_SKIN_EVENT_88
+;                                IS SV_SKIN_EVENT_89
+;                                IS SV_SKIN_EVENT_90
+;                                IS SV_SKIN_EVENT_91
+;                                IS SV_SKIN_EVENT_92
+;                                IS SV_SKIN_EVENT_93
+;                                IS SV_SKIN_EVENT_94
+;                                IS SV_SKIN_EVENT_95
+;                                IS SV_SKIN_EVENT_96
+;                                IS SV_SKIN_EVENT_97
+;                                IS SV_SKIN_EVENT_98
+;                                IS SV_SKIN_EVENT_99
+;                                IS SV_SKIN_EVENT_100
+;                                IS SV_SKIN_EVENT_101
+;                                IS SV_SKIN_EVENT_102
+;                                IS SV_SKIN_EVENT_103
+;                                IS SV_SKIN_EVENT_104
+;                                IS SV_SKIN_EVENT_105
+;                                IS SV_SKIN_EVENT_106
+SkinJogAx1MinusAx2Plus_M         IS SV_SKIN_EVENT_107
+SkinJogAx1Ax2Plus_M              IS SV_SKIN_EVENT_108
+SkinJogAx1Ax2Minus_M             IS SV_SKIN_EVENT_109
+SkinJogAx1PlusAx2Minus_M         IS SV_SKIN_EVENT_110
+SkinFeedOver75_SV                IS SV_SKIN_EVENT_111
+SkinFeedOver50_SV                IS SV_SKIN_EVENT_112
+SkinFeedOver25_SV                IS SV_SKIN_EVENT_113
+;                                IS SV_SKIN_EVENT_114
+;                                IS SV_SKIN_EVENT_115
+;                                IS SV_SKIN_EVENT_116
+;                                IS SV_SKIN_EVENT_117
+;                                IS SV_SKIN_EVENT_118
+;                                IS SV_SKIN_EVENT_119
+;                                IS SV_SKIN_EVENT_120
+;                                IS SV_SKIN_EVENT_121
+;                                IS SV_SKIN_EVENT_122
+;                                IS SV_SKIN_EVENT_123
+;                                IS SV_SKIN_EVENT_124
+;                                IS SV_SKIN_EVENT_125
+;                                IS SV_SKIN_EVENT_126
+;                                IS SV_SKIN_EVENT_127
+;                                IS SV_SKIN_EVENT_128
+
+;   Read Only SV_USB_MPG_ENCODER_WHEEL      
+
+SetAxis1Part0_SV                 IS SV_PLC_SET_AXIS_1_PART_ZERO
+SetAxis2Part0_SV                 IS SV_PLC_SET_AXIS_2_PART_ZERO
+SetAxis3Part0_SV                 IS SV_PLC_SET_AXIS_3_PART_ZERO
+SetAxis4Part0_SV                 IS SV_PLC_SET_AXIS_4_PART_ZERO
+SetAxis5Part0_SV                 IS SV_PLC_SET_AXIS_5_PART_ZERO
+SetAxis6Part0_SV                 IS SV_PLC_SET_AXIS_6_PART_ZERO
+SetAxis7Part0_SV                 IS SV_PLC_SET_AXIS_7_PART_ZERO
+SetAxis8Part0_SV                 IS SV_PLC_SET_AXIS_8_PART_ZERO
+
+;------------------------------------------------------------------------------
+; M functions - The System Variables in this section inform the
+; PLC that an M function has been requested.
+;------------------------------------------------------------------------------
+M3_SV                            IS SV_M94_M95_1 ;(Spindle CW)
+M4_SV                            IS SV_M94_M95_2 ;(Spindle CCW)
+M8_SV                            IS SV_M94_M95_3 ;(Flood_O On)
+M10_SV                           IS SV_M94_M95_4 ; Clamp
+M7_SV                            IS SV_M94_M95_5 ;(Mist_O)
+;                                IS SV_M94_M95_6 ;
+;                                IS SV_M94_M95_7 ;
+
+;------------------------------------------------------------------------------
+;                     Word Definitions (int32)
+;------------------------------------------------------------------------------
+LubeAccumTime_W                 IS W1
+KbOverride_W                    IS W2
+FeedrateKnob_W                  IS W3
+FinalFeedOverride_W             IS W4
+
+Last_FeedrateKnob_W             IS W5
+CycloneStatus_W                 IS W6
+TwelveBitSpeed_W                IS W7
+
+UsbAxisMonitor_W                IS W34
+UsbScaleMonitor_W               IS W35
+UsbJog_W                        IS W36
+JogKeyCfg_W                     IS W37
+UsbButtonMonitor_W              IS W38
+UsbWheelCurrent_W               IS W39
+UsbWheelLast_W                  IS W40
+UsbWheelDelta_W                 IS W41
+UsbMpgActiveAxes_W              IS W42
+DefaultJogging_W                IS W43
+StallReason_W                   IS W44
+StallAxis_W                     IS W45
+
+FaultMsg_W                      IS W51
+ErrorMsg_W                      IS W52
+InfoMsg_W                       IS W53
+PLC_Fault_W                     IS W54
+PLCFaultAddr_W                  IS W55
+
+SpindleMeter_W                  IS W59
+
+Lube_W                          IS W61
+LubeM_W                         IS W62
+LubeS_W                         IS W63
+SpindleRange_W                  IS W64  ; 1 = low ... 4 = high
+PrevFeedOverride_W              IS W65
+P148Value_W                     IS W66
+P146Value_W                     IS W67
+P170Value_W                     IS W68
+P900Value_W                     IS W69
+MiniPLCStatus_W                 IS W70
+
+PValue_W                        IS W92
+
+;------------------------------------------------------------------------------
+;           Word Definitions cont. (f32)
+;------------------------------------------------------------------------------
+SpinRangeAdjust_FW            IS FW1
+RPMPerBit_FW                  IS FW2
+CfgMinSpeed_FW                IS FW3
+CfgMaxSpeed_FW                IS FW4
+TwelveBitSpeed_FW             IS FW5
+SpinSpeedCommand_FW           IS FW6
+
+;------------------------------------------------------------------------------
+;            One Shot Definitions
+;------------------------------------------------------------------------------
+IncrContPD_PD                    IS PD1
+SlowFastPD_PD                    IS PD2
+MpgPD_PD                         IS PD3
+SingleBlockPD_PD                 IS PD4
+FeedHoldPD_PD                    IS PD5
+SpinAutoManPD_PD                 IS PD6
+SpindlePlusPD_PD                 IS PD7
+SpinOverMinusPD_PD               IS PD8
+SpinOver100PD_PD                 IS PD9
+ProbePD_PD                       IS PD10
+SaveJogModePD_PD                 IS PD11
+AutoSpindlePD_PD                 IS PD12
+AutoCoolantPD_PD                 IS PD13
+F9PD_PD                          IS PD14
+x1JogPD_PD                       IS PD15
+x10JogPD_PD                      IS PD16
+x100JogPD_PD                     IS PD17
+Aux11KeyPD_PD                    IS PD18
+RapidOverPD_PD                   IS PD19
+MpgOffsetPD_PD                   IS PD20
+CoolantAutoManualPD_PD           IS PD21
+CoolantFloodPD_PD                IS PD22
+CoolantMistPD_PD                 IS PD23
+ToolCheckPD_PD                   IS PD24
+JogProbeFaultPD_PD               IS PD25
+RigidTapPD_PD                    IS PD26
+SetResetPD_PD                    IS PD30
+EStopOkPD_PD                     IS PD31
+
+MPGOff_PD                        IS PD33
+
+StopRunningPD_PD                 IS PD35
+SoftwareReadyPD_PD               IS PD36
+BrakeOneShot_PD                  IS PD37
+
+ClearOffsetPD_PD                 IS PD40
+Aux1PD_PD                        IS PD41
+Aux2PD_PD                        IS PD42
+Aux3PD_PD                        IS PD43
+Aux4PD_PD                        IS PD44
+Aux5PD_PD                        IS PD45
+Aux6PD_PD                        IS PD46
+Aux7PD_PD                        IS PD47
+Aux8PD_PD                        IS PD48
+Aux9PD_PD                        IS PD49
+Aux10PD_PD                       IS PD50
+Aux11PD_PD                       IS PD51
+Aux12PD_PD                       IS PD52
+Aux13PD_PD                       IS PD53
+Aux14PD_PD                       IS PD54
+Aux15PD_PD                       IS PD55
+Aux16PD_PD                       IS PD56
+
+SkinFeedOverMinusPD_PD           IS PD57
+SkinFeedOverPlusPD_PD            IS PD58
+
+;------------------------------------------------------------------------------
+;                    34initions
+;------------------------------------------------------------------------------
+; 1000 = 1 second for all timers.
+;
+MsgClear_T                      IS T1
+SleepTimer_T                    IS T2
+CycloneStatus_T                 IS T3
+Initialize_T                    IS T4
+ErrorFlag_T                     IS T5
+TriggerPause_T                  IS T6
+
+LubeM_T                         IS T13
+LubeS_T                         IS T14
+SkinFeedOverTimer_T             IS T15
+OverrideMsgTimer_T              IS T16
+MessageTimer_T                  IS T17
+NoMacroKeyPressedTimer_T        IS T18
+
+ATCSpin_T                       IS T24 ; used to detect fault if unable to find position
+;------------------------------------------------------------------------------
+;                       Stage Definitions
+;------------------------------------------------------------------------------
+WatchDogStage                   IS STG1
+InitialStage                    IS STG2
+JogPanelStage                   IS STG3
+MainStage                       IS STG4
+AxesEnableStage                 IS STG5
+LoadMeterStage                  IS STG6
+MPGStage                        IS STG7
+CheckCycloneStatusStage         IS STG8
+MiniPLCErrorStage               IS STG9
+LoadParametersStage             IS STG10
+KeyboardEventsStage             IS STG11
+LubeUsePumpTimersStage          IS STG13
+LubeUsePLCTimersStage           IS STG14
+
+JogKeysNormalStage              IS STG26
+JogKeysInvert2Stage             IS STG27
+JogKeysSwappedStage             IS STG28
+JogKeysSwapAndInvert2Stage      IS STG29
+WirelessMpgStage                IS STG60
+SafetySwitchInterruptStage      IS STG62
+
+MessageStage                    IS STG90
+ShowFaultStage                  IS STG91
+ShowErrorStage                  IS STG92
+ShowInfoStage                   IS STG93
+BadMsgStage                     IS STG94
+
+;#############################################################################
+;                         Program Start
+;#############################################################################
+
+;=============================================================================
+                          WatchDogStage
+;=============================================================================
+
+; Handle PLC executor faults. The only way to reset a PLC executor fault
+; is to reboot the MPU11.
+IF SV_PLC_FAULT_STATUS != 0
+  THEN PLC_Fault_W    = SV_PLC_FAULT_STATUS,
+       PLCFaultAddr_W = SV_PLC_FAULT_ADDRESS,
+       FaultMsg_W    = PLC_EXECUTOR_FLT_MSG_C, MSG FaultMsg_W,
+       SET PLCExecutorFault_M, RST MessageStage, SET SV_STOP
+
+; Handle software exit.
+IF !SV_PC_SOFTWARE_READY && (SV_PLC_FAULT_STATUS == 0)
+  THEN SET SoftwareNotReady_M,
+       SET SV_STOP,
+       FaultMsg_W = SOFTWARE_EXIT_MSG_C
+
+IF FaultMsg_W == 9985 && !SV_STOP THEN FaultMsg_W = MSG_CLEARED_MSG_C
+
+IF SV_PC_SOFTWARE_READY && (SV_PLC_FAULT_STATUS == 0)
+  THEN RST SoftwareNotReady_M
+
+; If the memory bit we call "True" is not yet true, it is because this is
+; the first scan after power up.  In that case execute InitialStage.
+IF !True_M THEN SET InitialStage
+
+;=============================================================================
+                          InitialStage
+;=============================================================================
+IF 1==1 THEN SET True_M,
+             SET OnAtPowerUp_M,
+             SET AxesEnableStage,
+             SET MainStage,
+             SET JogPanelStage,
+             SET LoadParametersStage,
+             SET SafetySwitchInterruptStage,
+             SET PLCBus_Oe_M,
+             RST DriveComFltIn_M,
+             RST DriveComFltOut_M,
+             RST PLCFault_M,
+             CycloneStatus_T = 300,
+             FaultMsg_W = MSG_CLEARED_MSG_C,
+             RST BadMsgStage,
+             SET MessageStage,
+             Initialize_T = 1000, SET Initialize_T,
+             ErrorFlag_T = 1000,
+             MsgClear_T = 1000,
+             RST InitialStage
+
+;=============================================================================
+                            LoadParametersStage
+;=============================================================================
+; There are two methods of control for the lube pump and they are set by CNC11
+; Machine Parameter 179, where the value is between 0 - 65535 and is formatted
+; as MMMSS where MMM is a time in minutes and SS is a time in seconds.
+;
+; METHOD 1 (SS == 0) For lube pumps with internal timers.
+; METHOD 2 (SS != 0) For lube pumps with no timers (controlled solely by PLC).
+;
+; Load lube pump times from P179 and convert to milliseconds.
+IF True_M THEN Lube_W = SV_MACHINE_PARAMETER_179,
+             LubeM_W = (Lube_W / 100) * 60000,
+             LubeS_W = (Lube_W % 100) * 1000
+
+;Set MPG Settings
+IF SV_MACHINE_PARAMETER_218 == 0 THEN SET MPGStage, RST WirelessMpgStage
+IF SV_MACHINE_PARAMETER_218 > 0 THEN RST MPGStage, SET WirelessMpgStage
+IF SV_MACHINE_PARAMETER_348 == 15 THEN (MPG_M)
+IF (SV_MACHINE_PARAMETER_348 != 15 && SV_MACHINE_PARAMETER_348 > 0) || 
+  SV_MACHINE_PARAMETER_351 > 0 || SV_MACHINE_PARAMETER_354 > 0
+  THEN (HandWheel_M)
+IF True_M THEN PValue_W = SV_MACHINE_PARAMETER_19
+IF True_M THEN BITTST PValue_W 1 MpgX100LockOut_M
+
+; Set the appropriate stage according to method of control
+IF LubeS_W == 0 THEN SET LubeUsePumpTimersStage, RST LubeUsePLCTimersStage
+IF LubeS_W != 0 THEN SET LubeUsePLCTimersStage, RST LubeUsePumpTimersStage
+
+IF True_M THEN P146Value_W = SV_MACHINE_PARAMETER_146,  ; Feed hold threshold
+             P148Value_W = SV_MACHINE_PARAMETER_148,  ; Misc Jogging Options
+             P170Value_W = SV_MACHINE_PARAMETER_170  ; Enable Keyboard Jogging
+
+IF True_M THEN (SV_ENABLE_IO_OVERRIDE),
+             SV_INVERT_INP1_16_BITS      = SV_MACHINE_PARAMETER_911,
+             SV_INVERT_INP17_32_BITS     = SV_MACHINE_PARAMETER_912,
+             SV_INVERT_INP33_48_BITS     = SV_MACHINE_PARAMETER_913,
+             SV_INVERT_INP49_64_BITS     = SV_MACHINE_PARAMETER_914,
+			       SV_INVERT_INP65_80_BITS     = SV_MACHINE_PARAMETER_915,
+             SV_FORCE_INP1_16_BITS       = SV_MACHINE_PARAMETER_916,
+             SV_FORCE_INP17_32_BITS      = SV_MACHINE_PARAMETER_917,
+             SV_FORCE_INP33_48_BITS      = SV_MACHINE_PARAMETER_918,
+             SV_FORCE_INP49_64_BITS      = SV_MACHINE_PARAMETER_919,
+			       SV_FORCE_INP65_80_BITS      = SV_MACHINE_PARAMETER_920,
+             SV_FORCE_ON_OUT1_16_BITS    = SV_MACHINE_PARAMETER_921,
+             SV_FORCE_ON_OUT17_32_BITS   = SV_MACHINE_PARAMETER_922,
+             SV_FORCE_ON_OUT33_48_BITS   = SV_MACHINE_PARAMETER_923,
+             SV_FORCE_ON_OUT49_64_BITS   = SV_MACHINE_PARAMETER_924,
+		      	 SV_FORCE_ON_OUT65_80_BITS   = SV_MACHINE_PARAMETER_925,
+             SV_FORCE_OFF_OUT1_16_BITS   = SV_MACHINE_PARAMETER_926,
+             SV_FORCE_OFF_OUT17_32_BITS  = SV_MACHINE_PARAMETER_927,
+             SV_FORCE_OFF_OUT33_48_BITS  = SV_MACHINE_PARAMETER_928,
+             SV_FORCE_OFF_OUT49_64_BITS  = SV_MACHINE_PARAMETER_929,
+	      		 SV_FORCE_OFF_OUT65_80_BITS  = SV_MACHINE_PARAMETER_930,
+			       SV_FORCE_ON_MEM1_16_BITS    = SV_MACHINE_PARAMETER_931,
+             SV_FORCE_ON_MEM17_32_BITS   = SV_MACHINE_PARAMETER_932,
+             SV_FORCE_ON_MEM33_48_BITS   = SV_MACHINE_PARAMETER_933,
+             SV_FORCE_ON_MEM49_64_BITS   = SV_MACHINE_PARAMETER_934,
+             SV_FORCE_ON_MEM65_80_BITS   = SV_MACHINE_PARAMETER_935,
+             SV_FORCE_OFF_MEM1_16_BITS   = SV_MACHINE_PARAMETER_936,
+             SV_FORCE_OFF_MEM17_32_BITS  = SV_MACHINE_PARAMETER_937,
+             SV_FORCE_OFF_MEM33_48_BITS  = SV_MACHINE_PARAMETER_938,
+             SV_FORCE_OFF_MEM49_64_BITS  = SV_MACHINE_PARAMETER_939,
+             SV_FORCE_OFF_MEM65_80_BITS  = SV_MACHINE_PARAMETER_940
+
+IF True_M THEN BITTST P148Value_W 1 DisableKbInput_M,
+             BITTST P170Value_W 0 AllowKbInput_M,
+             BITTST P170Value_W 1 JogOverOnly_M,
+             BITTST P170Value_W 2 KbOverOnly_M
+
+IF DisableKbInput_M THEN RST AllowKbInput_M
+IF JogOverOnly_M && KbOverOnly_M THEN RST KbOverOnly_M
+
+;Enable Load Meters
+IF SV_MACHINE_PARAMETER_57 != 0 THEN SET LoadMeterStage
+IF SV_MACHINE_PARAMETER_57 == 0 THEN RST LoadMeterStage
+
+; Set (or reset) the jog panel flag 
+IF SV_JOG_PANEL_REQUIRED THEN (JogPanelRequired_M)
+
+;Jog Key Orientation
+IF True_M THEN JogKeyCfg_W = SV_MACHINE_PARAMETER_1
+IF True_M THEN BITTST JogKeyCfg_W 1 InvertXJogKeys_M
+IF True_M THEN BITTST JogKeyCfg_W 2 SwapAxes_M
+
+IF !(InvertXJogKeys_M || SwapAxes_M) THEN SET JogKeysNormalStage, RST JogKeysInvert2Stage, RST JogKeysSwappedStage, RST JogKeysSwapAndInvert2Stage
+IF InvertXJogKeys_M && !SwapAxes_M THEN SET JogKeysInvert2Stage, RST JogKeysNormalStage, RST JogKeysSwappedStage, RST JogKeysSwapAndInvert2Stage
+IF !InvertXJogKeys_M && SwapAxes_M THEN SET JogKeysSwappedStage, RST JogKeysNormalStage, RST JogKeysInvert2Stage, RST JogKeysSwapAndInvert2Stage
+IF InvertXJogKeys_M && SwapAxes_M THEN SET JogKeysSwapAndInvert2Stage, RST JogKeysNormalStage, RST JogKeysInvert2Stage, RST JogKeysSwappedStage
+
+;Probe Protection
+IF SV_MACHINE_PARAMETER_153 == 0 THEN  RST ProbeProtectionEnable_M
+IF SV_MACHINE_PARAMETER_153 > 0 THEN  SET ProbeProtectionEnable_M
+
+;=============================================================================
+                        LubeUsePumpTimersStage
+;=============================================================================
+; METHOD 1 (SS == 0) For lube pumps with internal timers.
+;
+; When using this method, P179 should be set such that MMM is a
+; value that is greater than the cycle time set on the internal timers and
+; SS should be set to zero. How much greater MMM needs to be depends on the
+; accuracy of the lube pump timers, but it is better to be on the long side
+; to ensure proper operation.
+;
+; Example 1. The internal lube cycle interval is set to 60 minutes.
+;            Set P179 = 7500. In this example, as long as the accuracy
+;            of the lube timer interval causes the lube to turn on
+;            within 75 minutes, it will work. Note that the amount of time
+;            that lube is output is usually set with another timer control
+;            on the lube pump and it does not factor into the setting of P179.
+;
+; It should be noted that lube pumps with internal timers may differ on how
+; they operate.
+;
+; (a) For pumps that lube immediately when power is applied and then start timing
+; until the next cycle, it is possible to run out of lube quickly on short job
+; runs if, after the program has been run, lube power is removed.
+;
+; (b) For pumps that do not lube until it has been turned on for the interval time,
+; it is possible that lube never gets applied if, after the short program has been run,
+; lube power is removed.
+;
+; A short program or job run is defined as a job that finishes before
+; the interval setting (60 minutes in the above example).
+;
+; For the above mentioned reasons, we want the power to be applied for at least
+; the amount of time set by the interval timer, noting that if the user decides
+; to engage the E-stop to remove power after short jobs, then they risk the
+; above mentioned problems according to the type of pump.
+;
+; On the start of SV_PROGRAM_RUNNING, the lube pump turns on.
+; The lube pump is turned off when a program has NOT been
+; running continuously for MMM minutes or E-stop is engaged.
+; The reason the lube pump is turned off after a program has NOT been
+; running for MMM minutes is to prevent lubing when the user leaves for the
+; weekend, leaving the machine on and E-stop disengaged.
+
+IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN SET Lube_O, RST LubeM_T
+IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN LubeM_T = LubeM_W, SET LubeM_T
+IF LubeM_T || !EStopOk_M THEN RST Lube_O
+
+;=============================================================================
+                        LubeUsePLCTimersStage
+;=============================================================================
+; METHOD 2 (SS != 0) For lube pumps that do not have internal timers.
+;
+;  When using this method P179 should be set so the lube turns on
+;  every MMM minutes for SS seconds.
+;
+;  Example 1.
+;    To set the lube pump power to come on for 5 seconds
+;    every 10 minutes, set P179 =  1005.
+;                                 MMMSS
+;  Example 2.
+;    To set the lube pump power to come on for 30 seconds
+;    every 2 hours, set P179 = 12030
+;                              MMMSS
+;
+; This method will accumulate time while a program is running until
+; it reaches MMM minutes, at which time it will apply power
+; for SS seconds (unless E-stop is engaged) and then start over. It is
+; possible with frequent use of E-stop that a lube cycle is cut short.
+;
+
+IF (SV_PROGRAM_RUNNING || SV_MDI_MODE)  THEN LubeM_T = LubeM_W, SET LubeM_T
+IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN (StopRunningPD_PD)
+IF StopRunningPD_PD THEN LubeAccumTime_W = LubeAccumTime_W + LubeM_T, RST LubeM_T
+IF LubeM_T || (LubeAccumTime_W + LubeM_T > LubeM_W)
+  THEN SET Lube_O, LubeS_T = LubeS_W, SET LubeS_T, RST LubeM_T, LubeAccumTime_W = 0
+IF LubeS_T || !EStopOk_M THEN RST Lube_O, RST LubeS_T
+
+;=============================================================================
+                        KeyboardEventsStage
+;=============================================================================
+; This stage handles functions that are required for menu navigation
+; by CNC11, require multiple keypresses and/or need to be interlocked
+; with SV_PC_VIRTUAL_JOGPANEL_ACTIVE and/or AllowKbInput_M.  Regarding
+; "AllowKbInput_M": This PLC program reads a bit from a system parameter,
+; in this case bit 0 of SV_MACHINE_PARAMETER_170, and sets "AllowKbInput_M"
+; if the bit is a "0".  If the operator wishes to allow keyboard input
+; to trigger PLC events, they must set parameter 170 to a "1"
+; (or any odd number for that matter).  It should be mentioned that
+; the programmer will not want to interlock all keyboard keys with
+; SV_PC_VIRTUAL_JOGPANEL_ACTIVE and/or AllowKbInput_M.  For example:
+; The "escape" key must be echoed by the PLC to CNC11 to aid in menu
+; navigation.  NOTE: For backward compatibility with CNC10, setting bit 1
+; of SV_MACHINE_PARAMETER_148 OR clearing bit 0 of SV_MACHINE_PARAMETER_170
+; will disable keyboard jogging.
+
+;-------------------------Not interlocked------------------------
+; The code for cycle cancel has been moved to the main stage.
+; It is commented out below but remains for reference
+;Cycle Cancel
+;IF Kb_Escape THEN (KbCycleCancel_M)
+
+;Rapidoverride: Ctrl-r
+IF Kb_r_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) THEN (KbTogRapidOver_M)
+
+;----------------Interlocked with AllowKbInput_M-------------------
+;KbCycle Start: alt-s
+IF  Kb_s_SV && (Kb_R_Alt_SV || Kb_L_Alt_SV) && AllowKbInput_M THEN (KbCycleStart_M)
+
+;KbToolCheck_M: Ctrl-t
+IF Kb_t_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbToolCheck_M)
+
+;KbTogSingleBlock_M: ctrl-b
+IF Kb_b_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbTogSingleBlock_M)
+
+;KbTogSpinAutoMan_M: ctrl-a
+IF Kb_a_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbTogSpinAutoMan_M)
+
+;KbSpinCW_M: ctrl-c
+IF Kb_c_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN SET KbSpinCW_M,
+    RST KbSpinCCW_M
+
+;KbSpinCCW_M: ctrl-w
+IF Kb_w_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN SET KbSpinCCW_M,
+    RST KbSpinCW_M
+
+;KbSpinStart_M:  ctrl-s
+IF Kb_s_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbSpinStart_M)
+
+;KbSpindle stop: Ctrl-q
+IF Kb_q_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbSpinStop_M)
+
+;KbIncSpinOver_M: ctrl (">")
+IF Kb_Period_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M
+  THEN (KbIncSpinOver_M)
+
+;KbDecSpinOver_M: ctrl ("<")
+IF Kb_Comma_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M
+  THEN (KbDecSpinOver_M)
+
+;KbSpinOver100_M: ctrl + /
+IF Kb_Slash_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M
+  THEN (KbSpinOver100_M)
+
+;KbTogCoolAutoMan_M: Ctrl-m
+IF Kb_m_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbTogCoolAutoMan_M)
+
+;KbFloodOnOff_M: Ctrl-n
+IF Kb_n_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbFloodOnOff_M)
+
+;KbMistOnOff_M: Ctrl-k
+IF Kb_k_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbMistOnOff_M)
+
+;KbAux1Key_M: "ctrl" + "F1"
+IF Kb_F1_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux1Key_M)
+
+;KbAux2Key_M: "ctrl" + "F2"
+IF Kb_F2_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux2Key_M)
+
+;KbAux3Key_M: "ctrl" + "F3"
+IF Kb_F3_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux3Key_M)
+
+;KbAux4Key_M: "ctrl" + "F4"
+IF Kb_F4_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux4Key_M)
+
+;KbAux5Key_M: "ctrl" + "F5"
+IF Kb_F5_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux5Key_M)
+
+;KbAux6Key_M: "ctrl" + "F6"
+IF Kb_F6_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux6Key_M)
+
+;KbAux7Key_M: "ctrl" + "F7"
+IF Kb_F7_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux7Key_M)
+
+;KbAux8Key_M: "ctrl" + "F8"
+IF Kb_F8_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux8Key_M)
+
+;KbAux9Key_M: "ctrl" + "F9"
+IF Kb_F9_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux9Key_M)
+
+;KbAux10Key_M: "ctrl" + "F10"
+IF Kb_F10_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux10Key_M)
+
+;KbAux11Key_M: "ctrl" + "F11"
+IF Kb_F11_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux11Key_M)
+
+;KbAux12Key_M: "ctrl" + "F12"
+IF Kb_F12_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux12Key_M)
+
+;KbAux13Key_M: "ctrl" + "1"
+IF Kb_1_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux13Key_M)
+
+;KbAux14Key_M: "ctrl" + "2"
+IF Kb_2_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux14Key_M)
+
+;KbAux15Key_M: "ctrl" + "3"
+IF Kb_3_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux15Key_M)
+
+;KbAux16Key_M: "ctrl" + "4"
+IF Kb_4_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M THEN (KbAux16Key_M)
+
+;KbIncFeedOver_M: "ctrl" + "keyboard +" (actually "=")
+IF (Kb_Equals_SV || Kb_10_Key_Plus_SV) && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M
+  THEN (KbIncFeedOver_M)
+
+;KbDecFeedOver_M: "ctrl" + "keyboard -"
+IF (Kb_Hyphen_SV || Kb_10_Key_Sub_SV) && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M
+  THEN (KbDecFeedOver_M)
+
+;KbFeedOver100_M: "ctrl" + "keyboard \"
+IF Kb_Backslash_SV && (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M
+  THEN (KbFeedOver100_M)
+
+;--------Interlocked with AllowKbInput_M && KbJpActive_M-----------
+
+;KbIncreaseJogInc_M: "insert"
+IF Kb_Ins_SV && AllowKbInput_M && KbJpActive_M
+  THEN (KbIncreaseJogInc_M)
+IF KbIncreaseJogInc_M && x1JogLED_O && !X1_M && !X10_M && !X100_M
+  THEN SET X10_M
+IF KbIncreaseJogInc_M && x10JogLED_O && !X1_M && !X10_M && !X100_M
+  THEN SET X100_M
+
+;KbDecreaseJogInc_M: "delete"
+IF Kb_Del_SV && AllowKbInput_M && KbJpActive_M
+  THEN (KbDecreaseJogInc_M)
+IF KbDecreaseJogInc_M && x10JogLED_O && !X1_M && !X10_M && !X100_M
+  THEN SET X1_M
+IF KbDecreaseJogInc_M && x100JogLED_O && !X1_M && !X10_M && !X100_M
+  THEN SET X10_M
+
+IF !KbIncreaseJogInc_M && !KbDecreaseJogInc_M THEN RST X1_M, RST X10_M,
+RST X100_M
+
+;KbTogIncContJog_M: "ctrl" +  "i"
+IF Kb_i_SV &&  (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M && KbJpActive_M
+  THEN (KbTogIncContJog_M)
+
+;KbTogFastSlowJog_M: "ctrl" + "f"
+IF Kb_f_SV &&  (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV) && AllowKbInput_M && KbJpActive_M
+  THEN (KbTogFastSlowJog_M)
+
+;KbJogAx1Plus_M: Right arrow
+IF Kb_Right_SV && AllowKbInput_M && KbJpActive_M THEN (KbJogAx1Plus_M)
+
+;KbJogAx1Minus_M: Left arrow
+IF Kb_Left_SV && AllowKbInput_M && KbJpActive_M THEN (KbJogAx1Minus_M)
+
+;KbJogAx2Plus_M: Up arrow
+IF Kb_Up_SV && AllowKbInput_M && KbJpActive_M THEN (KbJogAx2Plus_M)
+
+;KbJogAx1Minus_M: Down arrow
+IF Kb_Down_SV && AllowKbInput_M && KbJpActive_M THEN (KbJogAx2Minus_M)
+
+;KbJogAx3Plus_M: Page up
+IF Kb_PgUp_SV && AllowKbInput_M && KbJpActive_M THEN (KbJogAx3Plus_M)
+
+;KbJogAx3Minus_M: Page Down
+IF Kb_PgDown_SV && AllowKbInput_M && KbJpActive_M THEN (KbJogAx3Minus_M)
+
+;KbAx4PlusJog: "home"
+IF Kb_Home_SV && AllowKbInput_M && KbJpActive_M
+  THEN (KbJogAx4Plus_M)
+
+;KbAx4MinusJog: "end"
+IF Kb_End_SV && AllowKbInput_M && KbJpActive_M
+  THEN (KbJogAx4Minus_M)
+
+IF True_M THEN RST KeyboardEventsStage
+
+;=============================================================================
+                           MPGStage
+;=============================================================================
+;                        MPG Functions
+  
+;HandWheel Axis Selection
+;SV_MACHINE_PARAMETER_441-443 Determines Axis for Encoder Inputs 1-3
+IF HandWheel_M && !MPG_M THEN SV_MPG_1_AXIS_SELECT = SV_MACHINE_PARAMETER_441
+IF HandWheel_M THEN SV_MPG_2_AXIS_SELECT = SV_MACHINE_PARAMETER_442
+IF HandWheel_M THEN SV_MPG_3_AXIS_SELECT = SV_MACHINE_PARAMETER_443
+  
+; Enable the Software to read the Hardwired MPG with MPGLED
+IF (MPGLED_O && HandWheel_M && !MPG_M) ||
+   MPG_AXIS_1_I || MPG_AXIS_2_I || MPG_AXIS_3_I || MPG_AXIS_4_I ||
+   MPG_AXIS_5_I || MPG_AXIS_6_I || MPG_AXIS_7_I || MPG_AXIS_8_I
+   THEN (SV_MPG_1_ENABLED)
+IF MPGLED_O && SV_MPG_2_AXIS_SELECT > 0 THEN (SV_MPG_2_ENABLED)
+IF MPGLED_O && SV_MPG_3_AXIS_SELECT > 0 THEN (SV_MPG_3_ENABLED)
+
+; Select axis to move
+IF MPG_AXIS_1_I THEN SV_MPG_1_AXIS_SELECT = 1
+IF MPG_AXIS_2_I THEN SV_MPG_1_AXIS_SELECT = 2
+IF MPG_AXIS_3_I THEN SV_MPG_1_AXIS_SELECT = 3
+IF MPG_AXIS_4_I THEN SV_MPG_1_AXIS_SELECT = 4
+IF MPG_AXIS_5_I THEN SV_MPG_1_AXIS_SELECT = 5
+
+;Select Multiplier
+IF x100JogLED_O THEN SV_MPG_1_MULTIPLIER = 100, SV_MPG_2_MULTIPLIER = 100, SV_MPG_3_MULTIPLIER = 100
+IF x10JogLED_O THEN SV_MPG_1_MULTIPLIER = 10, SV_MPG_2_MULTIPLIER = 10, SV_MPG_3_MULTIPLIER = 10
+IF x1JogLED_O THEN SV_MPG_1_MULTIPLIER = 1, SV_MPG_2_MULTIPLIER = 1, SV_MPG_3_MULTIPLIER = 1
+
+; Disable "Windup" mode IF x100 selected
+IF (SV_MPG_1_MULTIPLIER < 10) THEN (SV_MPG_1_WINDUP_MODE)
+IF (SV_MPG_2_MULTIPLIER < 10) THEN (SV_MPG_2_WINDUP_MODE)
+IF (SV_MPG_3_MULTIPLIER < 10) THEN (SV_MPG_3_WINDUP_MODE)
+
+;=============================================================================
+                           WirelessMpgStage
+;=============================================================================
+;                        MPG Functions
+
+;Determine Active Axes 1-8
+IF True_M THEN UsbMpgActiveAxes_W = SV_MACHINE_PARAMETER_218
+IF True_M THEN WTB UsbMpgActiveAxes_W UsbMpgAxis1Active_M 8
+
+;Read Axis Select Knob
+; Check to see if Knob changed since last scan for later logic.
+IF UsbAxisMonitor_W != SV_USB_MPG_AXIS_SELECT THEN (UsbAxisKnobChanged_M)
+IF True_M THEN UsbAxisMonitor_W = SV_USB_MPG_AXIS_SELECT
+
+;Read Scale Selector Knob
+IF True_M THEN UsbScaleMonitor_W = SV_USB_MPG_SCALE_SELECT
+
+;Use echoed word value for usb mpg axis select so it can be explicitly set to 0 for invalid axes. 
+IF (SV_USB_MPG_SCALE_SELECT > 100) || 
+  ((UsbAxisMonitor_W == 1) && !UsbMpgAxis1Active_M) ||
+  ((UsbAxisMonitor_W == 2) && !UsbMpgAxis2Active_M) ||
+  ((UsbAxisMonitor_W == 3) && !UsbMpgAxis3Active_M) ||
+  ((UsbAxisMonitor_W == 4) && !UsbMpgAxis4Active_M) ||
+  ((UsbAxisMonitor_W == 5) && !UsbMpgAxis5Active_M) ||
+  ((UsbAxisMonitor_W == 6) && !UsbMpgAxis6Active_M)
+  THEN SV_MPG_1_AXIS_SELECT = 0, UsbAxisMonitor_W = 0
+
+;Enable USB MPG Handwheel Jogging
+IF SV_USB_MPG_POWER && ((UsbAxisMonitor_W > 0) && UsbScaleMonitor_W <= 100) THEN (UsbMpgOn_M)
+  
+;Select axis to move
+IF (SV_USB_MPG_SCALE_SELECT <= 100) && ((UsbAxisMonitor_W == 1) && UsbMpgAxis1Active_M)
+  THEN SV_MPG_1_AXIS_SELECT = 1
+
+IF (SV_USB_MPG_SCALE_SELECT <= 100) && ((UsbAxisMonitor_W == 2) && UsbMpgAxis2Active_M)
+  THEN SV_MPG_1_AXIS_SELECT = 2
+
+IF (SV_USB_MPG_SCALE_SELECT <= 100) && ((UsbAxisMonitor_W == 3) && UsbMpgAxis3Active_M)
+  THEN SV_MPG_1_AXIS_SELECT = 3  
+
+IF (SV_USB_MPG_SCALE_SELECT <= 100) && ((UsbAxisMonitor_W == 4) && UsbMpgAxis4Active_M)
+  THEN SV_MPG_1_AXIS_SELECT = 4
+
+IF (SV_USB_MPG_SCALE_SELECT <= 100) && ((UsbAxisMonitor_W == 5) && UsbMpgAxis5Active_M)
+  THEN SV_MPG_1_AXIS_SELECT = 5
+  
+IF (SV_USB_MPG_SCALE_SELECT <= 100) && ((UsbAxisMonitor_W == 6) && UsbMpgAxis6Active_M)
+  THEN SV_MPG_1_AXIS_SELECT = 6
+  
+IF (SV_USB_MPG_SCALE_SELECT <= 100) && ((UsbAxisMonitor_W == 7) && UsbMpgAxis7Active_M)
+  THEN SV_MPG_1_AXIS_SELECT = 7
+  
+IF (SV_USB_MPG_SCALE_SELECT <= 100) && ((UsbAxisMonitor_W == 8) && UsbMpgAxis8Active_M)
+  THEN SV_MPG_1_AXIS_SELECT = 8
+  
+IF UsbAxisMonitor_W == 0 THEN SV_MPG_1_AXIS_SELECT = 0
+
+;HandWheel Axis Selection
+;SV_MACHINE_PARAMETER_441-443 Determines Axis for Encoder Inputs 1-3
+IF HandWheel_M && !MPG_M THEN SV_MPG_1_AXIS_SELECT = SV_MACHINE_PARAMETER_441
+IF HandWheel_M THEN SV_MPG_2_AXIS_SELECT = SV_MACHINE_PARAMETER_442
+IF HandWheel_M THEN SV_MPG_3_AXIS_SELECT = SV_MACHINE_PARAMETER_443
+
+; Enable the Software to read the Wireless MPG or Hardwired MPGs with MPGLED
+IF (MPGLED_O && HandWheel_M && !MPG_M) || UsbMpgOn_M THEN (SV_MPG_1_ENABLED)
+IF MPGLED_O && SV_MPG_2_AXIS_SELECT > 0 THEN (SV_MPG_2_ENABLED)
+IF MPGLED_O && SV_MPG_3_AXIS_SELECT > 0 THEN (SV_MPG_3_ENABLED)
+
+;Select Multiplier
+IF x100JogLED_O THEN SV_MPG_1_MULTIPLIER = 100, SV_MPG_2_MULTIPLIER = 100, SV_MPG_3_MULTIPLIER = 100
+IF x10JogLED_O THEN SV_MPG_1_MULTIPLIER = 10, SV_MPG_2_MULTIPLIER = 10, SV_MPG_3_MULTIPLIER = 10
+IF x1JogLED_O THEN SV_MPG_1_MULTIPLIER = 1, SV_MPG_2_MULTIPLIER = 1, SV_MPG_3_MULTIPLIER = 1
+
+;Disable "Windup" mode IF anything above x1 selected
+IF (SV_MPG_1_MULTIPLIER < 10) THEN (SV_MPG_1_WINDUP_MODE)
+IF (SV_MPG_2_MULTIPLIER < 10) THEN (SV_MPG_2_WINDUP_MODE)
+IF (SV_MPG_3_MULTIPLIER < 10) THEN (SV_MPG_3_WINDUP_MODE)
+
+;			Set Data to be seen by set axis Macro 0
+IF ((SV_USB_MPG_AXIS_SELECT == 1) && UsbMpgAxis1Active_M) THEN (UsbMpgAxis1Selected_M)
+IF ((SV_USB_MPG_AXIS_SELECT == 2) && UsbMpgAxis2Active_M) THEN (UsbMpgAxis2Selected_M)
+IF ((SV_USB_MPG_AXIS_SELECT == 3) && UsbMpgAxis3Active_M) THEN (UsbMpgAxis3Selected_M)
+IF ((SV_USB_MPG_AXIS_SELECT == 4) && UsbMpgAxis4Active_M) THEN (UsbMpgAxis4Selected_M)
+IF ((SV_USB_MPG_AXIS_SELECT == 5) && UsbMpgAxis5Active_M) THEN (UsbMpgAxis5Selected_M)
+IF ((SV_USB_MPG_AXIS_SELECT == 6) && UsbMpgAxis6Active_M) THEN (UsbMpgAxis6Selected_M)
+IF ((SV_USB_MPG_AXIS_SELECT == 7) && UsbMpgAxis7Active_M) THEN (UsbMpgAxis7Selected_M)
+IF ((SV_USB_MPG_AXIS_SELECT == 8) && UsbMpgAxis8Active_M) THEN (UsbMpgAxis8Selected_M)
+
+;=============================================================================
+                           JogPanelStage
+;=============================================================================
+;--MPG Key
+IF MPGKey_I || SkinMPG_M_SV THEN (MpgPD_PD)
+IF MpgPD_PD && MPGLED_O THEN SET MPGManOffFlag_M
+IF (!SV_MPG_1_ENABLED && MPG_M) || (MpgPD_PD && !MPGLED_O) ||
+   (UsbAxisKnobChanged_M && MPGManOffFlag_M) THEN RST MPGManOffFlag_M
+
+; Turn the MPG LED On.
+IF (MpgPD_PD && !MPGLED_O) || (SV_MPG_1_ENABLED && !MPGManOffFlag_M && MPG_M)
+  THEN SET MPG_LED_OUT_O, SET MPGLED_O
+
+; Turn the MPG LED Off
+IF MPG_M && !SV_MPG_1_ENABLED THEN (MPGOff_PD)
+IF (!SV_MPG_1_ENABLED && MPG_M && !HandWheel_M) || MPGOff_PD || (MpgPD_PD && MPGLED_O)
+  THEN RST MPG_LED_OUT_O, RST MPGLED_O
+
+;Lockout X100 Z-Axis if Selected by MPG
+IF MpgX100LockOut_M && MPGLED_O &&
+  ((SV_MPG_1_AXIS_SELECT == 3 && SV_MACHINE_PARAMETER_820 != 1) ||
+  (SV_MPG_1_AXIS_SELECT == 1 && SV_MACHINE_PARAMETER_820 == 1))
+  THEN (MpgZAxisLocked_M)
+
+;--Select x1, x10, or x100 
+;-X1
+IF x1JogKey_I || SkinX1_M_SV || X1_M THEN (x1JogPD_PD)
+IF x1JogPD_PD || OnAtPowerUp_M || (MPG_Inc_X_1_I && MPGLED_O) ||
+  (UsbMpgOn_M && MPGLED_O && (UsbScaleMonitor_W == 1) && UsbMpgOn_M)
+  THEN SET x1JogLED_O, RST x10JogLED_O, RST x100JogLED_O
+
+;-X10
+IF x10JogKey_I || SkinX10_M_SV || X10_M THEN (x10JogPD_PD)
+IF x10JogPD_PD || (MPG_Inc_X_10_I && MPGLED_O)  ||
+  (MPG_Inc_X_100_I && MPGLED_O && MpgZAxisLocked_M) ||
+  (UsbMpgOn_M && MPGLED_O && ((UsbScaleMonitor_W == 10) ||
+  ((UsbScaleMonitor_W == 100) && MpgZAxisLocked_M)))
+  THEN RST x1JogLED_O, SET x10JogLED_O, RST x100JogLED_O
+
+;-X100
+IF x100JogKey_I || SkinX100_M_SV || X100_M THEN (x100JogPD_PD)
+IF x100JogPD_PD || ((MPG_Inc_X_100_I && MPGLED_O)  || 
+  (UsbMpgOn_M && MPGLED_O && (UsbScaleMonitor_W == 100))) &&
+  !MpgZAxisLocked_M
+  THEN RST x1JogLED_O, RST x10JogLED_O, SET x100JogLED_O
+  
+;--Select Incremental or Continuous Jog Mode
+IF IncrContKey_I || KbTogIncContJog_M || SkinIncCont_M_SV THEN (IncrContPD_PD)
+IF (IncrContPD_PD && !IncrContLED_O) || OnAtPowerUp_M || x1JogPD_PD || x10JogPD_PD || x100JogPD_PD ||
+  (UsbMpgOn_M && MPGLED_O && UsbScaleMonitor_W == 1) THEN SET IncrContLED_O
+IF (IncrContPD_PD && IncrContLED_O) || (UsbMpgOn_M && MPGLED_O &&
+  (UsbScaleMonitor_W == 10 || UsbScaleMonitor_W == 100)) THEN RST IncrContLED_O
+
+;--Select Fast or Slow Jog Mode
+IF FastSlowKey_I || KbTogFastSlowJog_M || SkinFastSlowJog_M_SV THEN (SlowFastPD_PD)
+IF (SlowFastPD_PD && !FastSlowLED_O) || OnAtPowerUp_M ||
+  (UsbMpgOn_M && MPGLED_O && (UsbScaleMonitor_W == 1 || UsbScaleMonitor_W == 10 ||
+  (UsbScaleMonitor_W == 100 && MpgZAxisLocked_M))) THEN SET FastSlowLED_O
+IF (SlowFastPD_PD && FastSlowLED_O) || (UsbMpgOn_M && MPGLED_O && !MpgZAxisLocked_M &&
+  UsbScaleMonitor_W == 100) THEN RST FastSlowLED_O
+
+;--Single Block Mode
+IF SingleBlockKey_I || KbTogSingleBlock_M || SkinSingleBlock_M_SV THEN (SingleBlockPD_PD)
+IF SingleBlockPD_PD && !SingleBlockLED_O && !SV_PROGRAM_RUNNING
+  THEN SET SingleBlockLED_O
+IF SingleBlockPD_PD && SingleBlockLED_O THEN RST SingleBlockLED_O
+IF SingleBlockLED_O THEN (SelectSingleBlock_SV)
+
+;--Toolcheck
+IF (ToolCheckKey_I || KbToolCheck_M || MpgToolCheck_M || SkinToolCheck_M_SV) && EStopOk_M 
+  THEN (ToolCheckPD_PD)
+
+IF ToolCheckPD_PD THEN (DoToolCheck_SV)
+
+;--Feed Hold Mode
+; Note: the feedrate override values used here for testing against P146
+; are those calculated in the previous scan.  There is no problem with that.
+IF (FeedHoldKey_I || KbFeedHold_M || MpgFeedHold_M || SkinFeedHold_M_SV) THEN (FeedHoldPD_PD)
+IF FeedHoldPD_PD || ActivateFeedHold_M ||
+   (FinalFeedOverride_W < P146Value_W && !OnAtPowerUp_M)
+  THEN SET FeedHoldLED_O
+IF DoCycleStart_SV || DoCycleCancel_SV || DoToolCheck_SV ||
+   (FinalFeedOverride_W >= P146Value_W &&
+    PrevFeedOverride_W < P146Value_W)
+  THEN RST FeedHoldLED_O
+IF True_M THEN PrevFeedOverride_W = FinalFeedOverride_W
+
+;------------------------------------------------------------------------------
+;--Feedrate Override Section
+;------------------------------------------------------------------------------
+; Feedrate override works as follows:
+;
+; 1. The PLC reads the 8 bit value of the FeedrateKnob_W directly (0-255)
+; 2. The PLC scales this value to a 0-200 value (0-200%) by dividing by
+;    the knob value by 127.5 and then multiplying the result by 100
+; 3. If keyboard jogging is enabled, the PLC
+;    determines whether the operator is using the keyboard override or
+;    the FeedrateKnob_W to override the feedrate by watching which was changed
+;    most recently.  The most recently changed value is saved as
+;    "FinalFeedOverride_W"
+; 4. Parameter 39 in (From the "params" screen in CNC11 software) stores
+;    a value which the PLC program must use to limit the amount
+;    of override applied to the programmed feedrate. This value is specified
+;    as a percentage.
+; 5. The PLC limits the override percentage by reading parameter 39 and, if
+;    the feedrate override percentage as read from the knob is greater than
+;    parameter 39, it sets the FinalFeedOverride_W value to the value of
+;    parameter 39.
+; 6. Once the override percentage has been determined and limited (if needed)
+;    The PLC send this value up to the CNC11 software by setting
+;    SV_PLC_FEEDRATE_KNOB = FinalFeedOverride_W
+; 7. CNC11 reads SV_PLC_FEEDRATE_KNOB, factors in its own override based
+;    on parameter 78 (see operators manual for more info on parm 78) and then
+;    returns an override value to the PLC in the system variable
+;    SV_PC_FEEDRATE_PERCENTAGE
+; 8. The PLC reads SV_PC_FEEDRATE_PERCENTAGE and (typically) echoes the system
+;    variable to SV_PLC_FEEDRATE_OVERRIDE which the MPU11 uses as the final
+;    determination of the feedrate override percentage.
+;------------------------------------------------------------------------------
+; 1. The PLC reads the 8 bit value of the FeedrateKnob_W directly (0-255)
+; NOTE: BTW = Bit To Word
+; BTW reads the specified number of bits (if none is specified it defaults to 8)
+; starting from a bit location and writes them to a word with the starting bit
+; location being written to the LSB of the word used.  Below, BTW reads the bit
+; values from JpFeedOrKnobBit0 to JpFeedOrKnobBit7 and writes them into to the
+; word "FeedrateKnob_W" which sets FeedrateKnob_W to a value of 0-255
+;------------------------------------------------------------------------------
+IF True_M THEN FeedrateKnob_W = 1,
+             BTW FeedrateKnob_W JpFeedOrKnobBit0_I 8
+
+;------------------------------------------------------------------------------
+; 2. Scale this value to a 0-200 value (0-200%)
+;------------------------------------------------------------------------------
+IF True_M THEN FeedrateKnob_W = (FeedrateKnob_W/127.5)*100
+IF FeedrateKnob_W <= 1 THEN FeedrateKnob_W = 1
+
+IF FeedrateKnob_W > SV_MACHINE_PARAMETER_39
+  THEN FeedrateKnob_W = SV_MACHINE_PARAMETER_39
+;------------------------------------------------------------------------------
+; 3.  Determine whether to use FeedrateKnob_W or KbOverride_W
+;------------------------------------------------------------------------------
+; This section determines when to use the feedrate override value sent down
+; by the jog panel (FeedrateKnob_W) or the feedrate override as determined
+; by the PLC monitoring the keyboard override keys (KbOverride_W).
+;------------------------------------------------------------------------------
+;     At powerup, default feedrate override is jog panel (FeedrateKnob_W)
+;       To use both keyboard or jog panel overrides set p170 to 0 (default)
+;       To use jog panel override only set p170 to 2
+;       To use keyboard only set p170 to 4
+;-----------------------------------------------------------------------------
+IF OnAtPowerUp_M && KbOverOnly_M THEN KbOverride_W = 100
+IF OnAtPowerUp_M && !KbOverOnly_M THEN SET UsingFeedrateKnob_M,
+                                       KbOverride_W = FeedrateKnob_W,
+                                       Last_FeedrateKnob_W = FeedrateKnob_W
+
+;----------------Calculate keyboard and VCP feedrate override-----------------
+; SleepTimer is used to limit the KbOverride_W update rate
+;-----------------------------------------------------------------------------
+IF True_M THEN SkinFeedOverTimer_T = 200
+IF SkinFeedOverMinus_M_SV THEN (SkinFeedOverMinusPD_PD), SET SkinFeedOverTimer_T
+IF SkinFeedOverPlus_M_SV THEN (SkinFeedOverPlusPD_PD), SET SkinFeedOverTimer_T
+IF !SkinFeedOverPlus_M_SV && !SkinFeedOverMinus_M_SV THEN RST SkinFeedOverTimer_T
+
+IF !WaitingForSleepTimer_M && ((KbIncFeedOver_M || SkinFeedOverPlusPD_PD) ||
+   (SkinFeedOverTimer_T && SkinFeedOverPlus_M_SV))
+  THEN KbOverride_W = KbOverride_W + 1,
+       RST UsingFeedrateKnob_M,
+       SET WaitingForSleepTimer_M,
+       SleepTimer_T = 30, SET SleepTimer_T
+
+IF !WaitingForSleepTimer_M && ((KbDecFeedOver_M || SkinFeedOverMinusPD_PD) ||
+   (SkinFeedOverTimer_T && SkinFeedOverMinus_M_SV))
+  THEN KbOverride_W = KbOverride_W - 1,
+       RST UsingFeedrateKnob_M,
+       SET WaitingForSleepTimer_M,
+	   SleepTimer_T = 30, SET SleepTimer_T
+
+IF SleepTimer_T THEN RST WaitingForSleepTimer_M, RST SleepTimer_T
+
+;MPG Feedrate Override Logic
+IF !UsbMpgFeedWheelSelect_M || UsingFeedrateKnob_M THEN RST UsbMpgFeedWheelSet_M
+IF (UsbMpgFeedWheelSelect_M && !UsbMpgFeedWheelSet_M)
+  THEN UsbWheelLast_W = SV_USB_MPG_ENCODER_WHEEL,
+	   SET UsbMpgFeedWheelSet_M,
+	   RST UsingFeedrateKnob_M
+IF UsbMpgFeedWheelSet_M THEN UsbWheelCurrent_W = SV_USB_MPG_ENCODER_WHEEL
+IF UsbMpgFeedWheelSet_M THEN UsbWheelDelta_W = (UsbWheelCurrent_W - UsbWheelLast_W)
+IF UsbMpgFeedWheelSet_M THEN UsbWheelLast_W = UsbWheelCurrent_W
+IF UsbMpgFeedWheelSet_M THEN KbOverride_W = (KbOverride_W + UsbWheelDelta_W)
+
+IF SkinFeedOver100_SV || KbFeedOver100_M THEN KbOverride_W = 100, RST UsingFeedrateKnob_M
+IF SkinFeedOver75_SV THEN KbOverride_W = 75, RST UsingFeedrateKnob_M
+IF SkinFeedOver50_SV THEN KbOverride_W = 50, RST UsingFeedrateKnob_M
+IF SkinFeedOver25_SV THEN KbOverride_W = 25, RST UsingFeedrateKnob_M
+
+;------------Switch to FeedrateKnob_W if it changes more than 3%--------------
+; Once it has changed by more than 3%, it will update as normal (1% increments)
+; until it sees another KbOverride_W command at which point it will take
+; another 3% change to re-activate the FeedrateKnob_W
+
+IF (ABS(Last_FeedrateKnob_W - FeedrateKnob_W) >= 3) || UsingFeedrateKnob_M
+  THEN FinalFeedOverride_W = FeedrateKnob_W, KbOverride_W = FeedrateKnob_W,
+       Last_FeedrateKnob_W = FeedrateKnob_W, SET UsingFeedrateKnob_M
+
+;Limit keyboard override to parm 39.  Allowing the FeedrateKnob_W to go past
+;parm 39, but keeping the KbOverride_W limited keeps the "dead space"
+;down and allows the PLC to respond to changes in the FeedrateKnob_W even if
+;above 120. Overall override is still limited later but this gives better
+;response in changing between KbOverride_W & the FeedrateKnob_W
+IF KbOverride_W > SV_MACHINE_PARAMETER_39
+  THEN KbOverride_W = SV_MACHINE_PARAMETER_39
+
+IF KbOverride_W < MIN_FROR_PCT_C THEN KbOverride_W = MIN_FROR_PCT_C
+
+IF !UsingFeedrateKnob_M && !JogOverOnly_M
+  THEN FinalFeedOverride_W = KbOverride_W
+
+IF OnAtPowerUp_M THEN FinalFeedOverride_W = 100, KbOverride_W = 100
+
+;------------------------------------------------------------------------------
+; 4 & 5. Limit override percentage to value set in Parameter 39
+;------------------------------------------------------------------------------
+;------------------Limit final override percentage to parm 39------------------
+IF FinalFeedOverride_W > SV_MACHINE_PARAMETER_39
+  THEN FinalFeedOverride_W = SV_MACHINE_PARAMETER_39
+
+IF FinalFeedOverride_W <= 1 THEN FinalFeedOverride_W = 1
+
+;------------------------------------------------------------------------------
+;  Override Controls
+;  It is important that the PLC program only writes to SV_PLC_FEEDRATE_KNOB once per pass
+;------------------------------------------------------------------------------
+; Override control bit for the feedrate override
+; 1 == feedrate override knob will effect feedrate
+; 0 == override knob has NO effect on feedrate
+IF  !SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE THEN FinalFeedOverride_W = 100
+
+;------------------------------------------------------------------------------
+; 6. Send override percentage to CNC12
+;------------------------------------------------------------------------------
+;----------------Send override to PC for modification if needed----------------
+IF True_M THEN SV_PLC_FEEDRATE_KNOB = FinalFeedOverride_W
+
+;Activate LED's
+IF FinalFeedOverride_W == 100 THEN (FeedOver100LED_O)
+IF FinalFeedOverride_W == 75 THEN (FeedOver75LED_O)
+IF FinalFeedOverride_W == 50 THEN (FeedOver50LED_O)
+IF FinalFeedOverride_W == 25 THEN (FeedOver25LED_O)
+
+;------------------------------------------------------------------------------
+; 7. Copy the feedrate override sent from the PC to the MPU11.
+;------------------------------------------------------------------------------
+;------------------------------------------------------------------------------
+; Normally a number from 0.0-2.0, no limitations although V will not exceed
+; Vmax. A negative number in here would be extremely bad.
+;------------------------------------------------------------------------------
+IF True_M THEN SV_PLC_FEEDRATE_OVERRIDE = SV_PC_FEEDRATE_PERCENTAGE/100.0
+
+;--MPU11 Jog Panel Key Functions
+IF Kb_F9_SV THEN (F9PD_PD)
+IF KbTogRapidOver_M || (F9PD_PD && (SV_PROGRAM_RUNNING || SV_MDI_MODE))
+  THEN (RapidOverPD_PD)
+IF RapidOverPD_PD^ SelectRapidOverride_SV THEN (SelectRapidOverride_SV)
+IF OnAtPowerUp_M THEN SET SelectRapidOverride_SV
+
+IF (CycleCancelKey_I || KbCycleCancel_M || MpgResetKey_M || SkinCycleCancel_M_SV) || ErrorFlag_M
+  THEN (DoCycleCancel_SV)
+
+IF (CycleStartKey_I || KbCycleStart_M || MpgCycleStart_M || SkinCycleStart_M_SV)
+  THEN (DoCycleStart_SV)
+
+; First and second axis jogging is in configuration-specific
+; stages following JogPanelStage
+IF (Ax3PlusJogKey_I  || KbJogAx3Plus_M || UsbMpgAxis3JogPlus_M || SkinJogAx3Plus_M_SV) &&
+   !(IncrContLED_O && FinalFeedOverride_W == 0) THEN (DoAx3PlusJog_SV)
+IF (Ax3MinusJogKey_I || KbJogAx3Minus_M || UsbMpgAxis3JogMinus_M || SkinJogAx3Minus_M_SV) &&
+   !(IncrContLED_O && FinalFeedOverride_W == 0) THEN (DoAx3MinusJog_SV)
+IF (Ax4PlusJogKey_I  || KbJogAx4Plus_M || UsbMpgAxis4JogPlus_M || SkinJogAx4Plus_M_SV) &&
+   !(IncrContLED_O && FinalFeedOverride_W == 0) THEN (DoAx4PlusJog_SV)
+IF (Ax4MinusJogKey_I || KbJogAx4Minus_M || UsbMpgAxis4JogMinus_M || SkinJogAx4Minus_M_SV) &&
+   !(IncrContLED_O && FinalFeedOverride_W == 0) THEN (DoAx4MinusJog_SV)
+
+IF (SkinJogAx5Plus_SV || UsbMpgAxis5JogPlus_M) && !(IncrContLED_O && FinalFeedOverride_W == 0)
+   THEN (DoAx5PlusJog_SV)
+IF (SkinJogAx5Minus_SV || UsbMpgAxis5JogMinus_M) && !(IncrContLED_O && FinalFeedOverride_W == 0)
+   THEN (DoAx5MinusJog_SV)
+IF (SkinJogAx6Plus_SV || UsbMpgAxis6JogPlus_M) && !(IncrContLED_O && FinalFeedOverride_W == 0)
+   THEN (DoAx6PlusJog_SV)
+IF (SkinJogAx6Minus_SV || UsbMpgAxis6JogMinus_M) && !(IncrContLED_O && FinalFeedOverride_W == 0)
+   THEN (DoAx6MinusJog_SV)
+
+IF (Aux1Key_I || KbAux1Key_M || SkinAux1_M_SV) THEN (DoAux1Key_SV)
+IF (Aux2Key_I || KbAux2Key_M || SkinAux2_M_SV) THEN (DoAux2Key_SV)
+IF (Aux3Key_I || KbAux3Key_M || SkinAux3_M_SV) THEN (DoAux3Key_SV)
+IF (Aux4Key_I || KbAux4Key_M || SkinAux4_M_SV) THEN (DoAux4Key_SV)
+IF (Aux5Key_I || KbAux5Key_M || SkinAux5_M_SV) THEN (DoAux5Key_SV)
+IF (Aux6Key_I || KbAux6Key_M || SkinAux6_M_SV) THEN (DoAux6Key_SV)
+IF (Aux7Key_I || KbAux7Key_M || SkinAux7_M_SV) THEN (DoAux7Key_SV)
+IF (Aux8Key_I || KbAux8Key_M || SkinAux8_M_SV) THEN (DoAux8Key_SV)
+IF (Aux9Key_I || KbAux9Key_M || SkinAux9_M_SV) THEN (DoAux9Key_SV)
+IF (Aux10Key_I || KbAux10Key_M || SkinAux10_M_SV) THEN (DoAux10Key_SV)
+IF (Aux11Key_I || KbAux11Key_M || SkinAux11_M_SV) THEN (DoAux11Key_SV)
+IF (Aux12Key_I || KbAux12Key_M || SkinAux12_M_SV) THEN (DoAux12Key_SV)
+IF (Aux13Key_I || KbAux13Key_M || SkinAux13_SV) THEN (DoAux13Key_SV)
+IF (Aux14Key_I || KbAux14Key_M || SkinAux14_SV) THEN (DoAux14Key_SV)
+IF (Aux15Key_I || KbAux15Key_M || SkinAux15_SV) THEN (DoAux15Key_SV)
+IF (Aux16Key_I || KbAux16Key_M || SkinAux16_SV) THEN (DoAux16Key_SV)
+IF x1JogLED_O    THEN (SelectX1JogInc_SV)
+IF x10JogLED_O   THEN (SelectX10JogInc_SV)
+IF x100JogLED_O  THEN (SelectX100JogInc_SV)
+IF IncrContLED_O THEN (SelectIncContJog_SV)
+IF FastSlowLED_O THEN (SelectFastSlowJog_SV)
+IF MPGLED_O      THEN (SelectMpgMode_SV)
+IF FeedHoldLED_O && SV_PC_OVERRIDE_CONTROL_FEEDHOLD THEN (DoFeedHold_SV)
+
+;--Coolant Functions
+
+;--Toggle auto coolant mode
+IF CoolAutoManKey_I || KbTogCoolAutoMan_M || SkinCoolAutoMan_M_SV THEN (CoolantAutoManualPD_PD)
+
+IF (!CoolAutoModeLED_O && CoolantAutoManualPD_PD) || OnAtPowerUp_M
+  THEN SET CoolAutoModeLED_O
+
+IF (CoolAutoModeLED_O && CoolantAutoManualPD_PD)
+  THEN RST CoolAutoModeLED_O
+
+;--Report coolant mode to CNC11
+IF CoolAutoModeLED_O THEN (SelectCoolAutoMan_SV)
+
+;--Display coolant mode message
+;changing to auto coolant mode ;2050 Auto Coolant Selected 2 + 50*256
+IF (!CoolAutoModeLED_O && CoolantAutoManualPD_PD && AllowKbInput_M)
+  THEN InfoMsg_W = AUTO_COOL_MSG_C
+
+;changing to manual coolant mode ;2051 Manual Coolant Selected 2 + 51*256
+IF (CoolAutoModeLED_O && CoolantAutoManualPD_PD && AllowKbInput_M)
+  THEN InfoMsg_W = MAN_COOL_MSG_C
+
+;--Flood coolant on/off
+; In auto mode:
+;  Turn on if M8
+;  Turn off if fault, toolcheck, or not M8
+; In manual mode:
+;  Turn off if entering manual mode
+;  Toggle by key press
+IF CoolFloodKey_I || KbFloodOnOff_M || SkinCoolFlood_M_SV THEN (CoolantFloodPD_PD)
+IF ((Flood_O ^ (!CoolAutoModeLED_O && CoolantFloodPD_PD)) ||
+   CoolAutoModeLED_O && M8_SV) &&
+   !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M8_SV || ErrorFlag_M || DoToolCheck_SV)
+  THEN (Flood_O), (CoolFloodLED_O), (SelectCoolantFlood_SV)
+
+;--Mist coolant on/off
+IF (CoolMistKey_I || KbMistOnOff_M || SkinCoolMist_M_SV) THEN (CoolantMistPD_PD)
+IF ((Mist_O ^ (!CoolAutoModeLED_O && CoolantMistPD_PD)) ||
+   CoolAutoModeLED_O && M7_SV) &&
+   !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M7_SV || ErrorFlag_M || DoToolCheck_SV)
+  THEN (Mist_O), (CoolMistLED_O), (SelectCoolantMist_SV)
+
+;--Spindle Control
+;-------------------------------------------------------------
+; JOGBOARD SPINDLE CONTROL
+; Spindle Auto Mode / Manual mode toggles via Auto/Man jog panel key
+; CW/CCW jog keys determine spindle direction in manual mode
+; M3/M4 system variables determine spindle direction in Auto mode
+; Spindle can be stopped and restarted in auto mode using
+; spin stop/start jog keys
+;-------------------------------------------------------------
+;--Select Auto or Manual Spindle Operation Mode
+;Triggers to Toggle Auto/Manual Spindle Mode
+IF SpinAutoManKey_I || KbTogSpinAutoMan_M || SkinSpinAutoMan_M_SV || UsbMpgSpinAutoMan_M
+  THEN (SpinAutoManPD_PD)
+  
+;--Set spindle to auto mode on startup
+IF (SpinAutoManPD_PD && !SpinAutoModeLED_O) || OnAtPowerUp_M
+  THEN SET SpinAutoModeLED_O
+
+;--Set spindle to manual mode
+IF SpinAutoManPD_PD && SpinAutoModeLED_O THEN RST SpinAutoModeLED_O
+
+;--Report the Spindle mode to CNC12
+IF SpinAutoModeLED_O THEN (SelectManAutoSpindle_SV)
+
+;--Set triggers to start and stop the spindle
+
+; NOTE: SpindlePause_M allows the operator to start and stop the
+; spindle with the spin start and stop keys while in a job.  In
+; this case, pressing the spindle start key will only restart
+; the spindle if an M3 or M4 had previously been issued and is
+; still active.
+;Handling for MPG Spindle on/off button MpgSpinOnOff_M
+IF UsbMpgSpinOnOff_M && !UsbMpgSpinOnOffPressed_M && !UsbMpgSpinOnState_M
+  THEN SET UsbMpgSpinOnState_M,
+	   SET UsbMpgSpinOn_M,
+	   SET UsbMpgSpinOnOffPressed_M,
+	   RST UsbMpgSpinOff_M
+
+IF UsbMpgSpinOnOff_M && !UsbMpgSpinOnOffPressed_M && UsbMpgSpinOnState_M
+  THEN SET UsbMpgSpinOff_M,
+       RST UsbMpgSpinOn_M,
+	   SET UsbMpgSpinOnOffPressed_M,
+	   RST UsbMpgSpinOnState_M
+
+IF !UsbMpgSpinOnOff_M
+  THEN RST UsbMpgSpinOnOffPressed_M, RST UsbMpgSpinOn_M, RST UsbMpgSpinOff_M
+
+IF (SpinAutoModeLED_O && (M3_SV || M4_SV) && (SpinStopKey_I || KbSpinStop_M ||
+   UsbMpgSpinOff_M || SkinSpinStop_M_SV))
+  THEN SET SpindlePause_M
+  
+IF ((M3_SV || M4_SV) && (SpinStartKey_I || KbSpinStart_M || UsbMpgSpinOn_M ||
+   SkinSpinStart_M_SV) || !(SV_PROGRAM_RUNNING || SV_MDI_MODE))
+  THEN RST SpindlePause_M
+
+IF ((SpinStartKey_I || KbSpinStart_M || UsbMpgSpinOn_M || SkinSpinStart_M_SV) && !SpinAutoModeLED_O) ||
+   (SpinAutoModeLED_O && (M3_SV || M4_SV) && !SpindlePause_M) ||
+   ((SpinStartKey_I || KbSpinStart_M || UsbMpgSpinOn_M) && ((M3_SV || M4_SV) && SpinAutoModeLED_O))
+  THEN (SpinStart_M)
+
+IF (SpinStopKey_I || KbSpinStop_M || UsbMpgSpinOff_M || SkinSpinStop_M_SV) ||
+   (SpinAutoModeLED_O && !(M3_SV || M4_SV)) ||
+   (SV_PC_RIGID_TAP_SPINDLE_OFF && SpinAutoModeLED_O) ||
+   ProbeDetect_I || SV_STOP || ErrorFlag_M || SV_LIMIT_TRIPPED
+  THEN (SpinStop_M)
+
+;--Adjust spindle override when entering manual or auto spin mode
+;Set the override value to 100% when spin auto mode is first selected
+IF SpinAutoManPD_PD && !SpinAutoModeLED_O THEN SV_PLC_SPINDLE_KNOB = 100,
+                                          SET SpinAutoModeLED_O
+
+;Set the override value to 10% whenever manual mode is entered
+IF SpinAutoManPD_PD && SpinAutoModeLED_O THEN SV_PLC_SPINDLE_KNOB = 10,
+                                         RST SpinAutoModeLED_O
+
+;--Set spindle direction
+;------------------Set Clockwise direction-------------------------------------
+IF ((KbSpinCW_M || SpinCWKey_I || SkinSpinCW_M_SV) && !SpinAutoModeLED_O) ||
+   (M3_SV && SpinAutoModeLED_O)
+  THEN RST SpindleDirection_M
+IF !SpindleDirection_M THEN (SpindleCWLED_O), (SelectSpindleCW_SV)
+
+;---------------Set Counterclockwise direction---------------------------------
+IF ((KbSpinCCW_M || SpinCCWKey_I || SkinSpinCCW_M_SV) && !SpinAutoModeLED_O) ||
+   (M4_SV && SpinAutoModeLED_O)
+  THEN SET SpindleDirection_M
+IF SpindleDirection_M THEN (SpindleCCWLED_O), (SelectSpindleCCW_SV)
+
+IF SpindleDirection_M ^ SpinRangeReversed_M THEN (SpindleDirectionOut_O)
+
+;-------------------------------------------------------------------------------
+;                                Turn spindle on/off
+;-------------------------------------------------------------------------------
+IF ProbeDetect_I && SpinStart_M THEN SET ProbeFault_M
+
+IF (SpindleEnableOut_O || SpinStart_M ) && !SpinStop_M
+  THEN (SpindleEnableOut_O)
+
+IF !SpindleEnableOut_O  THEN (DoSpindleStop_SV)
+
+;-------------------------------------------------------------------------------
+;          SPINDLE OVERRIDE CONTROL
+;       Jogboard (-, +, and 100% keys),
+; Keyboard "ctrl" + "<", "ctrl" + ">", "ctrl" + "/"
+;-------------------------------------------------------------------------------
+IF SpinOverPlusKey_I || KbIncSpinOver_M || SkinSpinOverPlus_M_SV
+  THEN SV_PLC_SPINDLE_KNOB = SV_PLC_SPINDLE_KNOB + 1
+IF SpinOverMinusKey_I || KbDecSpinOver_M || SkinSpinOverMinus_M_SV
+  THEN SV_PLC_SPINDLE_KNOB = SV_PLC_SPINDLE_KNOB - 1
+IF SpinOver100Key_I || KbSpinOver100_M || OnAtPowerUp_M || SkinSpin100_M_SV
+  THEN SV_PLC_SPINDLE_KNOB = 100
+
+;MPG Spindle Logic
+IF !UsbMpgSpinWheelSelect_M THEN RST UsbMpgSpinWheelSet_M
+IF (UsbMpgSpinWheelSelect_M && !UsbMpgSpinWheelSet_M)
+  THEN UsbWheelLast_W = SV_USB_MPG_ENCODER_WHEEL, SET UsbMpgSpinWheelSet_M
+IF UsbMpgSpinWheelSet_M THEN UsbWheelCurrent_W = SV_USB_MPG_ENCODER_WHEEL
+IF UsbMpgSpinWheelSet_M THEN UsbWheelDelta_W = (UsbWheelCurrent_W - UsbWheelLast_W)
+IF UsbMpgSpinWheelSet_M THEN UsbWheelLast_W = UsbWheelCurrent_W
+IF UsbMpgSpinWheelSet_M THEN SV_PLC_SPINDLE_KNOB = (SV_PLC_SPINDLE_KNOB + UsbWheelDelta_W)
+
+IF SV_PLC_SPINDLE_KNOB < 1 THEN SV_PLC_SPINDLE_KNOB = 1
+IF SV_PLC_SPINDLE_KNOB > 200 THEN SV_PLC_SPINDLE_KNOB = 200
+
+IF SV_PLC_SPINDLE_KNOB == 100 THEN (SpinOver100LED_O), (SelectSpinOR100_SV)
+
+IF SV_PLC_SPINDLE_KNOB < 100 THEN (SpinOverMinusLED_O), (DoDecreaseSpindleOR_SV)
+
+IF SV_PLC_SPINDLE_KNOB > 100 THEN (SpinOverPlusLED_O), (DoIncreaseSpindleOR_SV)
+
+;--Output 12-bit DAC value for spindle control
+;-----------------------------------------------------------------------------
+;             Read spindle range inputs and/or range M codes
+;
+; NOTE: SV_SPINDLE_LOW_RANGE & SV_SPINDLE_MID_RANGE M are used to report the
+; selected spindle range to CNC11
+;-----------------------------------------------------------------------------
+;   4 hi   3 med-high  2 med-low  1 low
+;    0          1         1         0   SV_SPINDLE_MID_RANGE M
+;    0          0         1         1   SV_SPINDLE_LOW_RANGE
+
+; Use input switches, M functions, or other means to determine the gear
+; range number (1-4).  For basic mills, look for one low-range switch.
+; Default to high range until proven otherwise (fail-safe choice)
+IF True_M THEN SpindleRange_W = 4
+IF SpinLowRange_I THEN SpindleRange_W = 1
+
+; Use the gear range number to set the range flags and speed ratio.
+
+IF SpindleRange_W == 1 THEN SET SV_SPINDLE_LOW_RANGE,
+                            RST SV_SPINDLE_MID_RANGE,
+                            SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_65
+
+IF SpindleRange_W == 2 THEN SET SV_SPINDLE_LOW_RANGE,
+                            SET SV_SPINDLE_MID_RANGE,
+                            SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_66
+
+IF SpindleRange_W == 3 THEN RST SV_SPINDLE_LOW_RANGE,
+                            SET SV_SPINDLE_MID_RANGE,
+                            SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_67
+
+IF SpindleRange_W == 4 THEN RST SV_SPINDLE_LOW_RANGE,
+                            RST SV_SPINDLE_MID_RANGE,
+                            SpinRangeAdjust_FW = 1.0
+
+; If the speed ratio parameter is negative, reverse the motor.
+; Always use the absolute value of the parameter as the real ratio.
+IF SpinRangeAdjust_FW < 0.0 THEN (SpinRangeReversed_M),
+                                 SpinRangeAdjust_FW = -SpinRangeAdjust_FW
+
+; Force the ratio to be non-zero, because we are going to divide by it later.
+IF SpinRangeAdjust_FW < 0.001 THEN SpinRangeAdjust_FW = 0.001
+
+;-------------------------------------------------------------------------------
+;              Read commanded spindle speed, max & min
+;
+; ***NOTE***  SV_PC_COMMANDED_SPINDLE_SPEED already has override
+;             factored in.
+;-------------------------------------------------------------------------------
+IF True_M THEN CfgMinSpeed_FW = SV_PC_CONFIG_MIN_SPINDLE_SPEED,
+             CfgMaxSpeed_FW = SV_PC_CONFIG_MAX_SPINDLE_SPEED
+; Calculate #RPM's per bit of resolution
+IF CfgMaxSpeed_FW > 0.0 THEN RPMPerBit_FW = CfgMaxSpeed_FW/4095.0
+IF CfgMaxSpeed_FW <= 0.0 THEN RPMPerBit_FW = 1.0
+
+IF SpinAutoModeLED_O THEN SpinSpeedCommand_FW = SV_PC_COMMANDED_SPINDLE_SPEED
+IF !SpinAutoModeLED_O THEN SpinSpeedCommand_FW = CfgMaxSpeed_FW *
+                                               SV_PLC_SPINDLE_KNOB / 200.0 *
+                                               SpinRangeAdjust_FW
+IF !SpindleEnableOut_O THEN SpinSpeedCommand_FW = 0.0
+
+;-------------------------------------------------------------------------------
+; If commanded spindle speed is < Min Spin Speed * SpinRangeAdjust
+; & commanded spindle speed > 0, force to commanded spindle speed
+; = min spin speed value * SpinRangeAdjust.
+;-------------------------------------------------------------------------------
+IF (SpinSpeedCommand_FW > 0.0) &&
+   (SpinSpeedCommand_FW < (CfgMinSpeed_FW * SpinRangeAdjust_FW))
+  THEN SpinSpeedCommand_FW = (CfgMinSpeed_FW * SpinRangeAdjust_FW),
+       InfoMsg_W = MIN_SPEED_MSG_C
+
+;-------------------------------------------------------------------------------
+; If SpinSpeedCommand_FW > Max Spin Speed * SpinRangeAdjust, force
+; SpinSpeedCommand_FW = max spin speed value * SpinRangeAdjust.
+;-------------------------------------------------------------------------------
+IF SpinSpeedCommand_FW > (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
+  THEN SpinSpeedCommand_FW = (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
+
+;-------------------------------------------------------------------------------
+; Convert Spindle "S" command to 12 bit value for output to DAC
+;-------------------------------------------------------------------------------
+; Commanded Spindle speed (includes override factor) is sent down from CNC11
+; in SV_PC_COMMANDED_SPINDLE_SPEED.  This value needs to be converted to a
+; 12 bit value (0-4095) where full scale = SV_PC_CONFIG_MAX_SPINDLE_SPEED.
+
+;Convert RPM to 12 bit value
+IF True_M THEN TwelveBitSpeed_FW = SpinSpeedCommand_FW/RPMPerBit_FW
+
+; Factor in gear range
+IF True_M THEN TwelveBitSpeed_FW = (TwelveBitSpeed_FW/SpinRangeAdjust_FW)
+
+;Convert to integer word for DAC & I/O display
+IF True_M THEN TwelveBitSpeed_W = TwelveBitSpeed_FW
+
+; Bound min to 0, max to 4095
+IF TwelveBitSpeed_W < 0 THEN TwelveBitSpeed_W = 0
+IF TwelveBitSpeed_W > 4095 THEN TwelveBitSpeed_W = 4095
+
+; Output to DAC
+IF True_M THEN WTB TwelveBitSpeed_W SpinAnalogOutBit0_O 12
+
+;Display calculated RPM value on PC
+IF True_M THEN SV_PLC_SPINDLE_SPEED = SpinSpeedCommand_FW
+
+;=============================================================================
+   JogKeysNormalStage
+;=============================================================================
+;        X+  LATHE                     MILL   Y+       Z+
+;        |                           4+       |
+;   Z- -- -- Z+                          X- -- -- X+
+;        |                                    |
+;        X-                          4-       Y-       Z-
+IF (Ax1PlusJogKey_I  || KbJogAx1Plus_M  || UsbMpgAxis1JogPlus_M  || SkinJogAx1Plus_M_SV  || SkinJogAx1Ax2Plus_M  ||
+    SkinJogAx1PlusAx2Minus_M) && !Ax1PlusJogDisabled_M  && !(IncrContLED_O && FinalFeedOverride_W == 0) 
+    THEN (DoAx1PlusJog_SV)
+IF (Ax1MinusJogKey_I || KbJogAx1Minus_M || UsbMpgAxis1JogMinus_M || SkinJogAx1Minus_M_SV || SkinJogAx1Ax2Minus_M ||
+    SkinJogAx1MinusAx2Plus_M) && !Ax1MinusJogDisabled_M && !(IncrContLED_O && FinalFeedOverride_W == 0) 
+    THEN (DoAx1MinusJog_SV)
+IF (Ax2PlusJogKey_I  || KbJogAx2Plus_M  || UsbMpgAxis2JogPlus_M  || SkinJogAx2Plus_M_SV  || SkinJogAx1Ax2Plus_M  ||
+    SkinJogAx1MinusAx2Plus_M) && !Ax2PlusJogDisabled_M  && !(IncrContLED_O && FinalFeedOverride_W == 0) 
+    THEN (DoAx2PlusJog_SV)
+IF (Ax2MinusJogKey_I || KbJogAx2Minus_M || UsbMpgAxis2JogMinus_M || SkinJogAx2Minus_M_SV || SkinJogAx1Ax2Minus_M ||
+    SkinJogAx1PlusAx2Minus_M) && !Ax2MinusJogDisabled_M && !(IncrContLED_O && FinalFeedOverride_W == 0) 
+    THEN (DoAx2MinusJog_SV)
+
+;=============================================================================
+   JogKeysInvert2Stage
+;=============================================================================
+;        X-  LATHE                    MILL   Y-       Z+ 
+;        |                          4+       |
+;   Z- -- -- Z+                         X- -- -- X+
+;        |                                   |
+;        X+                         4-       Y+       Z-
+IF (Ax1PlusJogKey_I  || KbJogAx1Plus_M  || UsbMpgAxis1JogPlus_M  || SkinJogAx1Plus_M_SV  || SkinJogAx1Ax2Plus_M  ||
+    SkinJogAx1PlusAx2Minus_M) && !Ax1PlusJogDisabled_M  && !(IncrContLED_O && FinalFeedOverride_W == 0) 
+    THEN (DoAx1PlusJog_SV)
+IF (Ax1MinusJogKey_I || KbJogAx1Minus_M || UsbMpgAxis1JogMinus_M || SkinJogAx1Minus_M_SV || SkinJogAx1Ax2Minus_M ||
+    SkinJogAx1MinusAx2Plus_M) && !Ax1MinusJogDisabled_M && !(IncrContLED_O && FinalFeedOverride_W == 0) 
+    THEN (DoAx1MinusJog_SV)
+IF (Ax2MinusJogKey_I || KbJogAx2Minus_M || UsbMpgAxis2JogPlus_M  || SkinJogAx2Minus_M_SV || SkinJogAx1Ax2Minus_M ||
+    SkinJogAx1PlusAx2Minus_M) && !Ax2PlusJogDisabled_M  && !(IncrContLED_O && FinalFeedOverride_W == 0) 
+    THEN (DoAx2PlusJog_SV)
+IF (Ax2PlusJogKey_I  || KbJogAx2Plus_M  || UsbMpgAxis2JogMinus_M || SkinJogAx2Plus_M_SV  || SkinJogAx1Ax2Plus_M  ||
+    SkinJogAx1MinusAx2Plus_M) && !Ax2MinusJogDisabled_M && !(IncrContLED_O && FinalFeedOverride_W == 0) 
+    THEN (DoAx2MinusJog_SV)
+
+;=============================================================================
+   JogKeysSwappedStage
+;=============================================================================
+;        Z+  LATHE                       MILL   X+       Z+ 
+;        |                             4+       |
+;   X- -- -- X+                            Y- -- -- Y+
+;        |                                      |
+;        Z-                            4-       X-       Z-
+IF (Ax2PlusJogKey_I  || KbJogAx2Plus_M  || UsbMpgAxis2JogPlus_M  || SkinJogAx2Plus_M_SV  || SkinJogAx1Ax2Plus_M  ||
+    SkinJogAx1MinusAx2Plus_M) && !Ax1PlusJogDisabled_M  && !(IncrContLED_O && FinalFeedOverride_W == 0)
+    THEN (DoAx1PlusJog_SV)
+IF (Ax2MinusJogKey_I || KbJogAx2Minus_M || UsbMpgAxis2JogMinus_M || SkinJogAx2Minus_M_SV || SkinJogAx1Ax2Minus_M ||
+    SkinJogAx1PlusAx2Minus_M) && !Ax1MinusJogDisabled_M && !(IncrContLED_O && FinalFeedOverride_W == 0)
+    THEN (DoAx1MinusJog_SV)
+IF (Ax1PlusJogKey_I  || KbJogAx1Plus_M  || UsbMpgAxis1JogPlus_M  || SkinJogAx1Plus_M_SV  || SkinJogAx1Ax2Plus_M  ||
+    SkinJogAx1PlusAx2Minus_M) && !Ax2PlusJogDisabled_M  && !(IncrContLED_O && FinalFeedOverride_W == 0)
+    THEN (DoAx2PlusJog_SV)
+IF (Ax1MinusJogKey_I || KbJogAx1Minus_M || UsbMpgAxis1JogMinus_M || SkinJogAx1Minus_M_SV || SkinJogAx1Ax2Minus_M ||
+    SkinJogAx1MinusAx2Plus_M) && !Ax2MinusJogDisabled_M && !(IncrContLED_O && FinalFeedOverride_W == 0)
+    THEN (DoAx2MinusJog_SV)
+
+;=============================================================================
+   JogKeysSwapAndInvert2Stage
+;=============================================================================
+;        Z+  LATHE                      MILL   Y+       Z+ 
+;        |                            4+       |
+;   X+ -- -- X-                           X+ -- -- X-
+;        |                                     |
+;        Z-                           4-       Y-       Z-
+IF (Ax2PlusJogKey_I  || KbJogAx2Plus_M  || UsbMpgAxis2JogPlus_M  || SkinJogAx2Plus_M_SV  || SkinJogAx1Ax2Plus_M  ||
+    SkinJogAx1MinusAx2Plus_M) && !Ax1PlusJogDisabled_M  && !(IncrContLED_O && FinalFeedOverride_W == 0)
+    THEN (DoAx1PlusJog_SV)
+IF (Ax2MinusJogKey_I || KbJogAx2Minus_M || UsbMpgAxis2JogMinus_M || SkinJogAx2Minus_M_SV || SkinJogAx1Ax2Minus_M ||
+    SkinJogAx1PlusAx2Minus_M) && !Ax1MinusJogDisabled_M && !(IncrContLED_O && FinalFeedOverride_W == 0)
+    THEN (DoAx1MinusJog_SV)
+IF (Ax1MinusJogKey_I || KbJogAx1Minus_M || UsbMpgAxis1JogPlus_M  || SkinJogAx1Minus_M_SV || SkinJogAx1Ax2Minus_M ||
+    SkinJogAx1MinusAx2Plus_M) && !Ax2PlusJogDisabled_M  && !(IncrContLED_O && FinalFeedOverride_W == 0)
+    THEN (DoAx2PlusJog_SV)
+IF (Ax1PlusJogKey_I  || KbJogAx1Plus_M  || UsbMpgAxis1JogMinus_M || SkinJogAx1Plus_M_SV  || SkinJogAx1Ax2Plus_M  ||
+    SkinJogAx1PlusAx2Minus_M) && !Ax2MinusJogDisabled_M && !(IncrContLED_O && FinalFeedOverride_W == 0)
+    THEN (DoAx2MinusJog_SV)
+
+;=============================================================================
+  CheckCycloneStatusStage
+;=============================================================================
+; Due to amount of time it takes to retrieve data from the cyclone, this stage
+; is only called few times per second to help reduce scan time of the main PLC
+; program.
+
+;IF True_M THEN WTB SV_PC_CYCLONE_STATUS_2 Axis1FiberOk_M
+
+; Generate some messages for fiber or wire to MPU11 having issues
+IF SV_X_AXIS_VALID && !SV_X_AXIS_DRIVE_ONLINE THEN FaultMsg_W = X_AXIS_INFLT_C, SET DriveComFltIn_M
+IF SV_Y_AXIS_VALID && !SV_Y_AXIS_DRIVE_ONLINE THEN FaultMsg_W = Y_AXIS_INFLT_C, SET DriveComFltIn_M
+IF SV_Z_AXIS_VALID && !SV_Z_AXIS_DRIVE_ONLINE THEN FaultMsg_W = Z_AXIS_INFLT_C, SET DriveComFltIn_M
+IF SV_A_AXIS_VALID && !SV_A_AXIS_DRIVE_ONLINE THEN FaultMsg_W = A_AXIS_INFLT_C, SET DriveComFltIn_M
+IF SV_B_AXIS_VALID && !SV_B_AXIS_DRIVE_ONLINE THEN FaultMsg_W = B_AXIS_INFLT_C, SET DriveComFltIn_M
+IF SV_C_AXIS_VALID && !SV_C_AXIS_DRIVE_ONLINE THEN FaultMsg_W = C_AXIS_INFLT_C, SET DriveComFltIn_M
+IF SV_U_AXIS_VALID && !SV_U_AXIS_DRIVE_ONLINE THEN FaultMsg_W = U_AXIS_INFLT_C, SET DriveComFltIn_M
+IF SV_V_AXIS_VALID && !SV_V_AXIS_DRIVE_ONLINE THEN FaultMsg_W = V_AXIS_INFLT_C, SET DriveComFltIn_M
+IF SV_W_AXIS_VALID && !SV_W_AXIS_DRIVE_ONLINE THEN FaultMsg_W = W_AXIS_INFLT_C, SET DriveComFltIn_M
+
+; Generate some messages for fiber or wire to drive having issues
+IF SV_X_AXIS_VALID && SV_X_AXIS_DRIVE_ONLINE && !SV_X_AXIS_FIBER_OK && SV_MASTER_ENABLE
+  THEN FaultMsg_W = X_AXIS_OUTFLT_C, SET DriveComFltOut_M
+IF SV_Y_AXIS_VALID && SV_Y_AXIS_DRIVE_ONLINE && !SV_Y_AXIS_FIBER_OK && SV_MASTER_ENABLE
+  THEN FaultMsg_W = Y_AXIS_OUTFLT_C, SET DriveComFltOut_M
+IF SV_Z_AXIS_VALID && SV_Z_AXIS_DRIVE_ONLINE && !SV_Z_AXIS_FIBER_OK && SV_MASTER_ENABLE
+  THEN FaultMsg_W = Z_AXIS_OUTFLT_C, SET DriveComFltOut_M
+IF SV_A_AXIS_VALID && SV_A_AXIS_DRIVE_ONLINE && !SV_A_AXIS_FIBER_OK && SV_MASTER_ENABLE
+  THEN FaultMsg_W = A_AXIS_OUTFLT_C, SET DriveComFltOut_M
+IF SV_B_AXIS_VALID && SV_B_AXIS_DRIVE_ONLINE && !SV_B_AXIS_FIBER_OK && SV_MASTER_ENABLE
+  THEN FaultMsg_W = B_AXIS_OUTFLT_C, SET DriveComFltOut_M
+IF SV_C_AXIS_VALID && SV_C_AXIS_DRIVE_ONLINE && !SV_C_AXIS_FIBER_OK && SV_MASTER_ENABLE
+  THEN FaultMsg_W = C_AXIS_OUTFLT_C, SET DriveComFltOut_M
+IF SV_U_AXIS_VALID && SV_U_AXIS_DRIVE_ONLINE && !SV_U_AXIS_FIBER_OK && SV_MASTER_ENABLE
+  THEN FaultMsg_W = U_AXIS_OUTFLT_C, SET DriveComFltOut_M
+IF SV_V_AXIS_VALID && SV_V_AXIS_DRIVE_ONLINE && !SV_V_AXIS_FIBER_OK && SV_MASTER_ENABLE
+  THEN FaultMsg_W = V_AXIS_OUTFLT_C, SET DriveComFltOut_M
+IF SV_W_AXIS_VALID && SV_W_AXIS_DRIVE_ONLINE && !SV_W_AXIS_FIBER_OK && SV_MASTER_ENABLE
+  THEN FaultMsg_W = W_AXIS_OUTFLT_C, SET DriveComFltOut_M
+
+IF !EStopOk_M THEN RST DriveComFltIn_M, RST DriveComFltOut_M
+IF DriveComFltOut_M || DriveComFltIn_M THEN SET AxisFault_M
+
+;check PLC and JogBoard status bits
+IF True_M THEN CycloneStatus_W = SV_PC_CYCLONE_STATUS_1,
+             BITTST CycloneStatus_W 21 PLCBusExtDevEn_M,
+             BITTST CycloneStatus_W 23 JogPanelOnline_M
+
+;check PLC input fiber
+IF !SV_PLC_BUS_ONLINE THEN FaultMsg_W = PLC_INFLT_C,
+                           RST PLCBus_Oe_M, SET PLCFault_M
+
+;check PLC output fiber
+IF SV_PLC_BUS_ONLINE && PLCBus_Oe_M && !PLCBusExtDevEn_M
+  THEN FaultMsg_W = PLC_OUTFLT_C, SET PLCFault_M
+
+;clear PLC errors
+IF PLCFault_M && SV_PLC_BUS_ONLINE && PLCBusExtDevEn_M && !EStopOk_M
+  THEN RST PLCFault_M, InfoMsg_W = PLC_FLT_CLR_C, SET PLCBus_Oe_M
+
+;check JogBoard incoming communications
+IF SV_JOG_LINK_ONLINE THEN (JogLinkOk_M)
+IF JogPanelRequired_M && !JogLinkOk_M
+  THEN FaultMsg_W = JOGBOARD_INFLT_C, SET OtherFault_M
+
+;check JogBoard outgoing communications
+IF JogPanelRequired_M && JogLinkOk_M && !JogPanelOnline_M
+  THEN FaultMsg_W = JOGBOARD_OUTFLT_C, SET OtherFault_M
+
+; Check MiniPLC board communications
+IF True_M THEN MiniPLCStatus_W = SV_PC_MINI_PLC_ONLINE,
+             P900Value_W = SV_MACHINE_PARAMETER_900
+IF MiniPLCStatus_W != P900Value_W THEN SET MiniPLCErrorStage
+
+IF True_M THEN RST CheckCycloneStatusStage
+
+;=============================================================================
+   MiniPLCErrorStage
+;=============================================================================
+IF True_M THEN WTB P900Value_W MiniPLCExpected1_M 8,
+             WTB MiniPLCStatus_W MiniPLCOk1_M 8
+
+IF MiniPLCExpected1_M && !MiniPLCOk1_M
+  THEN FaultMsg_W = MINI_PLC_1_FLT_MSG_C, SET OtherFault_M
+IF MiniPLCExpected2_M && !MiniPLCOk2_M
+  THEN FaultMsg_W = MINI_PLC_2_FLT_MSG_C, SET OtherFault_M
+IF MiniPLCExpected3_M && !MiniPLCOk3_M
+  THEN FaultMsg_W = MINI_PLC_3_FLT_MSG_C, SET OtherFault_M
+IF MiniPLCExpected4_M && !MiniPLCOk4_M
+  THEN FaultMsg_W = MINI_PLC_4_FLT_MSG_C, SET OtherFault_M
+IF MiniPLCExpected5_M && !MiniPLCOk5_M
+  THEN FaultMsg_W = MINI_PLC_5_FLT_MSG_C, SET OtherFault_M
+IF MiniPLCExpected6_M && !MiniPLCOk6_M
+  THEN FaultMsg_W = MINI_PLC_6_FLT_MSG_C, SET OtherFault_M
+IF MiniPLCExpected7_M && !MiniPLCOk7_M
+  THEN FaultMsg_W = MINI_PLC_7_FLT_MSG_C, SET OtherFault_M
+IF MiniPLCExpected8_M && !MiniPLCOk8_M
+  THEN FaultMsg_W = MINI_PLC_8_FLT_MSG_C, SET OtherFault_M
+
+IF MiniPLCOk1_M && !MiniPLCExpected1_M THEN InfoMsg_W = MINI_PLC_1_WARNING_C
+IF MiniPLCOk2_M && !MiniPLCExpected2_M THEN InfoMsg_W = MINI_PLC_2_WARNING_C
+IF MiniPLCOk3_M && !MiniPLCExpected3_M THEN InfoMsg_W = MINI_PLC_3_WARNING_C
+IF MiniPLCOk4_M && !MiniPLCExpected4_M THEN InfoMsg_W = MINI_PLC_4_WARNING_C
+IF MiniPLCOk5_M && !MiniPLCExpected5_M THEN InfoMsg_W = MINI_PLC_5_WARNING_C
+IF MiniPLCOk6_M && !MiniPLCExpected6_M THEN InfoMsg_W = MINI_PLC_6_WARNING_C
+IF MiniPLCOk7_M && !MiniPLCExpected7_M THEN InfoMsg_W = MINI_PLC_7_WARNING_C
+IF MiniPLCOk8_M && !MiniPLCExpected8_M THEN InfoMsg_W = MINI_PLC_8_WARNING_C
+
+IF True_M THEN RST MiniPLCErrorStage
+
+;=============================================================================
+                     AxesEnableStage
+;=============================================================================
+; Since CNC11 v3.03r24, the MPU11 has managed axis enables
+; directly.  The PLC program has no further responsibility
+; for SV_ENABLE_AXIS_n
+
+;clear axis fault errors
+IF AxisFault_M && !(DriveComFltOut_M || DriveComFltIn_M) && !EStopOk_M
+  THEN FaultMsg_W = AXIS_FLT_CLR_C, RST AxisFault_M
+
+;Brake Release
+IF SV_Z_AXIS_VALID && SV_Z_AXIS_POWERED THEN (ZBrakeRelease_O)
+
+;read the status bits
+IF True_M THEN SET CycloneStatus_T
+IF CycloneStatus_T THEN SET CheckCycloneStatusStage, RST CycloneStatus_T
+
+;allow MPU11 to turn on drives if no drive or drive fiber errors
+IF !DriveComFltIn_M && !DriveComFltOut_M THEN SET SV_MASTER_ENABLE
+; (SV_MASTER_ENABLE will be turned off by stalls and other
+;  errors in the Fault-handling section of MainStage, below.)
+
+;(If there is any drive or drive fiber error, then AxisFault_M will have
+; been set previously, which will cause SV_STOP to be set, and SV_MASTER_ENABLE
+; to be reset, later in MainStage)
+
+;==============================================================================
+                                LoadMeterStage
+;==============================================================================
+IF True_M THEN BTW SpindleMeter_W AnalogIn1Bit0_I 16
+
+;sign extend
+IF SpindleMeter_W > 32767 then SpindleMeter_W = SpindleMeter_W - 65536
+
+IF True_M THEN SpindleMeter_W = (SpindleMeter_W * 100) / 2048
+
+IF True_M THEN SV_SPINDLE_METER = SpindleMeter_W
+
+;=============================================================================
+                           MainStage
+;=============================================================================
+;Do gather if commanded (uncomment and recompile for debugging purposes)
+;IF Aux11Key THEN (Aux11KeyPD)
+;IF Aux11KeyPD THEN (SV_TRIGGER_PLOT_DUMP)
+  
+;----------------------------------------------------------------
+;           EStop and Reset Section
+;----------------------------------------------------------------
+;Set State of VCP Reset Button
+IF SkinResetKey_M_SV && EStopOk_I THEN (SetResetPD_PD)
+IF EStopOk_I THEN (EStopOkPD_PD)
+IF (SetResetPD_PD ^ ResetSet_M) && !EStopOkPD_PD THEN (ResetSet_M)
+
+;Set Bit to Activate Estop. 
+IF !(!EStopOk_I || ResetSet_M) THEN (EStopOk_M)
+
+IF !EStopOk_M THEN (SkinResetSet_O), (SkinResetSet_M_SV)
+
+;Display Messages for Reset Button
+IF True_M THEN MessageTimer_T = 200  
+IF ResetSet_M && EStopOk_I THEN SET MessageTimer_T, InfoMsg_W = RESET_DETECTED_C
+IF ResetSet_M && MessageTimer_T THEN RST MessageTimer_T
+
+IF ResetSet_M && EStopOk_I THEN SET ResetArmed_M
+
+IF !ResetSet_M && ResetArmed_M THEN SET MessageTimer_T, InfoMsg_W = RESET_CLEARED_C
+IF !ResetSet_M && ResetArmed_M && MessageTimer_T THEN RST MessageTimer_T, RST ResetArmed_M
+
+;------------------------------------------------------------------------------
+;                       Probe protection while jogging
+;------------------------------------------------------------------------------
+; If the probe comes to be tripped while a jogging move is active,
+; then trigger an error (stop jog and output message),
+; and also disable jogging in the direction it was going.
+IF MechanicalProbe_I && ProbeProtectionEnable_M THEN (ProbePD_PD)
+
+IF ProbePD_PD && DoAx1PlusJog_SV THEN SET Ax1PlusJogDisabled_M,
+                   SET Ax2MinusJogDisabled_M,
+								   SET Ax2PlusJogDisabled_M,
+									 SET Ax4PlusJogDisabled_M,
+									 SET Ax4MinusJogDisabled_M
+IF ProbePD_PD && DoAx1MinusJog_SV THEN SET Ax1MinusJogDisabled_M,
+                   SET Ax2MinusJogDisabled_M,
+								   SET Ax2PlusJogDisabled_M,
+									 SET Ax4PlusJogDisabled_M,
+									 SET Ax4MinusJogDisabled_M
+IF ProbePD_PD && DoAx2PlusJog_SV THEN SET Ax2PlusJogDisabled_M,
+                   SET Ax1MinusJogDisabled_M,
+								   SET Ax1PlusJogDisabled_M,
+									 SET Ax4PlusJogDisabled_M,
+									 SET Ax4MinusJogDisabled_M
+IF ProbePD_PD && DoAx2MinusJog_SV THEN SET Ax2MinusJogDisabled_M,
+                   SET Ax1MinusJogDisabled_M,
+								   SET Ax1PlusJogDisabled_M,
+									 SET Ax4PlusJogDisabled_M,
+									 SET Ax4MinusJogDisabled_M
+IF ProbePD_PD && DoAx4PlusJog_SV THEN SET Ax4PlusJogDisabled_M,
+                   SET Ax1PlusJogDisabled_M,
+									 SET Ax1MinusJogDisabled_M,
+									 SET Ax2PlusJogDisabled_M,
+									 SET Ax2MinusJogDisabled_M
+IF ProbePD_PD && DoAx4MinusJog_SV THEN SET Ax4MinusJogDisabled_M,
+                   SET Ax1PlusJogDisabled_M,
+									 SET Ax1MinusJogDisabled_M,
+									 SET Ax2PlusJogDisabled_M,
+									 SET Ax2MinusJogDisabled_M
+IF ProbePD_PD THEN SET Ax3MinusJogDisabled_M
+
+;Display Error when Probe Tripped while Jogging
+IF ProbePD_PD && !JogProbeFault_M && (DoAx1PlusJog_SV || DoAx1MinusJog_SV ||
+   DoAx2PlusJog_SV || DoAx2MinusJog_SV || DoAx3PlusJog_SV || DoAx3MinusJog_SV ||
+   DoAx4PlusJog_SV || DoAx4MinusJog_SV || DoAx5PlusJog_SV || DoAx5MinusJog_SV)
+  THEN (JogProbeFaultPD_PD)
+
+IF JogProbeFaultPD_PD THEN SET JogProbeFault_M,
+                        SET ErrorFlag_M,
+                        ErrorMsg_W = PROBE_JOG_TRIP_MSG_C
+
+;Before enabling the axis jog keys, ensure operator is no longer pressing a jog key.
+;Prevents the machine from moving in the situation the probe tip snaps while jogging.
+IF (Ax1PlusJogKey_I  || KbJogAx1Plus_M || SkinJogAx1Plus_M_SV || UsbMpgAxis1JogPlus_M) ||
+   (Ax1MinusJogKey_I  || KbJogAx1Minus_M || SkinJogAx1Minus_M_SV || UsbMpgAxis1JogMinus_M) ||
+   (Ax2PlusJogKey_I  || KbJogAx2Plus_M || SkinJogAx2Plus_M_SV || UsbMpgAxis2JogPlus_M) ||
+   (Ax2MinusJogKey_I  || KbJogAx2Minus_M || SkinJogAx2Minus_M_SV || UsbMpgAxis2JogMinus_M) ||
+   (Ax3PlusJogKey_I  || KbJogAx3Plus_M || SkinJogAx3Plus_M_SV || UsbMpgAxis3JogPlus_M) ||
+   (Ax3MinusJogKey_I  || KbJogAx3Minus_M || SkinJogAx3Minus_M_SV || UsbMpgAxis3JogMinus_M) ||
+   (Ax4PlusJogKey_I  || KbJogAx4Plus_M || SkinJogAx4Plus_M_SV || UsbMpgAxis4JogPlus_M) ||
+   (Ax4MinusJogKey_I  || KbJogAx4Minus_M || SkinJogAx4Minus_M_SV || UsbMpgAxis4JogMinus_M) ||
+   (SkinJogAx5Plus_SV || UsbMpgAxis5JogPlus_M) || (SkinJogAx5Minus_SV || UsbMpgAxis5JogMinus_M) ||
+   (SkinJogAx6Plus_SV || UsbMpgAxis6JogPlus_M) || (SkinJogAx6Minus_SV || UsbMpgAxis6JogMinus_M) ||
+   (UsbMpgAxis7JogPlus_M || UsbMpgAxis7JogMinus_M) || (UsbMpgAxis8JogPlus_M || UsbMpgAxis8JogMinus_M) ||
+   (SkinJogAx1Ax2Plus_M || SkinJogAx1Ax2Minus_M || SkinJogAx1PlusAx2Minus_M || SkinJogAx1MinusAx2Plus_M)
+THEN (JogKeyPressed_M)
+
+IF !MechanicalProbe_I && !JogKeyPressed_M THEN RST JogProbeFault_M,
+                         RST Ax1PlusJogDisabled_M,
+                         RST Ax1MinusJogDisabled_M,
+                         RST Ax2PlusJogDisabled_M,
+                         RST Ax2MinusJogDisabled_M,
+                         RST Ax3MinusJogDisabled_M,
+											   RST Ax4PlusJogDisabled_M,
+											   RST Ax4MinusJogDisabled_M
+
+; If the probe comes to be tripped while no program cycle is running,
+; then save the previous jog mode (fast/slow) and force slow mode.
+;IF MechanicalProbe_I && !SV_PROGRAM_RUNNING && !JogModeSaved_M &&
+;  ProbeProtectionEnable_M THEN (SaveJogModePD_PD), SET JogModeSaved_M
+;IF SaveJogModePD_PD && FastSlowLED_O THEN SET LastProbeMode_M
+;IF SaveJogModePD_PD && !FastSlowLED_O THEN RST LastProbeMode_M
+IF MechanicalProbe_I && !SV_PROGRAM_RUNNING && ProbeProtectionEnable_M THEN SET FastSlowLED_O
+
+; Once the probe clears, restore the saved mode and reset
+;IF !MechanicalProbe_I && JogModeSaved_M && !LastProbeMode_M && !JogKeyPressed_M
+;  THEN RST FastSlowLED_O, RST JogModeSaved_M
+  
+;------------------------------------------------------------------------------
+;                            USB Mpg Section
+;------------------------------------------------------------------------------
+;Word to bit for usb mpg operation
+IF True_M THEN WTB SV_USB_MPG_BUTTON_STATE MpgResetKey_M 13
+IF (SV_USB_MPG_SCALE_SELECT == 1000) THEN SET UsbMpgSpinWheelSelect_M
+IF (SV_USB_MPG_SCALE_SELECT != 1000) THEN RST UsbMpgSpinWheelSelect_M
+IF (SV_USB_MPG_SCALE_SELECT == 10000) THEN SET UsbMpgFeedWheelSelect_M
+IF (SV_USB_MPG_SCALE_SELECT != 10000) THEN RST UsbMpgFeedWheelSelect_M
+
+;Handle jog keys for MPGKey
+;Reset all keys first
+IF !((SV_USB_MPG_AXIS_SELECT == 1) && UsbMpgJogPlus_M) THEN RST UsbMpgAxis1JogPlus_M
+IF !((SV_USB_MPG_AXIS_SELECT == 1) && UsbMpgJogMinus_M) THEN RST UsbMpgAxis1JogMinus_M
+IF !((SV_USB_MPG_AXIS_SELECT == 2) && UsbMpgJogPlus_M) THEN RST UsbMpgAxis2JogPlus_M
+IF !((SV_USB_MPG_AXIS_SELECT == 2) && UsbMpgJogMinus_M) THEN RST UsbMpgAxis2JogMinus_M
+IF !((SV_USB_MPG_AXIS_SELECT == 3) && UsbMpgJogPlus_M) THEN RST UsbMpgAxis3JogPlus_M
+IF !((SV_USB_MPG_AXIS_SELECT == 3) && UsbMpgJogMinus_M) THEN RST UsbMpgAxis3JogMinus_M
+IF !((SV_USB_MPG_AXIS_SELECT == 4) && UsbMpgJogPlus_M) THEN RST UsbMpgAxis4JogPlus_M
+IF !((SV_USB_MPG_AXIS_SELECT == 4) && UsbMpgJogMinus_M) THEN RST UsbMpgAxis4JogMinus_M
+
+;Set Appropriate key
+IF ((SV_USB_MPG_AXIS_SELECT == 1) && UsbMpgJogPlus_M) THEN SET UsbMpgAxis1JogPlus_M
+IF ((SV_USB_MPG_AXIS_SELECT == 1) && UsbMpgJogMinus_M) THEN SET UsbMpgAxis1JogMinus_M
+IF ((SV_USB_MPG_AXIS_SELECT == 2) && UsbMpgJogPlus_M) THEN SET UsbMpgAxis2JogPlus_M
+IF ((SV_USB_MPG_AXIS_SELECT == 2) && UsbMpgJogMinus_M) THEN SET UsbMpgAxis2JogMinus_M
+IF ((SV_USB_MPG_AXIS_SELECT == 3) && UsbMpgJogPlus_M) THEN SET UsbMpgAxis3JogPlus_M
+IF ((SV_USB_MPG_AXIS_SELECT == 3) && UsbMpgJogMinus_M) THEN SET UsbMpgAxis3JogMinus_M
+IF ((SV_USB_MPG_AXIS_SELECT == 4) && UsbMpgJogPlus_M) THEN SET UsbMpgAxis4JogPlus_M
+IF ((SV_USB_MPG_AXIS_SELECT == 4) && UsbMpgJogMinus_M) THEN SET UsbMpgAxis4JogMinus_M
+	   
+IF MpgSetAxisZero_M && UsbMpgAxis1Active_M && UsbMpgAxis1Selected_M THEN (SetAxis1Part0_SV)
+IF MpgSetAxisZero_M && UsbMpgAxis2Active_M && UsbMpgAxis2Selected_M THEN (SetAxis2Part0_SV)
+IF MpgSetAxisZero_M && UsbMpgAxis3Active_M && UsbMpgAxis3Selected_M THEN (SetAxis3Part0_SV)
+IF MpgSetAxisZero_M && UsbMpgAxis4Active_M && UsbMpgAxis4Selected_M THEN (SetAxis4Part0_SV)
+IF MpgSetAxisZero_M && UsbMpgAxis5Active_M && UsbMpgAxis5Selected_M THEN (SetAxis5Part0_SV)
+IF MpgSetAxisZero_M && UsbMpgAxis6Active_M && UsbMpgAxis6Selected_M THEN (SetAxis6Part0_SV)
+IF MpgSetAxisZero_M && UsbMpgAxis7Active_M && UsbMpgAxis7Selected_M THEN (SetAxis7Part0_SV)
+IF MpgSetAxisZero_M && UsbMpgAxis8Active_M && UsbMpgAxis8Selected_M THEN (SetAxis8Part0_SV)
+
+;By setting SV_SYS_MACRO to a value of something other than zero, the PLC is 
+;requesting CNC12 to run the corresponding macro in the c:\cncm\system directory
+;Setting SV_SYS_MACRO = 1, run c:\cncm\system\MPGmacro1.mac. Cnc12 will not run the
+;same macro twice in a row unless SV_SYS_MACRO has been set to 0 between requests.
+IF MpgMacro1_M THEN SV_SYS_MACRO = 1
+IF MpgMacro2_M THEN SV_SYS_MACRO = 2
+IF MpgMacro3_M THEN SV_SYS_MACRO = 3
+IF MpgMacro4_M THEN SV_SYS_MACRO = 4
+
+IF ! (MpgMacro1_M || MpgMacro2_M ||
+      MpgMacro3_M || MpgMacro4_M) THEN NoMacroKeyPressedTimer_T = 100,
+                                       SET NoMacroKeyPressedTimer_T
+IF NoMacroKeyPressedTimer_T THEN SV_SYS_MACRO = 0,
+                               RST NoMacroKeyPressedTimer_T
+
+;------------------------------------------------------------------------------
+;                             End USB Mpg Section
+;------------------------------------------------------------------------------
+
+;--Worklight
+IF DoAux7Key_SV THEN (Aux7PD_PD)
+IF (Aux7PD_PD ^ Aux7LED_O) || OnAtPowerUp_M THEN (Aux7LED_O)
+IF Aux7LED_O THEN (WorkLightOut_O)
+
+;--Process important Keyboard keys all the time
+;Cycle Cancel (ESC)
+IF Kb_Escape_SV THEN (KbCycleCancel_M)
+
+;KbFeedHold_M (spacebar)
+IF Kb_spacebar_SV && AllowKbInput_M && SV_PROGRAM_RUNNING THEN (KbFeedHold_M)
+
+IF SV_PC_VIRTUAL_JOGPANEL_ACTIVE THEN (KbJpActive_M)
+
+;Call KeyboardEventsStage if needed
+IF Kb_L_Ctrl_SV || Kb_R_Ctrl_SV ||
+   Kb_L_Shift_SV || Kb_R_Shift_SV ||
+   Kb_R_Alt_SV || Kb_L_Alt_SV || KbJpActive_M
+  THEN SET KeyboardEventsStage
+
+IF (Kb_L_Ctrl_SV || Kb_R_Ctrl_SV || Kb_L_Shift_SV || Kb_R_Shift_SV || Kb_R_Alt_SV || Kb_L_Alt_SV)
+   && (Kb_j_SV || Kb_f_SV || Kb_a_SV || Kb_s_SV) && !AllowKbInput_M
+  THEN InfoMsg_W = KB_JOG_MSG_C
+
+;--Handle Faults
+IF !EStopOk_M || PLCFault_M || SV_STALL_ERROR || SpindleFault_M ||
+   LubeFault_M || AxisFault_M || ProbeFault_M || OtherFault_M THEN SET SV_STOP
+
+IF SV_STOP THEN RST SV_MASTER_ENABLE
+
+IF !EStopOk_M THEN RST SV_STALL_ERROR,
+                 RST LubeFault_M,
+                 RST SpindleFault_M,
+                 RST OtherFault_M,
+                 RST ProbeFault_M,
+                 RST ProbeMsgSent_M
+
+IF Initialize_T && !LubeOk_I && !SV_PROGRAM_RUNNING
+  THEN SET LubeFault_M, FaultMsg_W = LUBE_FAULT_MSG_C
+
+IF !LubeOk_I && SV_PROGRAM_RUNNING THEN InfoMsg_W = LUBE_WARNING_MSG_C
+
+IF Initialize_T && !SpindleInverterOk_I
+  THEN FaultMsg_W = SPINDLE_FAULT_MSG_C, SET SpindleFault_M
+IF !EStopOk_M && !SpindleInverterOk_I THEN (InverterResetOut_O)
+
+; Echo some system variables to memory bits, for troubleshooting only
+IF SV_MASTER_ENABLE THEN (MasterEnable_M)
+IF SV_STALL_ERROR THEN (Stall_M),
+                       StallReason_W = SV_STALL_REASON,
+                       StallAxis_W = SV_STALL_AXIS													   
+IF SV_STOP THEN (Stop_M)
+
+IF !SV_STOP THEN (NoFaultOut_O)
+
+; Reset faults if E-stop is released and no fault condition persists
+IF EStopOk_M &&
+   !(PLCFault_M || SV_STALL_ERROR || SpindleFault_M || LubeFault_M ||
+     AxisFault_M || OtherFault_M || SoftwareNotReady_M || PLCExecutorFault_M)
+  THEN RST SV_STOP
+
+; Automatically reset non-fault errors after a short time
+IF ErrorFlag_M THEN SET ErrorFlag_T
+IF ErrorFlag_T THEN RST ErrorFlag_M, RST ErrorFlag_T
+
+IF ProbeFault_M && !ProbeMsgSent_M
+  THEN FaultMsg_W = PROBE_FAULT_MSG_C, SET ProbeMsgSent_M
+
+;--M-Codes
+;    Reset these M-codes if not in CNC Program Running mode
+IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE)
+  THEN RST M3_SV,
+       RST M4_SV,
+       RST M8_SV,
+       RST M7_SV,
+       RST M10_SV
+
+; Detect auto spindle and coolant requests during manual modes
+IF M3_SV || M4_SV THEN (AutoSpindlePD_PD)
+IF AutoSpindlePD_PD && !SpinAutoModeLED_O
+  THEN SET ActivateFeedHold_M,
+       InfoMsg_W = AUTO_SPINDLE_PROMPT_C
+
+IF M7_SV || M8_SV THEN (AutoCoolantPD_PD)
+IF AutoCoolantPD_PD && !CoolAutoModeLED_O
+  THEN SET ActivateFeedHold_M,
+       InfoMsg_W = AUTO_COOLANT_PROMPT_C
+
+IF ActivateFeedHold_M THEN TriggerPause_T=100, SET TriggerPause_T
+IF TriggerPause_T THEN RST TriggerPause_T, RST ActivateFeedHold_M
+
+;--turn off default setup variable
+IF True_M THEN RST OnAtPowerUp_M
+
+;==============================================================================
+   SafetySwitchInterruptStage
+;==============================================================================
+IF DoorClosed_I THEN (SafetySwitch_M)
+IF !SafetySwitch_M && (SpinStart_M || KbSpinStart_M || M3_SV || M4_SV)
+  THEN ErrorMsg_W = SAFETY_SWITCH_SPINDLE_MSG, SET ErrorFlag_M
+
+IF !SV_JOB_IN_PROGRESS THEN SET SafetySwitchToolCheck_M
+IF !SafetySwitch_M && !SafetySwitchToolCheck_M && SV_JOB_IN_PROGRESS
+  && !(M3_SV || M4_SV)
+  THEN ErrorMsg_W = SAFETY_SWITCH_OPEN_MSG, SET ErrorFlag_M, SET SafetySwitchToolCheck_M
+
+IF SafetySwitch_M THEN RST SafetySwitchToolCheck_M
+
+;==============================================================================
+   MessageStage
+;==============================================================================
+IF FaultMsg_W != 0 THEN SET ShowFaultStage
+IF FaultMsg_W == 0 && ErrorMsg_W != 0 THEN SET ShowErrorStage
+IF FaultMsg_W == 0 && ErrorMsg_W == 0 && InfoMsg_W != 0 THEN SET ShowInfoStage
+
+;==============================================================================
+   ShowFaultStage
+;==============================================================================
+IF !((FaultMsg_W % 256 == 1) || (FaultMsg_W % 256 == 2))
+  THEN JMP BadMsgStage
+IF True_M THEN MSG FaultMsg_W
+IF !EStopOk_M THEN FaultMsg_W = 0,
+                 InfoMsg_W = MSG_CLEARED_MSG_C,
+                 RST ShowFaultStage
+
+;==============================================================================
+   ShowErrorStage
+;==============================================================================
+IF !((ErrorMsg_W % 256 == 1) || (ErrorMsg_W % 256 == 2))
+  THEN JMP BadMsgStage
+IF True_M THEN MSG ErrorMsg_W, SET MsgClear_T
+IF MsgClear_T THEN ErrorMsg_W = 0,
+                   RST MsgClear_T,
+                   RST ShowErrorStage
+
+;==============================================================================
+   ShowInfoStage
+;==============================================================================
+IF !((InfoMsg_W % 256 == 1) || (InfoMsg_W % 256 == 2))
+  THEN JMP BadMsgStage
+IF True_M THEN MSG InfoMsg_W, SET MsgClear_T
+IF MsgClear_T THEN InfoMsg_W = 0,
+                   RST MsgClear_T,
+                   RST ShowInfoStage
+
+;=============================================================================
+   BadMsgStage
+;=============================================================================
+IF True_M THEN FaultMsg_W = 0,
+             ErrorMsg_W = 0,
+             InfoMsg_W = BAD_MESSAGE_MSG_C,
+             RST BadMsgStage
