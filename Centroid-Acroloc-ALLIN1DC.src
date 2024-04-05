@@ -195,6 +195,8 @@ MINI_PLC_6_WARNING_C            IS 42498;(2+256*166)
 MINI_PLC_7_WARNING_C            IS 42754;(2+256*167)
 MINI_PLC_8_WARNING_C            IS 43010;(2+256*168)
 
+ATC_Spindle_Not_Parked_C         IS 44034;(2+256*172) Acroloc
+ATC_Lock_Not_Released_C          IS 44290;(2+256*173) Acroloc
 ;------------------------------------------------------------------------------
 ;                        INPUT DEFINITIONS
 ;               Closed = 1 (green)  Open = 0 (red)
@@ -225,7 +227,15 @@ SpinHighRange_I                 IS INP15
 ;spare                          IS INP21
 ;spare                          IS INP22
 ;spare                          IS INP23
-
+ATCManualOverride_I           IS INP24 ; Acroloc button on front of machine
+ATCLockReleased_I             IS INP25 ; Acroloc piston sensor to insure tool changer is locked
+ATC_Z_Enter_I                 IS INP26 ; Acroloc the spindle has entered the tool changer (zero rpm)
+ATC_Z_Zero_Release_I          IS INP27 ; Acroloc Z axis has cleared tool ring
+ATC_Pos5_I                    IS INP28 ; Acroloc
+ATC_Pos4_I                    IS INP29 ; Acroloc
+ATC_Pos3_I                    IS INP30 ; Acroloc
+ATC_Pos2_I                    IS INP31 ; Acroloc
+ATC_Pos1_I                    IS INP32 ; Acroloc
 
 ;ALLIN1DC Analog Section
 AnalogIn1Bit0_I                 IS INP241
@@ -373,10 +383,10 @@ ZBrakeRelease_O                 IS OUT9  ;SPDT Type
 
 ;If a PLC expansion board (PLCADD1616) is used, the additional outputs will
 ;begin at output17.
-;spare                          IS OUT17 ;SPST Type
-;spare                          IS OUT18 ;SPST Type
-;spare                          IS OUT19 ;SPST Type
-;spare                          IS OUT20 ;SPDT Type
+ATCMotor_O                      IS OUT17 ; Acroloc spin tool carousel
+ATCLockRelease_O                IS OUT18 ; Acroloc lock tool carousel in place
+Spindle_Low_gear_O              IS OUT19 ; Acroloc High gear must be released
+Spindle_High_gear_O             IS OUT20 ; Acroloc Low gear must be released
 ;spare                          IS OUT21 ;SPST Type
 ;spare                          IS OUT22 ;SPST Type
 ;spare                          IS OUT23 ;SPST Type
@@ -712,6 +722,9 @@ KbAux14Key_M                  IS MEM445 ; "ctrl" + "2"
 KbAux15Key_M                  IS MEM446 ; "ctrl" + "3"
 KbAux16Key_M                  IS MEM447 ; "ctrl" + "4"
 
+; Tool changer position state tracking
+InToolSelect_M                IS MEM443 ; Acroloc 0=false, 1=true
+ToolSelected_M                IS MEM444 ; Acroloc 0=false, 1=true
 ;------------------------------------------------------------------------------
 ;                     ---------SYSTEM VARIABLES--------
 ;
@@ -1093,6 +1106,7 @@ SetAxis8Part0_SV                 IS SV_PLC_SET_AXIS_8_PART_ZERO
 ;------------------------------------------------------------------------------
 M3_SV                            IS SV_M94_M95_1 ;(Spindle CW)
 M4_SV                            IS SV_M94_M95_2 ;(Spindle CCW)
+M6_SV                            IS SV_M94_M95_8 ; Acroloc Tool change request
 M8_SV                            IS SV_M94_M95_3 ;(Flood_O On)
 M10_SV                           IS SV_M94_M95_4 ; Clamp
 M7_SV                            IS SV_M94_M95_5 ;(Mist_O)
@@ -1142,6 +1156,9 @@ P146Value_W                     IS W67
 P170Value_W                     IS W68
 P900Value_W                     IS W69
 MiniPLCStatus_W                 IS W70
+
+CarouselToolID_W                 IS W71 ; Acroloc
+ChangeToTool_W                   IS W72 ; Acroloc
 
 PValue_W                        IS W92
 
@@ -1250,6 +1267,8 @@ LoadParametersStage             IS STG10
 KeyboardEventsStage             IS STG11
 LubeUsePumpTimersStage          IS STG13
 LubeUsePLCTimersStage           IS STG14
+
+ATCStage                        IS STG16 ; Acroloc ATC Stage
 
 JogKeysNormalStage              IS STG26
 JogKeysInvert2Stage             IS STG27
@@ -2901,6 +2920,97 @@ IF TriggerPause_T THEN RST TriggerPause_T, RST ActivateFeedHold_M
 ;--turn off default setup variable
 IF True_M THEN RST OnAtPowerUp_M
 
+; Acroloc test tool change options from the jog panel
+IF DoAux1Key_SV THEN ChangeToTool_W = 1, SET ATCStage, SET AUX1LED_O
+IF DoAux2Key_SV THEN ChangeToTool_W = 2, SET ATCStage, SET AUX2LED_O
+IF DoAux3Key_SV THEN ChangeToTool_W = 3, SET ATCStage, SET AUX3LED_O
+IF DoAux4Key_SV THEN ChangeToTool_W = 4, SET ATCStage, SET AUX4LED_O
+IF DoAux5Key_SV THEN ChangeToTool_W = 5, SET ATCStage, SET AUX5LED_O
+IF DoAux6Key_SV THEN ChangeToTool_W = 6, SET ATCStage, SET AUX6LED_O
+IF DoAux7Key_SV THEN ChangeToTool_W = 7, SET ATCStage, SET AUX7LED_O
+IF DoAux8Key_SV THEN ChangeToTool_W = 8, SET ATCStage, SET AUX8LED_O
+IF DoAux9Key_SV THEN ChangeToTool_W = 9, SET ATCStage, SET AUX9LED_O
+IF DoAux10Key_SV THEN ChangeToTool_W = 10, SET ATCStage, SET AUX10LED_O
+IF DoAux11Key_SV THEN ChangeToTool_W = 11, SET ATCStage, SET AUX11LED_O
+IF DoAux12Key_SV THEN ChangeToTool_W = 12, SET ATCStage, SET AUX12LED_O
+
+IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
+
+; Acroloc manual tool changes
+IF ATCManualOverride_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCLockRelease_O
+IF !ATCManualOverride_I && !ATCStage THEN RST ATCLockRelease_O
+
+;Should this message? could be stuck
+IF ATCLockReleased_I THEN
+  FaultMsg_W = ATC_Lock_Not_Released_C,
+  SET ShowFaultStage
+
+; TODO: Make sure spindle stops before entering tool changer
+IF !ATC_Z_Enter_I THEN
+  SET SpinStop_M
+IF ATC_Z_ENTER_I THEN
+  RST SpinStop_M
+
+;=============================================================================
+   ATCStage
+;=============================================================================
+;TODO: add timer to error so carousol doesn't spin for ever if tool not found
+
+;TODO: if Z is not at zero then move it there?
+IF !ATC_Z_Zero_Release_I THEN
+  FaultMsg_W = ATC_Spindle_Not_Parked_C,
+  SET ShowFaultStage,
+  SET OtherFault_M,
+  RST ATCStage
+  
+; z axis is clear of tool carousel, carousel is ready to spin and the manual button is pressed
+IF ATCStage && ChangeToTool_W > 0 THEN
+  SET ATCLockRelease_O,
+  SET ATCMotor_O
+
+; If carousel is moving and any of the position switchs are triggered we need to start
+; tracking the switches to calculate what position we are at
+IF ATCMotor_O && ( ATC_Pos1_I || ATC_POS2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_pos5_I ) THEN
+  CarouselToolID_W = 0,
+  SET InToolSelect_M
+
+; tools are in base16 encoded as decimal
+; start adding any ID points that come across to identify the tool
+; swtch 1 2 3 4 5         1 2 3 4 5         1 2 3 4 5
+; T1 =  * O O O O    T5 = * O * O O    T9 = * O O * O
+; T2 =  O * O O O    T6 = O * * O O   T10 = O O O O *
+; T3 =  * * O O O    T7 = * * * O O   T11 = * O O O *
+; T4 =  O O * O O    T8 = O O O * O   T12 = O * O O *
+If InToolSelect_M && ATC_Pos1_I THEN CarouselToolID_W = CarouselToolID_W + 1
+If InToolSelect_M && ATC_Pos2_I THEN CarouselToolId_W = CarouselToolID_W + 2
+If InToolSelect_M && ATC_Pos3_I THEN CarouselToolID_W = CarouselToolID_W + 4
+If InToolSelect_M && ATC_Pos4_I THEN CarouselToolId_W = CarouselToolID_W + 8
+If InToolSelect_M && ATC_Pos5_I THEN CarouselToolId_W = CarouselToolID_W + 10; Not 16 due to TC jumping to T10=binary16
+
+; If all tool position switches go back to 0 then we need to exit the tool selection mode
+; and CarouselToolId_W should be the tool number passing the spindle.
+IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !ATC_Pos5_I ) THEN
+  RST InToolSelect_M
+
+; lets fire and stop on tool
+IF CarouselToolID_W == ChangeToTool_W THEN
+  ChangeToTool_W = 0,
+  SET ToolSelected_M,
+  RST ATCMotor_O,
+  RST ATCLockRelease_O,
+  RST AUX1LED_O,
+  RST AUX2LED_O,
+  RST AUX3LED_O,
+  RST AUX4LED_O,
+  RST AUX5LED_O,
+  RST AUX6LED_O,
+  RST AUX7LED_O,
+  RST AUX8LED_O,
+  RST AUX9LED_O,
+  RST AUX10LED_O,
+  RST AUX11LED_O,
+  RST AUX12LED_O,
+  RST ATCStage
 ;==============================================================================
    SafetySwitchInterruptStage
 ;==============================================================================
