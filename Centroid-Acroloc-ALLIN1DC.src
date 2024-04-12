@@ -50,8 +50,9 @@
 ;                            Add 1 = MPG Ignore Encoder Error
 ;                            Add 2 = Lock Out Z Axis X100 with WMPG
 ;                            Add 4 = Enable Independent Z-Axis MPG Jogging 
+; ?? SV_MACHINE_PARAMETER_33 : Spindle Motor Gear Ration 2x
 ; SV_MACHINE_PARAMETER_39  : Feedrate Override Percentage Limit
-; SV_MACHINE_PARAMETER_65  : Low Range Gear Ratio
+; SV_MACHINE_PARAMETER_65  : Low Range Gear Ratio .5x
 ; SV_MACHINE_PARAMETER_66  : Medium-Low Range Gear Ratio
 ; SV_MACHINE_PARAMETER_67  : Medium-High Range Gear Ratio
 ; SV_MACHINE_PARAMETER_146 : FeedHold Threshold, Sets FeedHold Under Value
@@ -195,8 +196,10 @@ MINI_PLC_6_WARNING_C            IS 42498;(2+256*166)
 MINI_PLC_7_WARNING_C            IS 42754;(2+256*167)
 MINI_PLC_8_WARNING_C            IS 43010;(2+256*168)
 
-ATC_Spindle_Not_Parked_C         IS 44034;(2+256*172) Acroloc
-ATC_Lock_Not_Released_C          IS 44290;(2+256*173) Acroloc
+ATC_Spindle_Not_Parked_C        IS 44034;(2+256*172) Acroloc
+ATC_Lock_Not_Released_C         IS 44290;(2+256*173) Acroloc
+ATC_Lock_Released_C             IS 45546;(2+256*174) Acroloc
+
 ;------------------------------------------------------------------------------
 ;                        INPUT DEFINITIONS
 ;               Closed = 1 (green)  Open = 0 (red)
@@ -227,15 +230,15 @@ SpinHighRange_I                 IS INP15
 ;spare                          IS INP21
 ;spare                          IS INP22
 ;spare                          IS INP23
-ATCManualOverride_I           IS INP24 ; Acroloc button on front of machine
-ATCLockReleased_I             IS INP25 ; Acroloc piston sensor to insure tool changer is locked
-ATC_Z_Enter_I                 IS INP26 ; Acroloc the spindle has entered the tool changer (zero rpm)
-ATC_Z_Zero_Release_I          IS INP27 ; Acroloc Z axis has cleared tool ring
-ATC_Pos5_I                    IS INP28 ; Acroloc
-ATC_Pos4_I                    IS INP29 ; Acroloc
-ATC_Pos3_I                    IS INP30 ; Acroloc
-ATC_Pos2_I                    IS INP31 ; Acroloc
-ATC_Pos1_I                    IS INP32 ; Acroloc
+ATCManualUnlock_I               IS INP24 ; Acroloc button on front of machine
+ATCLocked_I                     IS INP25 ; Acroloc piston sensor to insure tool changer is locked
+ATC_Z_InToolChanger_I           IS INP26 ; Acroloc the spindle has entered the tool changer (zero rpm)
+ATC_Z_Zero_Release_I            IS INP27 ; Acroloc Z axis has cleared tool ring
+ATC_Pos5_I                      IS INP28 ; Acroloc
+ATC_Pos4_I                      IS INP29 ; Acroloc
+ATC_Pos3_I                      IS INP30 ; Acroloc
+ATC_Pos2_I                      IS INP31 ; Acroloc
+ATC_Pos1_I                      IS INP32 ; Acroloc
 
 ;ALLIN1DC Analog Section
 AnalogIn1Bit0_I                 IS INP241
@@ -384,7 +387,7 @@ ZBrakeRelease_O                 IS OUT9  ;SPDT Type
 ;If a PLC expansion board (PLCADD1616) is used, the additional outputs will
 ;begin at output17.
 ATCMotor_O                      IS OUT17 ; Acroloc spin tool carousel
-ATCLockRelease_O                IS OUT18 ; Acroloc lock tool carousel in place
+ATCLocked_O                     IS OUT18 ; Acroloc lock tool carousel in place
 Spindle_Low_gear_O              IS OUT19 ; Acroloc High gear must be released
 Spindle_High_gear_O             IS OUT20 ; Acroloc Low gear must be released
 ;spare                          IS OUT21 ;SPST Type
@@ -2937,22 +2940,25 @@ IF DoAux12Key_SV THEN ChangeToTool_W = 12, SET ATCStage, SET AUX12LED_O
 IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
 
 ; Acroloc manual tool changes
-IF ATCManualOverride_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCLockRelease_O
-IF !ATCManualOverride_I && !ATCStage THEN RST ATCLockRelease_O
+IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCLocked_O
+IF !ATCManualUnlock_I && !ATCStage THEN RST ATCLocked_O
 
 ;Should this message? could be stuck
-IF ATCLockReleased_I THEN
+;'IF ATCLocked_O && ATCManualUnlock_I THEN
+IF ATCManualUnlock_I THEN
   FaultMsg_W = ATC_Lock_Not_Released_C,
   SET ShowFaultStage
+IF !ATCManualUnlock_I THEN
+  FaultMsg_W = ATC_Lock_Released_C,
+  SET ShowFaultStage
 
-; TODO: Make sure spindle stops before entering tool changer
-IF !ATC_Z_Enter_I THEN
-  SET SpinStop_M
-IF ATC_Z_ENTER_I THEN
-  RST SpinStop_M
+; Acroloc Make sure spindle stops before entering tool changer
+IF !ATC_Z_InToolChanger_I THEN
+  RST SpindleEnableOut_O
+
 
 ;=============================================================================
-   ATCStage
+   ATCStage ; Acroloc
 ;=============================================================================
 ;TODO: add timer to error so carousol doesn't spin for ever if tool not found
 
@@ -2965,7 +2971,7 @@ IF !ATC_Z_Zero_Release_I THEN
   
 ; z axis is clear of tool carousel, carousel is ready to spin and the manual button is pressed
 IF ATCStage && ChangeToTool_W > 0 THEN
-  SET ATCLockRelease_O,
+  SET ATCLocked_O,
   SET ATCMotor_O
 
 ; If carousel is moving and any of the position switchs are triggered we need to start
@@ -2997,7 +3003,8 @@ IF CarouselToolID_W == ChangeToTool_W THEN
   ChangeToTool_W = 0,
   SET ToolSelected_M,
   RST ATCMotor_O,
-  RST ATCLockRelease_O,
+  RST ATCLocked_O,
+  ; these are just for the testing code
   RST AUX1LED_O,
   RST AUX2LED_O,
   RST AUX3LED_O,
