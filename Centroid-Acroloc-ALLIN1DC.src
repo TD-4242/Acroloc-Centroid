@@ -232,7 +232,7 @@ SpinHighRange_I                 IS INP15
 ;spare                          IS INP23
 ATCManualUnlock_I               IS INP24 ; Acroloc button on front of machine
 ATCLocked_I                     IS INP25 ; Acroloc piston sensor to insure tool changer is locked
-ATC_Z_InToolChanger_I           IS INP26 ; Acroloc the spindle has entered the tool changer (zero rpm)
+ATC_Z_ClearedToolChanger_I      IS INP26 ; Acroloc the spindle has entered the tool changer (zero rpm)
 ATC_Z_Zero_Release_I            IS INP27 ; Acroloc Z axis has cleared tool ring
 ATC_Pos5_I                      IS INP28 ; Acroloc
 ATC_Pos4_I                      IS INP29 ; Acroloc
@@ -387,7 +387,7 @@ ZBrakeRelease_O                 IS OUT9  ;SPDT Type
 ;If a PLC expansion board (PLCADD1616) is used, the additional outputs will
 ;begin at output17.
 ATCMotor_O                      IS OUT17 ; Acroloc spin tool carousel
-ATCLocked_O                     IS OUT18 ; Acroloc lock tool carousel in place
+ATCUnlocke_O                     IS OUT18 ; Acroloc lock tool carousel in place
 Spindle_Low_gear_O              IS OUT19 ; Acroloc High gear must be released
 Spindle_High_gear_O             IS OUT20 ; Acroloc Low gear must be released
 ;spare                          IS OUT21 ;SPST Type
@@ -2940,11 +2940,11 @@ IF DoAux12Key_SV THEN ChangeToTool_W = 12, SET ATCStage, SET AUX12LED_O
 IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
 
 ; Acroloc manual tool changes
-IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCLocked_O
-IF !ATCManualUnlock_I && !ATCStage THEN RST ATCLocked_O
+IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocke_O
+IF !ATCManualUnlock_I && !ATCStage THEN RST ATCUnlocke_O
 
 ;Should this message? could be stuck
-;'IF ATCLocked_O && ATCManualUnlock_I THEN
+;'IF ATCUnlocke_O && ATCManualUnlock_I THEN
 IF ATCManualUnlock_I THEN
   FaultMsg_W = ATC_Lock_Not_Released_C,
   SET ShowFaultStage
@@ -2953,7 +2953,7 @@ IF !ATCManualUnlock_I THEN
   SET ShowFaultStage
 
 ; Acroloc Make sure spindle stops before entering tool changer
-IF !ATC_Z_InToolChanger_I THEN
+IF !ATC_Z_ClearedToolChanger_I THEN
   RST SpindleEnableOut_O
 
 
@@ -2971,7 +2971,7 @@ IF !ATC_Z_Zero_Release_I THEN
   
 ; z axis is clear of tool carousel, carousel is ready to spin and the manual button is pressed
 IF ATCStage && ChangeToTool_W > 0 THEN
-  SET ATCLocked_O,
+  SET ATCUnlocke_O,
   SET ATCMotor_O
 
 ; If carousel is moving and any of the position switchs are triggered we need to start
@@ -3003,7 +3003,7 @@ IF CarouselToolID_W == ChangeToTool_W THEN
   ChangeToTool_W = 0,
   SET ToolSelected_M,
   RST ATCMotor_O,
-  RST ATCLocked_O,
+  RST ATCUnlocke_O,
   ; these are just for the testing code
   RST AUX1LED_O,
   RST AUX2LED_O,
@@ -3017,7 +3017,9 @@ IF CarouselToolID_W == ChangeToTool_W THEN
   RST AUX10LED_O,
   RST AUX11LED_O,
   RST AUX12LED_O,
+  RST M6_SV,
   RST ATCStage
+
 ;==============================================================================
    SafetySwitchInterruptStage
 ;==============================================================================
