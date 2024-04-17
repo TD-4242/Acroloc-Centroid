@@ -2991,7 +2991,7 @@ If InToolSelect_M && ATC_Pos1_I THEN CarouselToolID_W = CarouselToolID_W + 1
 If InToolSelect_M && ATC_Pos2_I THEN CarouselToolId_W = CarouselToolID_W + 2
 If InToolSelect_M && ATC_Pos3_I THEN CarouselToolID_W = CarouselToolID_W + 4
 If InToolSelect_M && ATC_Pos4_I THEN CarouselToolId_W = CarouselToolID_W + 8
-If InToolSelect_M && ATC_Pos5_I THEN CarouselToolId_W = CarouselToolID_W + 10; Not 16 due to TC jumping to T10=binary16
+If InToolSelect_M && ATC_Pos5_I THEN CarouselToolId_W = CarouselToolID_W + 10; Not 16 due to base16 encoded as decimal
 
 ; If all tool position switches go back to 0 then we need to exit the tool selection mode
 ; and CarouselToolId_W should be the tool number passing the spindle.

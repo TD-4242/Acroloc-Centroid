@@ -22,15 +22,18 @@ IF #4202 || #4201 THEN GOTO 1000
 IF #50001       ; Prevent lookahead
 M109 /1/2       ; Disable overrides
 
+S0
 M5              ; stop spindle
 M9              ; Turn off coolant
+G28 G91 Z2.1    ; Move Z to entry of tool changer
+M101 /.5        ; wait for spindle to spin download
 G28 G91 Z0      ; Move Z to tool change position
 M107            ; Send tool number 
 G4 P.1          ; wait .1 second
 M94 /8          ; Set M6_SV to start tool change stage
 G4 p1           ; wait 1 second (can I shorten this wait?)
-M100 /60018     ; ATCLocked_O off is locked
-M101 /60017     ; ATCMotor_O off
+M100 /60018     ; ATCUnlock_O off is locked
+M100 /60017     ; ATCMotor_O off
 M95 /8          ; reset M6_SV to stop tool change stage when done
 
 N1000            ; end of program
