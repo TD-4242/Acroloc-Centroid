@@ -32,8 +32,7 @@ M107            ; Send tool number
 G4 P.1          ; wait .1 second
 M94 /8          ; Set M6_SV to start tool change stage
 G4 p1           ; wait 1 second (can I shorten this wait?)
-M100 /60018     ; ATCUnlock_O off is locked
-M100 /60017     ; ATCMotor_O off
+M100 /93016     ; ATCStage RST
 M95 /8          ; reset M6_SV to stop tool change stage when done
 
 N1000            ; end of program
