@@ -2,19 +2,9 @@
 ; File: mfunc6.mac
 ; Desc: Tool Change Macro
 ;
-; Inputs:
-; ZeroSpeed_I               IS IN12
-; ATC_Pos5_I                IS INP28 ; ATC_Pos 1 2 3 4 5         1 2 3 4 5         1 2 3 4 5
-; ATC_Pos4_I                IS INP29 ;   T1 =  * O O O O    T5 = * O * O O    T9 = * O O * O
-; ATC_Pos3_I                IS INP30 ;   T2 =  O * O O O    T6 = O * * O O   T10 = O O O O *
-; ATC_Pos2_I                IS INP31 ;   T3 =  * * O O O    T7 = * * * O O   T11 = * O O O *
-; ATC_Pos1_I                IS INP32 ;   T4 =  O O * O O    T8 = O O O * O   T12 = O * O O *
-; ATCLockReleased_I         IS INP25 ; piston sensor to insure tool changer is locked
-; ATC_Z_Enter_I             IS INP26 ; the spindle has entered the tool changer (zero rpm)
-; ATC_Z_Zero_Release_I      IS INP27 ; Z axis has cleared tool ring
-; Outputs:
+; Stages:
+;   ATCStage
 ;
-; Memory Bits:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;Skip if graphing or searching
@@ -25,9 +15,9 @@ M109 /1/2       ; Disable overrides
 S0
 M5              ; stop spindle
 M9              ; Turn off coolant
-G28 G91 Z2.1    ; Move Z to entry of tool changer
+G53 Z2.1        ; Move Z to entry of tool changer
 M101 /.5        ; wait for spindle to spin download
-G28 G91 Z0      ; Move Z to tool change position
+G53 Z0          ; Move Z to tool change position
 M107            ; Send tool number 
 G4 P.1          ; wait .1 second
 M94 /8          ; Set M6_SV to start tool change stage
@@ -35,4 +25,4 @@ G4 p1           ; wait 1 second (can I shorten this wait?)
 M100 /93016     ; ATCStage RST
 M95 /8          ; reset M6_SV to stop tool change stage when done
 
-N1000            ; end of program
+N1000           ; end of program

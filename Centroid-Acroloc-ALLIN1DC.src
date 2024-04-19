@@ -2867,8 +2867,10 @@ IF !ATCManualUnlock_I THEN
 IF !ATC_Z_ClearedToolChanger_I THEN
   RST SpindleEnableOut_O,
   SET StopSpinBeforATC_T
+  ;SavedCurrentFeedrate = CurrentFeedrate ??
 
 IF StopSpinBeforeATC_T THEN
+  ; feedrate to zero
   
 
 ;=============================================================================
