@@ -15,8 +15,8 @@ M109 /1/2       ; Disable overrides
 S0
 M5              ; stop spindle
 M9              ; Turn off coolant
-G53 Z2.1        ; Move Z to entry of tool changer
-M101 /.5        ; wait for spindle to spin download
+;G53 Z-2.1        ; Move Z to entry of tool changer
+;M101 /.5        ; wait for spindle to spin down
 G53 Z0          ; Move Z to tool change position
 M107            ; Send tool number 
 G4 P.1          ; wait .1 second
