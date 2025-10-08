@@ -1177,7 +1177,7 @@ OverrideMsgTimer_T              IS T16
 MessageTimer_T                  IS T17
 NoMacroKeyPressedTimer_T        IS T18
 
-StopSpinBeforATC_T              IS T23
+StopSpinBeforeATC_T             IS T23
 ATCSpin_T                       IS T24 ; used to detect fault if unable to find position
 ;------------------------------------------------------------------------------
 ;                       Stage Definitions
@@ -1263,7 +1263,7 @@ IF 1==1 THEN SET True_M,
              Initialize_T = 1000, SET Initialize_T,
              ErrorFlag_T = 1000,
              MsgClear_T = 1000,
-             StopSpinBeforATC_T = 1000,
+             StopSpinBeforeATC_T = 5000,
              RST InitialStage
 
 ;=============================================================================
@@ -2864,12 +2864,27 @@ IF !ATCManualUnlock_I THEN
   SET ShowFaultStage
 
 ; Acroloc Make sure spindle stops before entering tool changer
-IF !ATC_Z_ClearedToolChanger_I THEN
-  RST SpindleEnableOut_O,
-  SET StopSpinBeforATC_T
+; Enhanced spindle stop logic with speed monitoring and timeout protection
 
-; ???
-IF StopSpinBeforeATC_T THEN (FeedHoldPD)
+; Start spindle stop sequence when ATC is requested and spindle is not cleared
+IF M6_SV && !ATC_Z_ClearedToolChanger_I && !ZeroSpeed_I THEN
+  RST SpindleEnableOut_O,
+  SET StopSpinBeforeATC_T
+
+; Monitor spindle stop with timeout protection (5 seconds)
+IF StopSpinBeforeATC_T && !ZeroSpeed_I THEN
+  ; Spindle still running - continue waiting
+  IF StopSpinBeforeATC_T == 0 THEN
+    ; Timeout reached - spindle failed to stop
+    FaultMsg_W = SPINDLE_FAULT_MSG_C,
+    SET ShowFaultStage,
+    SET OtherFault_M,
+    RST ATCStage,
+    RST StopSpinBeforeATC_T
+
+; Spindle has stopped successfully - clear timer and allow ATC to proceed
+IF StopSpinBeforeATC_T && ZeroSpeed_I THEN
+  RST StopSpinBeforeATC_T
 
   
 
@@ -2877,6 +2892,13 @@ IF StopSpinBeforeATC_T THEN (FeedHoldPD)
    ATCStage ; Acroloc
 ;=============================================================================
 ;TODO: add timer to error so carousol doesn't spin for ever if tool not found
+
+; Additional safety check - ensure spindle is stopped before ATC operation
+IF ATCStage && !ZeroSpeed_I THEN
+  FaultMsg_W = SPINDLE_FAULT_MSG_C,
+  SET ShowFaultStage,
+  SET OtherFault_M,
+  RST ATCStage
 
 IF !ATC_Z_Zero_Release_I THEN
   FaultMsg_W = ATC_Spindle_Not_Parked_C,
