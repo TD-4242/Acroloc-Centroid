@@ -1,0 +1,36 @@
+;------------------------------------------------------------------------------
+; Filename: mfunc3.mac
+; Description: Start Spindle CW
+; Notes: Displays message to select auto spindle if not selected
+; Requires: CNC12
+; Revision Date: 19 Jul 2023
+; Please see TB300 or the following link for tips on writing custom macros.
+; https://www.centroidcnc.com/centroid_diy/downloads/acorn_documentation/centroid_cnc_macro_programming.pdf
+;------------------------------------------------------------------------------
+; Parameters:
+;
+; System Variables:
+;
+; PLC Variables:
+; SpindleAutoManualLED		IS OUT1058	(#61058)
+;
+; User Variables:
+; #140 = Time to display Message
+;
+;------------------------------------------------------------------------------
+IF #4201 || #4202 THEN GOTO 1000 ;Skip macro if graphing or searching
+
+N100
+
+M95 /2                           ;Turn off CCW
+M94 /1                           ;Turn on CW
+
+IF #61058 THEN GOTO 1000         ;skip the check if AutoSpindle is on
+G4 P.1
+#140 = 1.5 
+N200
+IF !#61058 THEN M225 #140 "Please Select Auto Spindle To Continue!"
+G4 P.5
+IF !#61058 THEN GOTO 200
+
+N1000

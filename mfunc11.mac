@@ -1,0 +1,26 @@
+;------------------------------------------------------------------------------
+; Filename: mfunc11.mac
+; Description: Deactivate Clamp
+; Notes: Clamp_O Logic must be present in PLC.
+; Requires: CNC12
+; Revision Date: 19 JUL 2023
+; Please see TB300 or the following link for tips on writing custom macros.
+; https://www.centroidcnc.com/centroid_diy/downloads/acorn_documentation/centroid_cnc_macro_programming.pdf
+;------------------------------------------------------------------------------
+; Parameters:
+;
+; System Variables:
+;
+; PLC Variables:
+; Clamp_O		IS OUT12 (#60012)
+;
+; User Variables:
+;
+;------------------------------------------------------------------------------
+IF #4201 || #4202 THEN GOTO 1000 ;Skip macro if graphing or searching
+
+N100                             ;Insert your code between N100 and N1000  
+
+M95 /4                           ;Turn off clamp
+
+N1000                            ;End of Macro
