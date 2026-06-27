@@ -40,22 +40,24 @@ historical convention in this repo's documentation.
 
 ## Worked example
 
-From `Centroid-Acroloc-ALLIN1DC.src`, line 202:
+From `Centroid-Acroloc-ALLIN1DC.src`, line 200:
 
 ```
-ATC_Lock_Released_C             IS 45546;(2+256*174) Tool Carousel locked.
+ATC_Spindle_Not_Parked_C        IS 44034;(2+256*172) Spindle not parked.  Z Axis not tool change position.
 ```
 
-The comment `(2+256*174)` decodes as: **type = 2** (Asynchronous), **msgNumber = 174**
-(entry 174 in `plcmsg.txt`). The expected integer value is `2 + 256×174 = 44546`.
+The comment `(2+256*172)` decodes as: **type = 2** (Asynchronous), **msgNumber = 172**
+(entry 172 in `plcmsg.txt`). Compute the value:
 
-**Caution:** the actual coded value in the source is `45546`, which is 1000 more than
-`44546`. This is a typo in the constant definition. The comment `(2+256*174)` is the
-authoritative record of what was intended; the value `45546` will not decode to a valid
-plcmsg.txt entry and the message will not display. Future maintainers should correct
-this to `44546` or confirm the intended message number.
+```
+2 + 256 × 172 = 2 + 44032 = 44034
+```
 
-Neighbouring constants from the same definition block (lines 199–202) for comparison:
+which exactly matches the coded value `44034`. When type=2 the message displays as an
+asynchronous (non-halting) notice; for a synchronous (job-halting) message the type digit
+would be `1` instead.
+
+Neighbouring constants from the same definition block (lines 200–202):
 
 ```
 ATC_Spindle_Not_Parked_C  IS 44034;(2+256*172) Spindle not parked.  Z Axis not tool change position.
@@ -63,7 +65,18 @@ ATC_Lock_Not_Released_C   IS 44290;(2+256*173) Tool Carousel not locked.
 ATC_Lock_Released_C       IS 45546;(2+256*174) Tool Carousel locked.
 ```
 
-Verify: `2+256*172=44034` ✓, `2+256*173=44290` ✓, `2+256*174=44546` ≠ 45546.
+Verify: `2+256*172=44034` ✓, `2+256*173=44290` ✓, `2+256*174=44546` — but the third
+constant is coded as `45546`, not `44546`. See the gotcha below.
+
+### ⚠️ Gotcha: verify the coded value matches the arithmetic in the comment
+
+Line 202, `ATC_Lock_Released_C IS 45546;(2+256*174)`, is a real-world example of a
+discrepancy. The comment says `(2+256*174)`, which evaluates to `44546`, but the coded
+value is `45546` — `1000` too high (a transposed-digit typo). The comment is the
+authoritative record of intent; the literal `45546` will not decode to a valid
+plcmsg.txt entry, so this message will not display. Always sanity-check the literal
+against the comment's arithmetic. Future maintainers should correct line 202 to
+`44546` or confirm the intended message number.
 
 ---
 
@@ -96,8 +109,10 @@ Example from `docs/official/_ALLIN1DC/_basic/cncm/plcmsg.txt` (lines 1–3, 21, 
 ```
 
 Custom messages (like the Acroloc ATC messages at entries 172–174) must be **appended**
-to the project's `plcmsg.txt`. Do not renumber existing entries — the standard entries
-1–168 are used by every Centroid ALLIN1DC build.
+to the project's `plcmsg.txt`. Do not renumber existing entries. The stock entries are
+reserved by Centroid (in `docs/official/_ALLIN1DC/_basic/cncm/plcmsg.txt` the highest is
+entry 168); before adding custom entries, verify the highest-numbered stock entry in your
+own `plcmsg.txt` and number new entries above it.
 
 ---
 
