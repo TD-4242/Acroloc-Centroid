@@ -55,27 +55,27 @@ Includes ATC carousel position tracking and all M94/M95 trigger bits.
 | SV_SYS_MACRO | I32. Setting to a non-zero value while CNC is at main menu causes CNC software to load and run `plcmacroN.mac` (e.g. `\cncm\system\plcmacro3.mac`). Can be set negative. | manual |
 | SV_M94_M95_1 | M. M94/M95 bit 1. Conventionally mapped to M3 (Spindle CW). Set by M94 /1, reset by M95 /1 from G-code. | manual |
 | SV_M94_M95_2 | M. M94/M95 bit 2. Conventionally mapped to M4 (Spindle CCW). | manual |
-| SV_M94_M95_3 | M. M94/M95 bit 3. Conventionally mapped to M5 (Spindle Stop). | manual |
-| SV_M94_M95_4 | M. M94/M95 bit 4. Conventionally mapped to M6 (Tool Change). | manual |
-| SV_M94_M95_5 | M. M94/M95 bit 5. Conventionally mapped to M7 (Mist Coolant). | manual |
-| SV_M94_M95_6 | M. M94/M95 bit 6. Conventionally mapped to M8 (Flood Coolant). | manual |
-| SV_M94_M95_7 | M. M94/M95 bit 7. Conventionally mapped to M9 (Coolant Off). | manual |
-| SV_M94_M95_8 | M. M94/M95 bit 8. Conventionally mapped to M10 (Clamp On) or custom M-code. | manual |
-| SV_M94_M95_9 | M. M94/M95 bit 9. Custom M-code trigger bit. | manual |
-| SV_M94_M95_10 | M. M94/M95 bit 10. Custom M-code trigger bit. | manual |
-| SV_M94_M95_11 | M. M94/M95 bit 11. Custom M-code trigger bit. | manual |
-| SV_M94_M95_12 | M. M94/M95 bit 12. Custom M-code trigger bit. | manual |
-| SV_M94_M95_13 | M. M94/M95 bit 13. Custom M-code trigger bit. | manual |
-| SV_M94_M95_14 | M. M94/M95 bit 14. Custom M-code trigger bit. | manual |
-| SV_M94_M95_15 | M. M94/M95 bit 15. Custom M-code trigger bit. | manual |
-| SV_M94_M95_16 | M. M94/M95 bit 16. Custom M-code trigger bit. | manual |
-| SV_M94_M95_18 | M. M94/M95 bit 18. Custom M-code trigger bit. | manual |
-| SV_M94_M95_19 | M. M94/M95 bit 19. Custom M-code trigger bit. | manual |
-| SV_M94_M95_32 | M. M94/M95 bit 32. Custom M-code trigger bit. | manual |
-| SV_M94_M95_33 | M. M94/M95 bit 33. Custom M-code trigger bit. | manual |
-| SV_M94_M95_40 | M. M94/M95 bit 40. Custom M-code trigger bit. | manual |
-| SV_M94_M95_80 | M. M94/M95 bit 80. Custom M-code trigger bit. | manual |
-| SV_M94_M95_81 | M. M94/M95 bit 81. Custom M-code trigger bit. | manual |
+| SV_M94_M95_3 | M. M94/M95 bit 3. Mapped to M8 (Flood Coolant On) — `M8_SV IS SV_M94_M95_3` (src line 1037). | manual |
+| SV_M94_M95_4 | M. M94/M95 bit 4. Mapped to M10 (Clamp On) — `M10_SV IS SV_M94_M95_4` (src line 1038). | manual |
+| SV_M94_M95_5 | M. M94/M95 bit 5. Mapped to M7 (Mist Coolant) — `M7_SV IS SV_M94_M95_5` (src line 1039). | manual |
+| SV_M94_M95_6 | M. M94/M95 bit 6. Unassigned/reserved — blank in manual and not used in this installation (src line 1040). | manual |
+| SV_M94_M95_7 | M. M94/M95 bit 7. Unassigned/reserved — blank in manual and not used in this installation (src line 1041). | manual |
+| SV_M94_M95_8 | M. M94/M95 bit 8. M6 Tool Change trigger — Acroloc-custom assignment (`M6_SV IS SV_M94_M95_8` at src line 1036); the standard manual leaves bit 8 blank. | from code usage |
+| SV_M94_M95_9 | M. M94/M95 bit 9. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_10 | M. M94/M95 bit 10. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_11 | M. M94/M95 bit 11. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_12 | M. M94/M95 bit 12. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_13 | M. M94/M95 bit 13. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_14 | M. M94/M95 bit 14. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_15 | M. M94/M95 bit 15. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_16 | M. M94/M95 bit 16. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_18 | M. M94/M95 bit 18. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_19 | M. M94/M95 bit 19. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_32 | M. M94/M95 bit 32. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_33 | M. M94/M95 bit 33. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_40 | M. M94/M95 bit 40. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_80 | M. M94/M95 bit 80. Custom M-code trigger bit. | from code usage |
+| SV_M94_M95_81 | M. M94/M95 bit 81. Custom M-code trigger bit. | from code usage |
 
 ---
 
@@ -569,15 +569,16 @@ Each skin event variable is type M. Skinning applications (e.g. Centroid Virtual
 Panel — VCP) SET or RST these via the CNC Skinning API. The PLC program reads them to
 detect operator input from virtual panels.
 
-Convention: SV_SKIN_EVENT_1–50 map to the fifty keys on a hardware jog panel
-(SV_SKIN_EVENT_1 = Spindle+, continuing left-to-right/top-to-bottom, SV_SKIN_EVENT_50 =
-CYCLE_START).
+Convention (VCP, not Appendix D): SV_SKIN_EVENT_1–50 map to the fifty keys on a hardware
+jog panel by VCP convention (SV_SKIN_EVENT_1 = Spindle+, left-to-right/top-to-bottom,
+SV_SKIN_EVENT_50 = CYCLE_START). This key-to-event-number mapping is a VCP application
+convention, not documented in Appendix D of the PLC manual.
 
 All 128 entries (SV_SKIN_EVENT_1 through SV_SKIN_EVENT_128) are present in the source.
 
 | SV_ name | Meaning | Source |
 |---|---|---|
-| SV_SKIN_EVENT_1 | M. Skinning event bit 1. By convention: Spindle+ key on virtual jog panel. | manual |
+| SV_SKIN_EVENT_1 | M. Skinning event bit 1. By VCP convention: Spindle+ key on virtual jog panel (VCP convention, not Appendix D). | from code usage |
 | SV_SKIN_EVENT_2 | M. Skinning event bit 2. | manual |
 | SV_SKIN_EVENT_3 | M. Skinning event bit 3. | manual |
 | SV_SKIN_EVENT_4 | M. Skinning event bit 4. | manual |
@@ -626,7 +627,7 @@ All 128 entries (SV_SKIN_EVENT_1 through SV_SKIN_EVENT_128) are present in the s
 | SV_SKIN_EVENT_47 | M. Skinning event bit 47. | manual |
 | SV_SKIN_EVENT_48 | M. Skinning event bit 48. | manual |
 | SV_SKIN_EVENT_49 | M. Skinning event bit 49. | manual |
-| SV_SKIN_EVENT_50 | M. Skinning event bit 50. By convention: CYCLE_START key on virtual jog panel. | manual |
+| SV_SKIN_EVENT_50 | M. Skinning event bit 50. By VCP convention: CYCLE_START key on virtual jog panel (VCP convention, not Appendix D). | from code usage |
 | SV_SKIN_EVENT_51 | M. Skinning event bit 51. | manual |
 | SV_SKIN_EVENT_52 | M. Skinning event bit 52. | manual |
 | SV_SKIN_EVENT_53 | M. Skinning event bit 53. | manual |

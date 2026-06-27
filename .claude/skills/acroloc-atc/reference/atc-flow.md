@@ -186,12 +186,15 @@ represents the base-16 high nibble. For example:
 
 (Table from the inline comment block in `ATCStage`.)
 
-`CarouselToolID_W` accumulates during the window when any switch is high,
-then is compared to `ChangeToTool_W` only after all switches drop (i.e.,
-after `InToolSelect_M` is cleared and then `CarouselToolID_W == ChangeToTool_W`
-fires). Because the reset to 0 happens at the leading edge of the next tool's
-switches, a partial decode in one scan followed by the comparison in the same
-scan is the main timing sensitivity.
+`CarouselToolID_W` accumulates while any position switch is high (gated by
+`InToolSelect_M`). The compare `IF CarouselToolID_W == ChangeToTool_W THEN ...`
+(src line 2939) is **unconditional** — it runs every PLC scan, including
+mid-accumulation while switches are still asserted. The accumulator is zeroed
+(`CarouselToolID_W = 0`) at the leading edge of each tool's switch group (the
+first scan where any position switch asserts). A transient partial sum that
+equals the target tool ID during the accumulation window would stop the carousel
+prematurely — any edit to the accumulator lines (`+1 / +2 / +4 / +8 / +10`)
+must account for this timing sensitivity.
 
 ---
 
