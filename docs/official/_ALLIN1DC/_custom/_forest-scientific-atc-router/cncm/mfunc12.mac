@@ -1,0 +1,8 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; File:  cnc10.m12
+;        Rotary Indexer M-code
+;
+m94/4     ; turn on index signal 
+m101/31   ; Wait for finish 
+m95/4     ; turn off index signal
+

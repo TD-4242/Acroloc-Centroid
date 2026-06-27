@@ -1,0 +1,13 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; File: mfunc18.mac
+; Desc: Carousel Initialization Macro
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;Skip if graphing or searching
+IF #4202 || #4201 THEN GOTO 600
+
+M94 /18                                             ;Request Carousel at Position 1 
+G4 P1
+M95 /18
+N600

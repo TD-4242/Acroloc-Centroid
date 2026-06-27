@@ -1,0 +1,18 @@
+;M10 Clamp rotary 
+
+IF #4201 || #4202 THEN GOTO 1000
+IF #50001                         ;Prevent parsing
+IF #9800 == 0 THEN M94 /88        ;Disable cfg timeout timer if configuring axis
+IF #50001                         ;Prevent parsing    
+IF #9800 == 0 THEN M224 #100 "The 4th axis is not configured for clamping.\nEnter 1 to configure for clamping.\nEnter 2 to configure the 4th axis without clamping.\nEnter 0 to exit without configuring the 4th axis.\nPress Cycle Start to continue when done"
+IF #50001                         ;Prevent parsing
+IF #9800 == 0 THEN G10 P800 R#100 ;Write to 4th axis config parm
+IF #50001                         ;Prevent parsing
+IF #9800 == 1 THEN M94 /4         ;Request clamp
+IF #50001                         ;Prevent parsing
+IF #9800 == 1 THEN G4 P1          ;Wait for clamp
+ 
+
+ 
+N1000
+

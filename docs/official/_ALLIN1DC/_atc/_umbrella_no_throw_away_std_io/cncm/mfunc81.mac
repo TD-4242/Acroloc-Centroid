@@ -1,0 +1,17 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; File: mfunc81.mac
+; Desc: Carousel Out Macro
+;
+;Inputs
+;CarouselIsOut is on INP26
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;Skip if graphing or searching
+IF #4202 || #4201 THEN GOTO 600
+
+IF #50001                        					;Prevent lookahead
+M94 /81                                             ;Request Carousel Out
+M101 /50026                                         ;Wait for carousel is out
+G4 P.5                                              ;Wait .5 sec for car debounce
+M101 /50026                                         ;Wait for carousel is out 
+N600

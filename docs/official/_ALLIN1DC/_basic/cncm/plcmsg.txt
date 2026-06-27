@@ -1,0 +1,66 @@
+1   9001 !!! PLC EXECUTION FAULT !!!
+5   9005 Axis 1 Communication In Fault
+6   9006 Axis 2 Communication In Fault
+7   9007 Axis 3 Communication In Fault
+8   9008 Axis 4 Communication In Fault
+9   9009 Axis 5 Communication In Fault
+10  9010 Axis 6 Communication In Fault
+11  9011 Axis 7 Communication In Fault
+12  9012 Axis 8 Communication In Fault
+13  9013 Axis 1 Communication Out Fault
+14  9014 Axis 2 Communication Out Fault
+15  9015 Axis 3 Communication Out Fault
+16  9016 Axis 4 Communication Out Fault
+17  9017 Axis 5 Communication Out Fault
+18  9018 Axis 6 Communication Out Fault
+19  9019 Axis 7 Communication Out Fault
+20  9020 Axis 8 Communication Out Fault
+21  2021 Axis Faults Cleared
+22  9022 PLC Communication In Fault  (Fiber 3)
+23  9023 PLC Communication Out Fault (Fiber 1)
+24  2024 PLC Faults Cleared
+25  9025 Axis1 Drive Fault Detected
+26  9026 Axis2 Drive Fault Detected
+27  9027 Axis3 Drive Fault Detected
+28  9028 Axis4 Drive Fault Detected
+29  9029 Axis5 Drive Fault Detected
+30  9030 SPINDLE FAULT!
+31  9031 Jog Panel Communication In Fault
+32  9032 Jog Panel Communication Out Fault
+34  9034 FAULT! REMOVE PROBE FROM SPINDLE!!!
+35  2035 KEYBOARD JOGGING DISABLED 
+36  9036 LUBE FAULT
+37  8037 PROBE TRIPPED WHILE JOGGING
+38  5038 SPECIFIED SPIN SPEED < MIN SPIN SPEED 
+39  9039 Software Ready Fault
+50  2050 Auto Coolant Mode
+51  2051 Manual Coolant Mode
+52  5052 Warning: Lube Low
+53  4053 Select Auto Spindle, press CYCLE START
+54  4054 Select Auto Coolant, press CYCLE START
+
+60  9060 CONFIGURATION FAULTS ARE IGNORED CYCLE ESTOP TO CLEAR MESSAGE. 
+61  9061 FOURTH AXIS NOT CONFIGURED. CYCLE ESTOP AND RUN M10 FROM MDI TO CONFIGURE
+62  9062 DOOR INTERLOCK SETTING INVALID. SET PARAMETER 85 TO 8, -8 OR 0 TO DISABLE
+63  9063 FEEDRATE OVERRIDE NOT CONFIGURED. SET PARAMETER 170 TO 5.   
+
+99  2099 Message Cleared
+100 5100 BAD MESSAGE VALUE
+
+153 9153 Mini PLC 1 Communication Fault
+154 9154 Mini PLC 2 Communication Fault
+155 9155 Mini PLC 3 Communication Fault
+156 9156 Mini PLC 4 Communication Fault
+157 9157 Mini PLC 5 Communication Fault
+158 9158 Mini PLC 6 Communication Fault
+159 9159 Mini PLC 7 Communication Fault
+160 9160 Mini PLC 8 Communication Fault
+161 5161 Unconfigured Mini PLC 1 Found
+162 5162 Unconfigured Mini PLC 2 Found
+163 5163 Unconfigured Mini PLC 3 Found
+164 5164 Unconfigured Mini PLC 4 Found
+165 5165 Unconfigured Mini PLC 5 Found
+166 5166 Unconfigured Mini PLC 6 Found
+167 5167 Unconfigured Mini PLC 7 Found
+168 5168 Unconfigured Mini PLC 8 Found
+

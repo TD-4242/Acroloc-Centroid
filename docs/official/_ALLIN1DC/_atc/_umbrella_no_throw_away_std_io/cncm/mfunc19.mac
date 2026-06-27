@@ -1,0 +1,33 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; File: mfunc19.mac
+; Desc: Spindle Orientation Macro
+;
+;Inputs
+;OrientComplete is on INP18
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;Prevent looping while in backplot or searching 
+IF #4201 || #4202 THEN GOTO 600  
+#140 = 1.5 
+N100
+IF !#61058 THEN M225 #140 "Please Select Auto Spindle To Continue!" 
+IF !#61058 THEN GOTO 100
+N200 
+  IF [#a > 5] THEN m20	;confirmed by setting #a test to 0.1. Without the  the spindle doesn't spin up again
+  #[a] = 0
+  m20             ; turn off spindle and orientation 
+  m109/2          ; disable spindle speed override
+  m3s300          ; start the spindle turning.
+  g4p.25          ; spin for 2.0 sec
+  s0
+  m108/2          ; enable spindle speed override
+  m94/19          ; Turn on M19 Request
+N300 
+  g4 p.1           
+  IF #50001       ; idiom used to halt parsing until execution is at this point 
+  #[a] = #a + .1              
+  IF [#a > 5] THEN GOTO 200   ; start over after 5.0 seconds
+  ; if no orient complete signal, continue waiting 
+  IF !#50018 THEN GOTO 300       ;if input18 xor parameter 178:orient complete bit
+  m101/50018      ; Verify acknowledge on INP18
+N600      

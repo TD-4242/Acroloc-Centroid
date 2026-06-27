@@ -1,0 +1,50 @@
+1   9001 PLC Execution Fault
+5   9005 Axis 1 Communication In Fault
+6   9006 Axis 2 Communication In Fault
+7   9007 Axis 3 Communication In Fault
+8   9008 Axis 4 Communication In Fault
+9   9009 Axis 5 Communication In Fault
+10  9010 Axis 6 Communication In Fault
+11  9011 Axis 7 Communication In Fault
+12  9012 Axis 8 Communication In Fault
+13  9013 Axis 1 Communication Out Fault
+14  9014 Axis 2 Communication Out Fault
+15  9015 Axis 3 Communication Out Fault
+16  9016 Axis 4 Communication Out Fault
+17  9017 Axis 5 Communication Out Fault
+18  9018 Axis 6 Communication Out Fault
+19  9019 Axis 7 Communication Out Fault
+20  9020 Axis 8 Communication Out Fault
+21  9021 Axis Faults Cleared
+22  9022 PLC Communication In Fault  (Fiber 3)
+23  9023 PLC Communication Out Fault (Fiber 1)
+24  9024 PLC Faults Cleared
+30  9030 SPINDLE FAULT!
+32  9032 SERVO DRIVE FAULT!
+34  9034 FAULT! REMOVE PROBE FROM SPINDLE!!!
+35  9035 KEYBOARD JOGGING DISABLED 
+36  9036 LUBE FAULT
+37  9037 PROBE TRIPPED WHILE JOGGING
+38  9038 SPECIFIED SPIN SPEED < MIN SPIN SPEED 
+39  9039 Software Ready Fault
+50  9050 Auto Coolant Mode
+51  9051 Manual Coolant Mode
+60  9060 Mini PLC 1 Communication Fault
+61  9061 Mini PLC 2 Communication Fault
+62  9062 Mini PLC 3 Communication Fault
+63  9063 Mini PLC 4 Communication Fault
+64  9064 Mini PLC 5 Communication Fault
+65  9065 Mini PLC 6 Communication Fault
+66  9066 Mini PLC 7 Communication Fault
+67  9067 Mini PLC 8 Communication Fault
+68  9068 Mini PLC 9 Communication Fault
+69  9069 Mini PLC 10 Communication Fault
+70  9071 Mini PLC 11 Communication Fault
+71  9072 Mini PLC 12 Communication Fault
+72  9073 Mini PLC 13 Communication Fault
+73  9074 Mini PLC 14 Communication Fault
+74  9075 Mini PLC 15 Communication Fault
+75  9076 Mini PLC 16 Communication Fault
+99  9099 Message Cleared
+100 9100 BAD MESSAGE VALUE
+142 9142 LOW AIR PRESSURE FAULT

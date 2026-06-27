@@ -1,0 +1,16 @@
+;-------
+; M14 macro
+; Displays message to select auto spindle mode if it is not set
+;-------
+
+IF #4202 || #4201 THEN GOTO 200
+M95 /11
+m94 /12
+IF #61058 THEN GOTO 200 ;skip the check if AutoSpindle is on
+#140 = 1.5
+G4 P.1
+N100
+IF !#61058 THEN M225 #140 "Please Select Auto Spindle To Continue!"  ;61091 = JPO35/SpindleAutoManualLED
+G4 P.5
+IF !#61058 THEN GOTO 100
+N200

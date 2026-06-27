@@ -1,0 +1,95 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; File: mfunc6.mac
+; Desc: Tool Change Macro
+;
+;Embedded macros
+;M15 - Tool unclamp
+;M19 - Orient
+;M80 - Move Carousel In
+;M81 - Move Carousel Out
+;
+;Inputs
+;ZeroSpeed is on INP12
+;OrientComplete is on INP17
+;ToolClamped is on INP21
+;ToolUnclamped is on INP22
+;CarouselIsIn is on INP32
+;CarouselIsOut is on INP31
+;
+;Memory
+;AtPutbackLocation_M is MEM7
+;ToolChangeComplete_M is MEM8
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;Skip if graphing or searching
+IF #4202 || #4201 THEN GOTO 600
+
+IF #50001                        					;Prevent lookahead
+M109 /1/2											;Disable overrides
+M5                                                  ;Command 0 speed
+M9                                                  ;Turn off coolant
+M107                                                ;Send tool number 
+G4 P1
+M94 /8                                              ;Request tool change
+M107                                                ;Send tool number  
+M101 /50012                                         ;Wait for 0 speed
+M94 /19                                             ;Orient spindle
+IF #50001                        					;Prevent lookahead
+M3 S200                                             ;Command slow speed 
+G4P1    
+M101 /50017                                         ;Wait for tool to orient
+IF #50001                        					;Prevent lookahead
+IF #96004 == 0 THEN GOTO 100                        ;Skip if no tool to putback
+IF #50001                        					;Prevent lookahead
+G30 G91 Z0                                          ;Move Z to tool change position
+G90
+IF #50001                        					;Prevent lookahead
+M101 /50017                                         ;Confirm spindle is oriented
+M101 /70007                                         ;Wait for carousel at putback location
+G4 P.25                                             ;Wait for 250 milli   
+M101 /50017                                         ;Confirm spindle is oriented
+M80                                                 ;Request carousel in                                            
+M101 /50032                                         ;Wait for carousel is in
+IF #50001                        					;Prevent lookahead
+#101 = #96001                                       ;Carousel Position
+#102 = #96002                                       ;Req  Position
+#103 = #96004                                       ;putlocation
+#104 = #4120                                        ;tool num 4120
+#105 = #96006                                       ;tool num (sv_tool) 
+;IF [#101 != #103] || [#102 != #105] || [#101 != [#102 - 1]] THEN M225 #100 "Carousel Position = %.0f, Req Pos = %.0f, putback loc = %.0f,\n tool num = %.0f, svtoolnum = %.0f" #101 #102 #103 #104 #105
+M94 /41                                             ;Report tool info
+IF #50001                        					;Prevent lookahead
+
+M15                                                 ;Unclamp tool
+M101 /50022                                         ;Wait for tool unclamped
+    
+N100 
+
+IF #50001                        					;Prevent lookahead
+G53 Z0                                              ;Raise head to clearance
+IF #50001                        					;Prevent lookahead
+M94 /40                                             ;Set PutBackComplete 
+IF #50001                        					;Prevent lookahead
+M101 /70014                                         ;Wait for AtRequestedToolLocation_M
+IF #50001
+M95 /40                         					;Prevent lookahead
+IF !#50022 THEN M101 /50017                         ;Confirm spindle is oriented if not unclamped
+M80                                                 ;Request carousel in                                            
+M101 /50032                                         ;Wait for carousel is in
+M15                                                 ;Unclamp tool
+M101 /50022                                         ;Wait for tool unclamped
+G30 G91 Z0                                          ;Move Z to tool change position
+G90
+IF #50001                        					;Prevent lookahead
+M16                                                 ;Clamp tool
+IF #50001                        					;Prevent lookahead
+M5													;Turn off spindle
+IF #50001                        					;Prevent lookahead
+M101 /50021                                         ;Wait for tool clamped
+M81                                                 ;Move carousel out away from spindle
+M101 /50031                                         ;Wait for carousel is out
+M101 /70008                                         ;Wait for toolchangecomplete_m
+M95 /8                                              ;Reset toolchange request
+
+M108 /1/2
+N600

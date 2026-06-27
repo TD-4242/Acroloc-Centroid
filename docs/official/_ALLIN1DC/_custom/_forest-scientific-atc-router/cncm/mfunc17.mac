@@ -1,0 +1,6 @@
+:CNC7.M17 
+:DRAW BAR RELEASE 
+M94/12 
+G4 P1 
+m95/12
+   

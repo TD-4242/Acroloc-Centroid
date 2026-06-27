@@ -1,0 +1,5 @@
+; Spindle Down M-code
+
+M94/8
+G4 P2
+M95/8

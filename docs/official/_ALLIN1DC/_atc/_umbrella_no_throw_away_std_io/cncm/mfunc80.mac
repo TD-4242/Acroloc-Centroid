@@ -1,0 +1,17 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; File: mfunc80.mac
+; Desc: Carousel In Macro
+;
+;Inputs
+;CarouselIsIn is on INP27
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;Skip if graphing or searching
+IF #4202 || #4201 THEN GOTO 600
+
+IF #50001                        					;Prevent lookahead
+M94 /80                                             ;Request Carousel in
+M101 /50027                                         ;Wait for carousel is in
+G4 P.5                                              ;Wait .5 sec for car debounce
+M101 /50027                                         ;Wait for carousel is in 
+N600

@@ -1,0 +1,20 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; File: mfunc15.mac
+; Desc: Tool Unclamp Macro
+;
+;Inputs
+;ZeroSpeed is on INP17
+;ToolUnclamped is on INP20
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;Skip if graphing or searching
+IF #4202 || #4201 THEN GOTO 600
+
+IF #50001                        					;Prevent lookahead
+G4 P1
+M101 /50017                                         ;Wait for spindle to stop     
+M94 /15                                             ;Request Tool unclamp 
+M101 /50020                                         ;Wait for tool to unclamp
+G4 P.5
+M5
+N600

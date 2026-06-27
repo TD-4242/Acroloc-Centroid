@@ -1,0 +1,10 @@
+MEM8
+"Tool Change Complete"
+MEM19
+"Doing Putback..."
+MEM3
+"Starting Tool Change..."
+MEM10
+"Moving Carousel In..."
+MEM11
+"Moving Carousel Out..."

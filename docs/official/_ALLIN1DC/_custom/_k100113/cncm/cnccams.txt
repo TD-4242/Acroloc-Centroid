@@ -1,0 +1,6 @@
+Horizontal:Horizontal Machine Mode
+ cd c:\cncm\vertical
+ copy c:\cncm\*.xml .
+ cd c:\cncm
+ copy .\horizontal\* .
+ :end

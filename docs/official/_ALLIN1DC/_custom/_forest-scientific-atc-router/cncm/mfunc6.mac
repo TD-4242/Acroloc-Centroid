@@ -1,0 +1,124 @@
+IF #50001 
+; File: cnc7.m6    combined drop off and pick 
+: 
+if [#4201 || #4202] then goto 100  ; skip tool change 
+:                                  ; if running search or 
+:                                  ; backplot graph 
+: 
+if [#4120 == #150] then goto 100   ; skip if tool is :already in spindle 
+: 
+;   
+#[a] = #4001            ;save mode rapid or linear 
+#[b] = #4003            ;save mode positioning 
+#[c] = #4109            ;save feedrate
+#[d] = #4006            ;save units of measure
+G20                     ;use imperial units
+: 
+M25                     ;HOME Z 
+; 
+; 
+;************************************************************* 
+#101 = #70015
+IF [[#101] == 0] THEN M94/13
+;                        TURN AUTO SPINDLE MODE ON 
+;************************************************************* 
+; 
+; 
+;************************************************************* 
+;M16              ;PROGRAM PAUSE!!! 
+;                        SET AUX 2 TO REST POSITION (LED OFF) 
+;************************************************************* 
+; 
+; 
+;************************************************************* 
+;M19             ;PROGRAM PAUSE!!! 
+;                        SET AUX 3 TO REST POSITION (LED OFF) 
+;************************************************************* 
+; 
+; 
+M5                      ;TURN OFF SPINDLE 
+G4 P.5                    ; 
+;M101/9                 ;WAIT FOR SPINDLE TO STOP 
+G49                     ;CANCEL OFFSETS 
+;M19                     ;TOOLRACK IN HOME POSITION 
+G90 
+:
+G00 G91
+Y[110-#5022]       ;MOVE TO Y POSITION
+G90
+:
+:*************************************************** 
+:DROP OFF TOOL SECTION 
+:*************************************************** 
+: 
+M98 P#150               ;DROP OFF TOOL IN SPINDLE 
+;;;;;MOVE TO TOOL CHANGE POSITION ON X 
+: 
+: 
+G00 G91 
+Y[110-#5022]       ;MOVE TO Y POSITION
+Z[-6.00-#5023]        ;RAPID Z TO POSITION ABOVE RACK 
+M15
+G4 P2
+G01 G91 F200
+Z[-10.065 - #5023]         ;SLOWER MOVE TO DROP POSITION 
+: 
+;M20                     ;TOOLRACK EXTENDED
+Y[115.2192-#5022]            ;MOVE TO Y POSITION 
+G4 P1                   ;WAIT FOR LOCATION 
+M17                     ;RELEASE DRAWBAR 
+G4 P1                   ;PAUSE FOR TOOL RELEASE 
+:
+G00 G91 
+Z[-6.00-#5023]         ;RELEASE MOVE ABOVE TOOLRACK 
+G90 
+: 
+:M25                     ;HOME Z 
+M18                     ;RETRACT DRAWBAR 
+: 
+:#150 = #4120 GOTO 99 
+: 
+:*************************************************** 
+:;PICK UP TOOL SECTION 
+:*************************************************** 
+: 
+M98 P#4120 ;POSITION X to CHANGE POSITION 
+;;;;;;MOVE X TO CHANGE POSITION 
+: 
+;M20                     ;EXTEND TOOLRACK 
+: 
+G00 G91 
+Z[-6.00-#5023] ;RAPID Z TO POSITION ABOVE RACK 
+: 
+M17                     ;RELEASE DRAWBAR 
+;G04 P1                  ;PAUSE TO CLEAN TOOL HOLDER 
+: 
+G01 G91 F200 
+Z[-9.5-#5023]        ;MOVE DOWN TOOL HOLDER UNDER CONTROL 
+: 
+G01 G91 F75 
+Z[-10.065 -#5023]        ;SLOWER MOVE TO DROP POSITION 
+G4 P1 
+M18                     ;RETRACT DRAWBAR 
+G4 P1                   ;PAUSE FOR TOOL CLAMPING 
+;M19                     ;RETRACT TOOLRACK 
+Y[110-#5022]       ;MOVE TO Y POSITION
+G90 
+: 
+;M16                     ;DUST HOOD UP
+M25                     ;HOME Z
+: 
+: 
+: 
+;G00 G91 
+;X[25.00-#5021] Y[100-#5022]       ;RAPID XY TO CLEARANCE POSITION 
+G90 
+G43H#4120              ;TOOL HEIGHT OFFSET 
+:M3 S21000              ;TURN ON SPINDLE 
+:G4P2                   ;DELAY 2 SECONDS 
+: 
+N99 
+#150 = #4120            ;SAVE NUMBER OF TOOL IN SPINDLE 
+M107 
+G#A G#B F#C G#D         ;RESTORE MODES
+N100          

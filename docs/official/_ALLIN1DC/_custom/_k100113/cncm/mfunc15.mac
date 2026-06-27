@@ -1,0 +1,8 @@
+;-------
+; M15 macro
+; Shuts off second spindle
+;-------
+
+IF #4202 || #4201 THEN GOTO 200
+M95 /11/12
+N200

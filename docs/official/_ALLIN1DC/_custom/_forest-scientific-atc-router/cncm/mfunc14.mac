@@ -1,0 +1,5 @@
+; Spindle Up M-code
+
+M94/9
+G4 P2
+M95/9

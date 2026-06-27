@@ -1,0 +1,59 @@
+2  9002 PLC_EXECUTOR_FLT_MSG
+3  4003 Axis Faults Cleared  
+4  4004 KEYBOARD JOGGING DISABLED                   
+5  9005 Axis 1 Communication In Fault        
+6  9006 Axis 2 Communication In Fault       
+7  9007 Axis 3 Communication In Fault       
+8  9008 Axis 4 Communication In Fault       
+9  9009 Axis 5 Communication In Fault       
+10  9010 Axis 6 Communication In Fault       
+11  9011 Axis 7 Communication In Fault       
+12  9012 Axis 8 Communication In Fault       
+14  9014 Axis 1 Communication Out Fault
+15  9015 Axis 2 Communication Out Fault
+16  9016 Axis 3 Communication Out Fault
+17  9017 Axis 4 Communication Out Fault
+18  9018 Axis 5 Communication Out Fault
+19  9019 Axis 6 Communication Out Fault
+20  9020 Axis 7 Communication Out Fault
+21  9021 Axis 8 Communication Out Fault                                                         
+                                                                       
+23  9023 PLC Communication In Fault  (Fiber 3)
+24  9024 PLC Communication Out Fault (Fiber 1)
+25  9025 PLC Faults Cleared                   
+26  9026 LUBE FAULT!!!
+27  8027 PROBE TRIPPED WHILE JOGGING   
+28  9028 SPINDLE FAULT!        
+29  9029 Jog Panel Communication In Fault
+30  9030 Jog Panel Communication Out Fault
+31  9031 FAULT! REMOVE PROBE FROM SPINDLE!!!
+32 4032 Reset Cleared 
+33 9033 Reset Initiated, Press Reset to Clear
+34 4034 Auto Coolant Selected
+35 4035 Manual Coolant Selected
+36 4036 Warning!! Lube Low!!
+37 4037 Please Select Auto Spindle To Continue
+38 4038 Please Select Auto Coolant To Continue           
+39 9039 Software Exited, Cycle E-Stop/Reset to Continue
+40 5040 SPECIFIED SPIN SPEED < MIN SPIN SPEED
+41 4041 RAPID_OVERRIDE_ENABLED 
+42 4042 RAPID_OVERRIDE_DISABLED 
+
+99  2099 Message Cleared
+100 5100 BAD MESSAGE VALUE
+161 5161 Unconfigured Mini PLC 1 Found
+162 5162 Unconfigured Mini PLC 2 Found
+163 5163 Unconfigured Mini PLC 3 Found
+164 5164 Unconfigured Mini PLC 4 Found
+165 5165 Unconfigured Mini PLC 5 Found
+166 5166 Unconfigured Mini PLC 6 Found
+167 5167 Unconfigured Mini PLC 7 Found
+168 5168 Unconfigured Mini PLC 8 Found
+169 5169 Unconfigured Mini PLC 9 Found
+170 5170 Unconfigured Mini PLC 10 Found
+171 5171 Unconfigured Mini PLC 11 Found
+172 5172 Unconfigured Mini PLC 12 Found
+173 5173 Unconfigured Mini PLC 13 Found
+174 5174 Unconfigured Mini PLC 14 Found
+175 5175 Unconfigured Mini PLC 15 Found
+176 5176 Unconfigured Mini PLC 16 Found
