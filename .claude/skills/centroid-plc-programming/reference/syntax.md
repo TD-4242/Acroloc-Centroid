@@ -15,8 +15,8 @@ The PLC program is a **flat, sequential list of stages** (STG-numbered). On ever
 - **Regular stages** (`STG` type) execute at **50 scans per second**.
 - **Fast stages** (`FSTG` type) and code placed outside any stage execute at **1000 scans per second**.
 - On each scan, a snapshot of hardware inputs is taken at the start; reads of the same input return the same value throughout that scan.
-- **Memory bits, Words, One-Shots, System Variable bits, and Stage bits update live** during the scan — a later line in the same scan sees the new value written by an earlier line.
-- Timers and hardware I/O images are snapshotted; their values do not change mid-scan.
+- **Memory bits, Words, One-Shots, System Variable bits, Stage bits, and the output image update live** during the scan — a later line in the same scan sees the new value written by an earlier line.
+- Only the **hardware input snapshot and Timer values are frozen** for the full scan: they hold the same value at the start of the pass as at the end. The output image is **not** frozen — it can be changed on any line, and a later line that reads an output sees the value an earlier line in the same scan wrote.
 
 > Manual ref: `scratchpad/plc-manual.txt` lines 504–517
 
@@ -140,11 +140,11 @@ Apply to **Word-type variables, SV Words, and Timers** only. Bit-type variables 
 
 | Symbol | Meaning | Confirmed example |
 |--------|---------|-------------------|
-| `==` | Equal to | `IF SV_PLC_FAULT_STATUS == 0` (allin1dc-basic-v6.src, line 1047) |
+| `==` | Equal to | `IF SV_PC_SOFTWARE_READY && (SV_PLC_FAULT_STATUS == 0)` (allin1dc-basic-v6.src, line 1047) |
 | `!=` | Not equal to | `IF SV_PLC_FAULT_STATUS != 0` (allin1dc-basic-v6.src, line 1035) |
 | `>` | Greater than | `IF W1 > W2 THEN (OUT1)` (plc-manual.txt, line 1145) |
 | `<` | Less than | `IF SV_PLC_SPINDLE_KNOB < 1  THEN SV_PLC_SPINDLE_KNOB = 1` (allin1dc-basic-v6.src, line 1859) |
-| `>=` | Greater than or equal | `IF ( p171_W >= 10) THEN LubeOut_W = 2` (plc-manual.txt, line 973) |
+| `>=` | Greater than or equal | `IF ( p171_W <= 0) \|\| ( p171_W >= 10) THEN LubeOut_W = 2` (plc-manual.txt, line 973) |
 | `<=` | Less than or equal | `IF ( p171_W <= 0) \|\| ( p171_W >= 10) THEN LubeOut_W = 2` (plc-manual.txt, line 973) |
 
 Note: Using `==` or `!=` with Floating-point Words may fail due to rounding error; prefer `>=`/`<=` for floating-point comparisons.
@@ -152,7 +152,7 @@ Note: Using `==` or `!=` with Floating-point Words may fail due to rounding erro
 Using a Timer with relational operators checks the **current elapsed count in ms**, not whether it has expired:
 
 ```
-IF T1 > 4000 THEN SET OUT6                  ; plc-manual.txt, line 763 — has 4 seconds elapsed?
+IF T1 > 4000 THEN SET OUT 6                 ; plc-manual.txt, line 763 — has 4 seconds elapsed?
 ```
 
 ### Arithmetic Operators
@@ -163,15 +163,11 @@ Apply to **Word types only** (integer Words, floating-point Words, timers). Eval
 |--------|---------|-------------------|
 | `*` | Multiply | `IF 1==1 THEN W1 = 15*2` (plc-manual.txt, line 1117) |
 | `/` | Divide | `IF 1==1 THEN W2 = 128 / 2` (plc-manual.txt, line 1120) |
-| `+` | Add | `LubeAccumTime_W = LubeAccumTime_W + LubeM_T` (allin1dc-basic-v6.src, line 1246) |
+| `+` | Add | `IF StopRunningPD THEN LubeAccumTime_W = LubeAccumTime_W + LubeM_T, RST LubeM_T` (allin1dc-basic-v6.src, line 1246) |
 | `-` | Subtract | `KbOverride_W = KbOverride_W - 1` (allin1dc-basic-v6.src, line 1601) |
 | `%` | Modulus (remainder) | `IF 1==1 THEN W3 = 15 % 2` (plc-manual.txt, line 1122) |
 
-Assigning a floating-point result to an integer Word **truncates** the decimal portion (not rounded):
-
-```
-IF 1==1 THEN W1 = 2.5*1                     ; plc-manual.txt, line 1114 — W1 is set to 2, not 3
-```
+Assigning a floating-point result to an integer Word **truncates** the decimal portion (not rounded). The manual states this in prose (plc-manual.txt, line 1114): the line `IF 1==1 THEN W1 = 2.5*1` will result in W1 being set to 2.
 
 ### Assignment Operator
 
@@ -215,7 +211,7 @@ A bare Word **cannot** appear as a condition. `IF W1 THEN SET OUT1` is a compile
 Comments begin with `;` and extend to the **end of the line**. There is no block comment syntax.
 
 ```
-EStopOk       IS INP11                      ; plc-manual.txt, line 727
+EStopOk                       IS INP11         ; allin1dc-basic-v6.src, line 178
 ```
 
 ### Stage header convention
