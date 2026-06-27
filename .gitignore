@@ -1,0 +1,5 @@
+# Subagent-driven-development scratch (ledger, briefs, review packages)
+.superpowers/
+
+# Local extraction scratch for skill authoring (e.g. pdftotext output)
+scratchpad/
