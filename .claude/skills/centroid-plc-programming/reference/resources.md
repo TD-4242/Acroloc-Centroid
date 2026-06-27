@@ -42,7 +42,7 @@ Name IS Keyword n
 Ax1_MinusLimitOk              IS INP1          ; allin1dc-basic-v6.src, line 168
 EStopOk                       IS INP11         ; allin1dc-basic-v6.src, line 178
 Lube                          IS OUT2          ; allin1dc-basic-v6.src, line 317
-SpinAutoModeLED_O             IS OUT1058       ; allin1dc-basic-v6.src, line 362
+SpinAutoModeLED               IS OUT1058       ; allin1dc-basic-v6.src, line 362
 PLCExecutorFault_M            IS MEM1          ; allin1dc-basic-v6.src, line 424
 SoftwareNotReady_M            IS MEM2          ; allin1dc-basic-v6.src, line 425
 WatchDogStage                 IS STG1          ; allin1dc-basic-v6.src, line 1001
@@ -135,7 +135,7 @@ IF #61058 THEN GOTO 1000         ;skip the check if AutoSpindle is on   ; mfunc3
 IF !#61058 THEN M225 #140 "Please Select Auto Spindle To Continue!"      ; mfunc3.mac, line 32
 ```
 
-`SpinAutoModeLED_O IS OUT1058` (defined in `Centroid-Acroloc-ALLIN1DC.src` line 414, and in `allin1dc-basic-v6.src` line 362). `60000 + 1058 = 61058`. The macro reads the output state as `#61058`.
+This output is `OUT1058` — `SpinAutoModeLED_O` in `Centroid-Acroloc-ALLIN1DC.src` line 414, and `SpinAutoModeLED` (no suffix) in `allin1dc-basic-v6.src` line 362. `60000 + 1058 = 61058`. The macro reads the output state as `#61058`.
 
 Stage status bits are also used: `mfunc6.mac` line 25 uses `M100 /93016` (wait for `#93016` to clear), where `93000 + 16 = 93016` = `ATCStage IS STG16`.
 
