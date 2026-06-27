@@ -696,6 +696,8 @@ KbSpinStart_M                 IS MEM435 ; "ctrl" + "s"
 KbSpinStop_M                  IS MEM436 ; "ctrl" + "q"
 KbFloodOnOff_M                IS MEM437 ; "ctrl" + "n"
 KbMistOnOff_M                 IS MEM451 ; "ctrl" + "k"
+GearRevMatched_M                IS MEM452 ; Acroloc rev-match achieved flag
+GearRevMatchStarted_M           IS MEM453 ; Acroloc rev-match timer started flag
 KbTogCoolAutoMan_M            IS MEM438 ; "ctrl" + "m"
 KbFeedHold_M                  IS MEM439 ; space bar
 KbIncSpinOver_M               IS MEM440 ; "ctrl" + ">" (.)
@@ -1077,6 +1079,14 @@ Lube_W                          IS W61
 LubeM_W                         IS W62
 LubeS_W                         IS W63
 SpindleRange_W                  IS W64  ; 1 = low ... 4 = high
+DesiredRange_W                  IS W73  ; Acroloc gear wanted by RPM logic (1=low, 4=high)
+EngagedRange_W                  IS W74  ; Acroloc gear currently engaged (open-loop, tracks clutch outputs)
+; Acroloc gear-shift machine parameters (set in CNC12 machine parameters):
+;   P941 = gear crossover RPM (commanded speed at/above which high gear is used; 0 disables auto-shift)
+;   P942 = crossover hysteresis (RPM) — deadband half-width to prevent hunting
+;   P943 = rev-match speed tolerance (RPM) — |measured - commanded| allowed before engaging
+;   P944 = rev-match timeout (ms; 0 -> default 3000)
+;   P945 = clutch settle / re-shift lockout (ms; 0 -> default 500)
 PrevFeedOverride_W              IS W65
 P148Value_W                     IS W66
 P146Value_W                     IS W67
@@ -1179,6 +1189,8 @@ NoMacroKeyPressedTimer_T        IS T18
 
 StopSpinBeforATC_T              IS T23
 ATCSpin_T                       IS T24 ; used to detect fault if unable to find position
+GearRevMatch_T                  IS T25 ; Acroloc rev-match wait timeout
+GearClutchSettle_T              IS T26 ; Acroloc post-engage clutch settle / re-shift lockout
 ;------------------------------------------------------------------------------
 ;                       Stage Definitions
 ;------------------------------------------------------------------------------
@@ -1197,6 +1209,7 @@ LubeUsePumpTimersStage          IS STG13
 LubeUsePLCTimersStage           IS STG14
 
 ATCStage                        IS STG16 ; Acroloc ATC Stage
+GearShiftStage                  IS STG17 ; Acroloc RPM gear-shift state machine
 
 JogKeysNormalStage              IS STG26
 JogKeysInvert2Stage             IS STG27
