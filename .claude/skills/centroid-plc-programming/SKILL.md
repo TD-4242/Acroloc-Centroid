@@ -29,7 +29,7 @@ Every executable line begins with `IF`. Multiple actions follow `THEN`, comma-se
 IF M6_SV THEN SET ATCStage, RST MainStage
 ```
 
-There is no `ELSE` keyword — complement a condition with a second `IF` on the next line. Bit variables (`INP`, `OUT`, `MEM`, `STG`) are used directly as conditions; Words (`W`, `T`) require a relational operator (`==`, `!=`, `>`, etc.). A bare Word in a condition is a compiler error.
+There is no `ELSE` keyword — complement a condition with a second `IF` on the next line. Bit-type variables (e.g. `INP`, `OUT`, `MEM`, `STG`, plus `FSTG`/`PD`/SV bits) are used directly as conditions. Words (`W`) require a relational operator (`==`, `!=`, `>`, etc.) — a bare Word in a condition is a compiler error. Timers (`T`) may be used directly (true when the timer has expired) or with a relational expression to test elapsed time in ms.
 
 ## Reference router
 
