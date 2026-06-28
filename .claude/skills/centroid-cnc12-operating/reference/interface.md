@@ -6,7 +6,7 @@ Source: operator manual Ch 1 (Introduction), Ch 3 (CNC Software Main Screen).
 ## 1.1 DRO Display
 
 The DRO (Digital Read Out) display shows the current position of the tool in real time (p.10). It is
-configurable for number of axes and desired display units (inches or metric) — see Ch 15 and
+configurable for number of axes and desired display units of measure — see Ch 15 and
 `centroid-cnc12-config` for parameter details. The bars beneath each axis label are **load meters**,
 representing the amount of power being supplied to the drive for that axis. Load-meter display is
 controlled by Parameter 143.
@@ -14,7 +14,7 @@ controlled by Parameter 143.
 ## 1.2 Distance-to-Go DRO
 
 Located below the main DRO, this sub-display shows the remaining distance to complete the current
-move (p.10). It is controlled by Parameter 143 and can be toggled with **Ctrl+D** (see "Hot Keys" in
+move (p.10). It is controlled by Parameter 143 and can be turned on by using **Ctrl+D** (see "Hot Keys" in
 the operator manual for a complete list of keyboard shortcuts).
 
 ## 1.3 Status Window
@@ -78,7 +78,6 @@ Keystroke and softkey notation used throughout the operator manual (p.11–12):
 | **ENTER** | Bold, capitalized word = a named key |
 | **ESC** | The Escape key |
 | **ALT-D** | Hold **ALT** and then press **D** |
-| **Ctrl+D** | Hold **Ctrl** and then press **D** |
 | **F10 – Save** | All data entry screens use **F10 – Save** to save changes |
 | **ESC** | Any menu can be exited by pressing **ESC**; returns to previous menu and usually discards changes |
 
@@ -197,7 +196,7 @@ job name appears in the Status Window. Press **ESC** to cancel without loading.
 
 MDI (Manual Data Input) mode allows direct entry of M- and G-code commands one line at a time (p.42).
 
-- Type a command at the `Block?` prompt, then press **CYCLE START** (or **ENTER**) to execute.
+- Type a command at the `Block?` prompt, then press **CYCLE START** to execute.
 - After execution, the control prompts for another line.
 - When finished, press **ESC**.
 - Navigate previous commands with **UP ARROW** / **DOWN ARROW**; edit with **LEFT** / **RIGHT** arrow keys.
@@ -278,8 +277,10 @@ management (p.44). Sub-menu softkeys:
 | **F6** | User Maint | Perform user maintenance |
 | **F7** | Create Report | Generate a backup of system configuration files called `report.zip` |
 | **F8** | Options | Show software plugins and software level information |
-| **F8** (main screen) | Import License | Import a license file to unlock software features (see §1.10) |
 | **F9** | Logs | Show messages and errors logged by the control |
+
+The license-import option (Import License) is reached from this Utility menu via **F8** — see §1.10
+for the unlock procedure.
 
 For further information see Ch 7. For configuration parameters and error codes, see
 `centroid-cnc12-config`.
@@ -349,7 +350,7 @@ Sub-menu softkeys:
 
 | Sub-key | Label | Description |
 |---|---|---|
-| **F1** | Park | Park machine at end of day for quicker homing at next startup; homes each axis to 1/4 motor revolution from home position; press **CYCLE START** to begin movement |
+| **F1** | Park | Park machine at end of day for quicker homing at next startup; homes each axis at the maximum rate to 1/4 of a motor revolution from its home position; press **CYCLE START** to begin movement |
 | **F2** | Poweroff | Properly shut down the control (turns off control only — machine itself must be turned off manually) |
 | **F6** | System Prompt | Opens a Windows command line interface; type `exit` to close |
 | **F9** | Exit CNC12 | Exits the CNC control software without powering off |
