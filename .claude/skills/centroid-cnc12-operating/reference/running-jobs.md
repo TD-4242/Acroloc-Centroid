@@ -106,7 +106,7 @@ See §6.5 for full details.
    - Modify the tool library.
    - Turn block mode on or off.
    - Turn optional stops on or off.
-   - Graph the partially-completed job (press **F8 – Graph**).
+   - Graph the partially-completed job (see §6.5, F8 – Graph).
 4. Press **CYCLE START** to start the partially-completed job from the point of interruption.
 
 ### Resume Job availability (p.79–80)
@@ -257,7 +257,7 @@ apply to the Resume and Search sub-menus, where the CYCLE START button is always
 
 ## 6.6 Power Feed (p.81)
 
-Press **F4 – Feed** from the Setup menu (**F1 – Setup** → **F4 – Feed**) to access the Power Feed
+Press **F4 – Feed** from the Setup menu (see `interface.md`) to access the Power Feed
 screen. This screen is used to command axis movement. All of the operations available on the Power
 Feed screen may also be performed in MDI with the appropriate M- and G-codes (p.81).
 
@@ -287,11 +287,13 @@ packets received (p.81).
 4. Press the **CYCLE START** button.
 5. The test will run and the following message will appear (screenshot p.82):
    `Communications Stress Test will start after this message disappears, Please Wait for results`
-6. Please allow the system time to process. Once complete, a message similar to the following
-   will appear with your results (screenshot p.82):
+
+Please allow the system time to process. Once complete, a message similar to the following will
+appear with your results (screenshot p.82):
 
 ```
-Communications Stress Test PASSED
+Communications Stress Test
+PASSED
 max. errors acceptable = 5
 Results:
 Packets Resent: 0
