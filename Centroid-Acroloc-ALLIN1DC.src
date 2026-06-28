@@ -1277,6 +1277,11 @@ IF 1==1 THEN SET True_M,
              ErrorFlag_T = 1000,
              MsgClear_T = 1000,
              StopSpinBeforATC_T = 1000,
+             SET Spindle_Low_gear_O,
+             RST Spindle_High_gear_O,
+             EngagedRange_W = 1,
+             DesiredRange_W = 1,
+             SpindleRange_W = 1,
              RST InitialStage
 
 ;=============================================================================
