@@ -696,8 +696,8 @@ KbSpinStart_M                 IS MEM435 ; "ctrl" + "s"
 KbSpinStop_M                  IS MEM436 ; "ctrl" + "q"
 KbFloodOnOff_M                IS MEM437 ; "ctrl" + "n"
 KbMistOnOff_M                 IS MEM451 ; "ctrl" + "k"
-GearRevMatched_M                IS MEM452 ; Acroloc rev-match achieved flag
-GearRevMatchStarted_M           IS MEM453 ; Acroloc rev-match timer started flag
+GearRevMatched_M              IS MEM452 ; Acroloc rev-match achieved flag
+GearRevMatchStarted_M         IS MEM453 ; Acroloc rev-match timer started flag
 KbTogCoolAutoMan_M            IS MEM438 ; "ctrl" + "m"
 KbFeedHold_M                  IS MEM439 ; space bar
 KbIncSpinOver_M               IS MEM440 ; "ctrl" + ">" (.)
