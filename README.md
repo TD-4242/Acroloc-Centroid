@@ -84,18 +84,26 @@ Each scan the PLC builds the analog spindle command (`MainStage`):
 The relevant gear-ratio parameters are set in CNC12's machine parameters (Parameter 65 for the
 low range on this machine).
 
-### ⚠️ Not yet implemented: commanding the shift
+### Automatic RPM-based gear shifting
 
-`INP13` only *senses* the current gear. The two custom outputs intended to actuate the
-transmission solenoids are **defined but not driven anywhere** in the PLC:
+The PLC now **commands** the two-speed transmission automatically from the commanded
+spindle RPM (it no longer relies on the `SpinLowRange_I`/INP13 lever sense for selection).
 
-```
-Spindle_Low_gear_O    IS OUT19    ; Acroloc  (high gear must be released)
-Spindle_High_gear_O   IS OUT20    ; Acroloc  (low gear must be released)
-```
+- `MainStage` computes `DesiredRange_W` from `SV_PC_COMMANDED_SPINDLE_SPEED` versus a
+  crossover machine parameter with a hysteresis deadband (Parameter 941 crossover RPM,
+  942 hysteresis; 941 ≤ 0 disables auto-shift).
+- When the desired gear differs from the engaged gear, `GearShiftStage` (STG16-adjacent,
+  STG17) performs an **open-loop, on-the-fly clutch swap**: release both clutches
+  (`Spindle_Low_gear_O`/OUT19, `Spindle_High_gear_O`/OUT20), command the new gear so the
+  motor rev-matches, and — when `SV_MEASURED_SPINDLE_SPEED` is within tolerance
+  (Parameter 943) of the commanded speed — engage the target clutch. A rev-match timeout
+  (Parameter 944) faults into neutral with the spindle disabled.
+- The two clutch outputs are **mutually exclusive** (a safety interlock forces neutral if
+  both are ever energized). Power-up engages **low** range.
 
-So the PLC currently reacts to the gear position but does not command the shift. Wiring these
-outputs into range logic is outstanding work.
+> **Open-loop caveat:** there is no gear-position feedback; the engaged gear is tracked in
+> `EngagedRange_W` from the clutch-output state, and the rev-match + clutch-settle dwell
+> (Parameter 945) are the only confirmation that a shift completed.
 
 ## Automatic tool changer (ATC)
 
