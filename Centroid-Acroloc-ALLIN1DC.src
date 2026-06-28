@@ -2964,6 +2964,69 @@ IF CarouselToolID_W == ChangeToTool_W THEN
   RST M6_SV,
   RST ATCStage
 
+
+;=============================================================================
+   GearShiftStage ; Acroloc
+;=============================================================================
+; Open-loop two-clutch gear shift driven by DesiredRange_W (1=low, 4=high).
+; Sequence: release BOTH clutches (neutral) -> command the new gear so the motor
+; rev-matches -> when measured spindle speed is within tolerance of the commanded
+; speed, engage the target clutch.  The two clutches are never engaged together.
+; There is no gear-position feedback (open loop); the rev-match + settle dwell are
+; the only assurances.
+
+; --- Step A: neutral + rev-match command (every scan while shifting) ---
+IF GearShiftStage THEN
+  RST Spindle_Low_gear_O,
+  RST Spindle_High_gear_O,
+  SpindleRange_W = DesiredRange_W
+
+; --- Step B: start the rev-match timeout once on entry ---
+IF GearShiftStage && !GearRevMatchStarted_M THEN GearRevMatch_T = 3000
+IF GearShiftStage && !GearRevMatchStarted_M && (SV_MACHINE_PARAMETER_944 > 0) THEN
+  GearRevMatch_T = SV_MACHINE_PARAMETER_944
+IF GearShiftStage && !GearRevMatchStarted_M THEN
+  SET GearRevMatch_T,
+  SET GearRevMatchStarted_M
+
+; --- Step C: detect rev-match (measured within tolerance of commanded) ---
+IF GearShiftStage && GearRevMatchStarted_M &&
+   (SV_MEASURED_SPINDLE_SPEED >= (SV_PC_COMMANDED_SPINDLE_SPEED - SV_MACHINE_PARAMETER_943)) &&
+   (SV_MEASURED_SPINDLE_SPEED <= (SV_PC_COMMANDED_SPINDLE_SPEED + SV_MACHINE_PARAMETER_943))
+  THEN SET GearRevMatched_M
+
+; --- Step D: choose settle/lockout dwell value (before starting the timer) ---
+IF GearShiftStage && GearRevMatched_M THEN GearClutchSettle_T = 500
+IF GearShiftStage && GearRevMatched_M && (SV_MACHINE_PARAMETER_945 > 0) THEN
+  GearClutchSettle_T = SV_MACHINE_PARAMETER_945
+
+; --- Step E: engage exactly one clutch, then finish the shift ---
+IF GearShiftStage && GearRevMatched_M && (DesiredRange_W == 1) THEN
+  SET Spindle_Low_gear_O,
+  RST Spindle_High_gear_O
+IF GearShiftStage && GearRevMatched_M && (DesiredRange_W == 4) THEN
+  SET Spindle_High_gear_O,
+  RST Spindle_Low_gear_O
+IF GearShiftStage && GearRevMatched_M THEN
+  EngagedRange_W = DesiredRange_W,
+  SET GearClutchSettle_T,
+  RST GearRevMatched_M,
+  RST GearRevMatchStarted_M,
+  RST GearRevMatch_T,
+  RST GearShiftStage
+
+; --- Timeout: rev-match never achieved -> fault, hold neutral, drop spindle enable ---
+IF GearShiftStage && GearRevMatchStarted_M && !GearRevMatched_M && (GearRevMatch_T == 0) THEN
+  RST Spindle_Low_gear_O,
+  RST Spindle_High_gear_O,
+  RST SpindleEnableOut_O,
+  FaultMsg_W = SPINDLE_FAULT_MSG_C,
+  SET ShowFaultStage,
+  SET OtherFault_M,
+  RST GearRevMatchStarted_M,
+  RST GearRevMatch_T,
+  RST GearShiftStage
+
 ;==============================================================================
    SafetySwitchInterruptStage
 ;==============================================================================
