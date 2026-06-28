@@ -185,8 +185,8 @@ Manual modes. The default is AUTO mode (p.21).
 
 | LED State | Mode | Meaning |
 |---|---|---|
-| On | Automatic | Spindle is under program control |
-| Off (default) | Manual | Spindle is under operator control |
+| On | Automatic | The spindle is under automatic control |
+| Off (default) | Manual | The spindle is under manual control |
 
 ## 2.18 Spin Start
 
@@ -321,12 +321,6 @@ keyboard jog panel (p.28).
   axis symbol ("X", "Y", etc.). The jog keys are the **Arrow**, **Page Up**, and
   **Page Down** keys.
 
-> **Note:** To avoid unexpected movement, keyboard jogging disables and re-enables itself
-> when leaving and entering the main menu. Keyboard jogging can still be enabled in any
-> menu by pressing **ALT+J** (even after being disabled by CNC12). For instance, if keyboard
-> jogging is active and the user navigates to the CNC12 parameters menu, keyboard jogging
-> is suppressed while in that menu and reactivated when back in the main menu of CNC12.
-
 | Key(s) | Function | Description | Availability |
 |---|---|---|---|
 | **ALT+J** | Start/Exit Keyboard Jogging | Invokes or exits the keyboard jogging panel | Always, with few exceptions |
@@ -369,6 +363,12 @@ keyboard jog panel (p.28).
 | **CTRL+Home** | 4th +Jog | Jogs the 4th-axis positively | With on-screen jog panel displayed |
 | **CTRL+End** | 4th −Jog | Jogs the 4th-axis negatively | With on-screen jog panel displayed |
 | **SPACEBAR** | Feedhold | Enables Feedhold; press Cycle Start to resume | Always, with few exceptions |
+
+> **Note:** To avoid unexpected movement, keyboard jogging disables and re-enables itself
+> when leaving and entering the main menu. Keyboard jogging can still be enabled in any
+> menu by pressing **ALT+J** (even after being disabled by CNC12). For instance, if keyboard
+> jogging is active and the user navigates to the CNC12 parameters menu, keyboard jogging
+> is suppressed while in that menu and reactivated when back in the main menu of CNC12.
 
 ---
 
@@ -414,7 +414,7 @@ exceptions. Some menus may prohibit their use (p.33).
 | **CTRL+ALT+X** | Go to Shutdown Screen | From the main menu, takes you to the CNC12 shutdown screen (p.38) |
 | **CTRL+C** | Copy | From any field that contains a number, and from the WCS Table columns, copies the selected value to the clipboard (p.38) |
 | **CTRL+X** | Cut | From any field that contains a number, and from the WCS Table columns, cuts the selected value to the clipboard; the previous value is set to 0 (p.38) |
-| **CTRL+V** | Paste | From any field that contains a number, and from the WCS Table columns, pastes the selected value from the clipboard (p.39) |
+| **CTRL+V** | Paste | From any field that contains a number, and from the WCS Table columns, pastes the selected value from the clipboard (p.39) (manual body text erroneously says CTRL+P; the section heading CTRL+V is used here) |
 
 ### ALT+I – Live PLC I/O: Advanced View
 
