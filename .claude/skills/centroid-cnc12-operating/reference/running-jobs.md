@@ -322,6 +322,11 @@ To get to the Utility Menu, press the **F7 – Utility** key at the CNC Software
 | **F9** | Logs | View error/message logs and counts logged by the control. See **`centroid-cnc12-config`**. |
 | **F10** | Acorn Wizard | User-friendly configuration tool for axis motors, I/O, spindle control, and homing. See **`centroid-cnc12-config`**. |
 
+> **Note (F8 – Import License vs Options):** Ch 7 (the source for this table) labels this key
+> **Import License**. Ch 3's §3.7 overview of the Utility menu labels the same key **Options**
+> (shows software plugins and software level information). The two chapters use different names for
+> the same softkey; see `interface.md` §F7 Utility for the Ch 3 perspective.
+
 ### F2 – Restore Report (p.83)
 
 Used primarily for restoring a system configuration from a previously-saved `report.zip` file.

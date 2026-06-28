@@ -279,8 +279,11 @@ management (p.44). Sub-menu softkeys:
 | **F8** | Options | Show software plugins and software level information |
 | **F9** | Logs | Show messages and errors logged by the control |
 
-The license-import option (Import License) is reached from this Utility menu via **F8** — see §1.10
-for the unlock procedure.
+> **Note (F8 – Options vs Import License):** Ch 3 (§3.7) labels this key **Options** (shows software
+> plugins and software level information), which is what the table above reflects. Ch 7's full Utility
+> Menu chapter labels the same key **Import License** (select a license file for CNC12). The two
+> chapters use different names for the same softkey; see `running-jobs.md` §Utility Menu for the Ch 7
+> table, and §1.10 above for the license unlock procedure.
 
 For further information see Ch 7. For configuration parameters and error codes, see
 `centroid-cnc12-config`.
