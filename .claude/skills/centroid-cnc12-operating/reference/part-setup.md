@@ -17,6 +17,8 @@ entered and the corresponding fields is shown (p.49).
 
 ### Part Setup Screen Softkeys (p.48)
 
+*F-key numbers are taken from the on-screen softkey bar; the manual's body-text list on p.48 assigns different numbers.*
+
 | Softkey | Label | Description |
 |---|---|---|
 | **F1** | Next Axis | Toggles to the next axis (X → Y → Z → 4th → 5th). If changes were made to the current axis but not yet accepted, they will be discarded. |
@@ -54,7 +56,7 @@ Fields for X/Y axes:
 > **Note:** Use the arrow keys to toggle between Part Position, Edge Finder Diameter, and
 > Approach From options (p.50).
 
-### 4.1.2 Setting Up the Z-axis (p.50)
+### 4.1.2 Setting up the Z-axis (p.50)
 
 **Set Part Position procedure:**
 
@@ -275,8 +277,7 @@ change (p.56).
 
 ## 4.4 Coordinate System Rotation (CSR) (p.56–57)
 
-Coordinate System Rotation saves setup time. Rather than physically indicating the edge of
-material to square it with the machine axes, CSR automatically rotates the coordinate system to
+Coordinate System Rotation saves you time when setting up your part. Rather than clamping your part and indicating the edge of the material to square it with the machine axes, CSR automatically rotates the coordinate system to
 the angle of the part or fixture that was probed (p.56).
 
 Press **F8 – CSR** from the Part Setup screen (only appears when the CSR software option is
