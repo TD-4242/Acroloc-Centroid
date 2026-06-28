@@ -222,9 +222,11 @@ cancel any changes (p.63).
 The definitions in the Tool Library associate tool (T) numbers with height offset (H) values,
 diameter (D) values, default coolant types, spindle directions, spindle speeds, and text
 descriptions of the tools (p.64). This information is used by the Intercon programming package
-(Ch 10) to provide defaults whenever a tool change is selected. The screen shows the **Tool
-Library** with columns: Tool, Bin, Ht., Dia., Coolant, Spindle, Speed, Description (screenshot
-p.64).
+(Ch 10) to provide defaults whenever a tool change is selected. For enhanced ATC features, the
+(T) numbers are also associated with bin numbers. The screen shows the **Tool Library** with
+columns: Tool, Bin, Ht., Dia., Coolant, Spindle, Speed, Description (screenshot p.64).
+
+> See **`centroid-cnc12-config`** for Parameter 160 (enhanced ATC features).
 
 You can inspect and change any of the 200 tool definitions. To edit a Tool Library definition,
 move to the desired tool number using the **Arrow**, **Page Up**, **Page Down**, **HOME**, and
@@ -245,11 +247,12 @@ spindle. The **F1–F2** keys work when the cursor is in the Bin column (p.64).
 | Softkey | Label | Description |
 |---|---|---|
 | **F1** | Clear Bin | Places dashes "—" into the bin field (same as entering −1). |
-| **F2** | Clear All | Places dashes into every bin field. |
+| **F2** | ClearAll | Places dashes into every bin field. |
 
 > **Note:** If enhanced ATC features are not on, the cursor cannot be moved into the Bin column
-> and the message "Bin fields are locked" appears. **F1 – Clear Bin** and **F2 – Clear All**
-> only appear if enhanced ATC features are on (p.64).
+> and the message "Bin fields are locked" will appear where the tool in spindle display is
+> located. **F1 – Clear Bin** and **F2 – ClearAll** only appear if enhanced ATC features are on
+> (p.64).
 
 > **Note:** For enhanced ATC applications, bin numbers will be updated when tool changes are
 > completed. For random or arm-type tool changers, tools in the spindle are placed into the same
@@ -314,6 +317,9 @@ on the screen when the CNC software reaches a tool change (M6) (p.65).
 The tool library can be exported in txt (space-separated and aligned columns) or csv
 (comma-separated columns) formats by pressing **F5**. Choose txt or csv to export the desired
 format (p.65).
+
+> **Note:** The §5.2 screenshot on p.64 shows this function at F4; the body text on p.65 states
+> F5. F5 is used here per the text.
 
 ---
 
@@ -504,8 +510,9 @@ Key facts about the PWM output:
 - g. The PWM Velocity Modulation feature adjusts the PWM output based on machine tool velocity
   so that overburning is avoided on corners and turn-arounds. G37 is used to turn ON and OFF
   PWM Velocity Modulation: G37 ON = PWM VM ON; G37 OFF = PWM VM OFF.
-- h. Simple PWM controls are located in the Acorn Wizard. Preset buttons for common Jtech
-  configurations are present and have matching schematics (S15049, S15056, S15057).
+- h. Simple PWM controls are located in the Acorn Wizard. In addition to "manual PWM controls",
+  preset buttons for common Jtech configurations are present and have matching schematics
+  (S15049, S15056, S15057).
 
 > For M37, M38, G37 M-code and G-code definitions, see the **`centroid-cnc12-gmcodes`** skill.
 
