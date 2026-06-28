@@ -2274,8 +2274,24 @@ IF SV_PLC_SPINDLE_KNOB > 100 THEN (SpinOverPlusLED_O), (DoIncreaseSpindleOR_SV)
 ; Use input switches, M functions, or other means to determine the gear
 ; range number (1-4).  For basic mills, look for one low-range switch.
 ; Default to high range until proven otherwise (fail-safe choice)
-IF True_M THEN SpindleRange_W = 4
-IF SpinLowRange_I THEN SpindleRange_W = 1
+; Acroloc: RPM-based automatic gear selection (replaces the old INP13 sense-switch
+; selection).  DesiredRange_W is held in the hysteresis deadband; P941<=0 disables.
+IF SV_MACHINE_PARAMETER_941 <= 0.0 THEN DesiredRange_W = EngagedRange_W
+IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
+   (SV_PC_COMMANDED_SPINDLE_SPEED >= (SV_MACHINE_PARAMETER_941 + SV_MACHINE_PARAMETER_942))
+  THEN DesiredRange_W = 4
+IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
+   (SV_PC_COMMANDED_SPINDLE_SPEED <= (SV_MACHINE_PARAMETER_941 - SV_MACHINE_PARAMETER_942))
+  THEN DesiredRange_W = 1
+
+; While not shifting, the effective range tracks the actually-engaged clutch so the
+; ratio/DAC math below always reflects reality.
+IF !GearShiftStage THEN SpindleRange_W = EngagedRange_W
+
+; Kick off a shift when the desired gear differs from the engaged gear and we are not
+; already shifting, not in a tool change, and not inside the post-shift settle lockout.
+IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && !GearClutchSettle_T
+  THEN SET GearShiftStage
 
 ; Use the gear range number to set the range flags and speed ratio.
 
@@ -2363,6 +2379,14 @@ IF True_M THEN WTB TwelveBitSpeed_W SpinAnalogOutBit0_O 12
 
 ;Display calculated RPM value on PC
 IF True_M THEN SV_PLC_SPINDLE_SPEED = SpinSpeedCommand_FW
+
+; Acroloc: clutches are mutually exclusive — never allow both engaged.
+IF Spindle_Low_gear_O && Spindle_High_gear_O THEN
+  RST Spindle_Low_gear_O,
+  RST Spindle_High_gear_O,
+  FaultMsg_W = SPINDLE_FAULT_MSG_C,
+  SET ShowFaultStage,
+  SET OtherFault_M
 
 ;=============================================================================
    JogKeysNormalStage
