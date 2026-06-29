@@ -2912,6 +2912,10 @@ IF ChangerHoldActive_M && ChangerStopTimer_T == 0 && ZeroSpeed_I THEN
   RST ChangerStopTimer_T,
   (DoCycleStart_SV)
 
+; Recovery: ChangerHoldDone_M stays latched until Z clears the changer
+; (INP26 TRUE), so after clearing this fault the operator should jog Z out of
+; the changer to re-arm the interlock. The spindle stays commanded off the whole
+; time Z is in the zone (zone-kill above), so a resume in place remains safe.
 IF ChangerHoldActive_M && ChangerStopTimer_T == 0 && !ZeroSpeed_I THEN
   FaultMsg_W = SPINDLE_FAULT_MSG_C,  ; dwell elapsed, spindle still turning
   SET ShowFaultStage,
