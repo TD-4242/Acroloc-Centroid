@@ -1,9 +1,9 @@
 ---
-name: acroloc-atc
-description: Use when editing or understanding this repo's Centroid-Acroloc-ALLIN1DC.src or mfunc*.mac — especially the custom Acroloc automatic tool changer (carousel), tool-change M6 flow, spindle two-speed range logic, or any code tagged "; Acroloc". Points to the general centroid-plc-programming skill for language reference.
+name: acroloc-s10
+description: Use for facts about this machine — an Acroloc Series 10 vertical mill retrofitted with a Centroid ALLIN1DC (MPU11) controller — including its axis travels and usable envelope, spindle and two-speed transmission, work envelope and table, and automatic tool changer (ATC) capacity and tooling limits; ALSO use when editing or understanding this repo's Centroid-Acroloc-ALLIN1DC.src or mfunc*.mac, especially the custom ATC carousel, tool-change M6 flow, spindle gear-range logic, or any code tagged "; Acroloc". Points to centroid-plc-programming for PLC language reference.
 ---
 
-# Acroloc ATC (this machine)
+# Acroloc Series 10 (this machine)
 
 ## Machine orientation
 
@@ -13,9 +13,13 @@ you build on this machine — it runs on the Windows control PC under CNC12. See
 [README.md](../../README.md) and [CLAUDE.md](../../CLAUDE.md) for background, build/deploy
 instructions, and PLC architecture overview.
 
-The heart of the custom work is the **Acroloc Automatic Tool Changer (ATC)**: a carousel
-indexer grafted onto Centroid's stock ALLIN1DC mill PLC. Every custom addition is tagged
-`; Acroloc` in `Centroid-Acroloc-ALLIN1DC.src`. Use that marker to locate all custom code:
+This machine is an **Acroloc Series 10** vertical mill. Its physical capabilities and
+specifications are documented in the machine-fact reference files below (axes & travel,
+spindle & transmission, ATC & tooling, work envelope & table). The **automatic tool
+changer (ATC)** — a carousel indexer grafted onto Centroid's stock ALLIN1DC mill PLC — is
+one subsystem; its control implementation lives in this repo's PLC source and macros.
+Every custom code addition is tagged `; Acroloc` in `Centroid-Acroloc-ALLIN1DC.src`. Use
+that marker to locate all custom code:
 
 ```bash
 grep -n "; Acroloc" Centroid-Acroloc-ALLIN1DC.src
