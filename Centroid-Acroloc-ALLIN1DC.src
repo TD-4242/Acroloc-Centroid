@@ -225,7 +225,7 @@ SpinHighRange_I                 IS INP15
 ;begin at input 17.
 ATCManualUnlock_I               IS INP24 ; Acroloc button on front of machine
 ATCLocked_I                     IS INP25 ; Acroloc piston sensor to insure tool changer is locked
-ATC_Z_ClearedToolChanger_I      IS INP26 ; Acroloc the spindle has entered the tool changer (zero rpm)
+ATC_Z_ClearedToolChanger_I      IS INP26 ; Acroloc TRUE = Z clear of tool changer (spindle may run); FALSE = spindle in changer (danger)
 ATC_Z_Zero_Release_I            IS INP27 ; Acroloc Z axis has cleared tool ring
 ATC_Pos5_I                      IS INP28 ; Acroloc
 ATC_Pos4_I                      IS INP29 ; Acroloc
