@@ -27,8 +27,10 @@ changer zone during a program or MDI run.
 - **FALSE = danger zone** — the spindle has entered the changer.
 
 So the danger / act condition is **`!ATC_Z_ClearedToolChanger_I`**. This matches how the
-existing M6 block at line 2870 already uses the input. (The source *comment* on the
-definition line 228 is misleading; the **code** is the source of truth.)
+existing M6 block at line 2870 already uses the input.
+
+The source *comment* on the definition (line 228) is **misleading** and will be corrected
+as part of this work — see "Fix the misleading INP26 comment" below.
 
 ## Requirements (confirmed with owner)
 
@@ -66,6 +68,22 @@ logic:
   exists to catch the moves the M6 logic never sees.
 
 ## Design
+
+### Fix the misleading INP26 comment
+
+The definition comment on line 228 currently implies the input is TRUE when the spindle has
+entered the changer, which is backwards from how the signal actually behaves and how the
+code uses it. Correct it to state the real polarity:
+
+```
+; before
+ATC_Z_ClearedToolChanger_I      IS INP26 ; Acroloc the spindle has entered the tool changer (zero rpm)
+
+; after
+ATC_Z_ClearedToolChanger_I      IS INP26 ; Acroloc TRUE = Z clear of tool changer (spindle may run); FALSE = spindle in changer (danger)
+```
+
+Comment-only change — keep the column alignment and the `; Acroloc` tag.
 
 ### Placement
 
