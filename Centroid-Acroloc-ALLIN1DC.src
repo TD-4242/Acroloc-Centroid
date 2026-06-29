@@ -1179,7 +1179,7 @@ OverrideMsgTimer_T              IS T16
 MessageTimer_T                  IS T17
 NoMacroKeyPressedTimer_T        IS T18
 
-StopSpinBeforATC_T              IS T23
+ChangerStopTimer_T              IS T23 ; Acroloc spindle stop dwell / timeout for changer-entry hold
 ATCSpin_T                       IS T24 ; used to detect fault if unable to find position
 ;------------------------------------------------------------------------------
 ;                       Stage Definitions
@@ -1265,7 +1265,7 @@ IF 1==1 THEN SET True_M,
              Initialize_T = 1000, SET Initialize_T,
              ErrorFlag_T = 1000,
              MsgClear_T = 1000,
-             StopSpinBeforATC_T = 1000,
+             ChangerStopTimer_T = 5000,
              RST InitialStage
 
 ;=============================================================================
@@ -2865,20 +2865,99 @@ IF !ATCManualUnlock_I THEN
   FaultMsg_W = ATC_Lock_Released_C,
   SET ShowFaultStage
 
-; Acroloc Make sure spindle stops before entering tool changer
-IF !ATC_Z_ClearedToolChanger_I THEN
-  RST SpindleEnableOut_O,
-  SET StopSpinBeforATC_T
-  ;SavedCurrentFeedrate = CurrentFeedrate ??
+;=============================================================================
+; Acroloc — Spindle-in-changer feed-hold interlock (single unified rule)
+;=============================================================================
+; Danger zone = !ATC_Z_ClearedToolChanger_I  (INP26 FALSE = spindle in changer).
+; ANY programmed or MDI move that drives Z into the changer — a tool change or
+; any other axis move — is held while the spindle is commanded off and allowed
+; to reach zero, then auto-resumed. The spindle is held OFF the whole time Z is
+; in the zone and resumes at its commanded speed only after Z exits.
+;
+; This is the ONE place the spindle is stopped on changer entry. The old M6-only
+; stop block was removed; ATCStage still independently guards the carousel with
+; its own !ZeroSpeed_I check, so the carousel can never index a spinning spindle.
+;
+; Spindle resume is automatic: we only drop the enable output (SpindleEnableOut_O)
+; while Z is in the zone; the modal M3/M4 command (SpinStart_M) is untouched, so
+; the line-2210 seal-in restores the spindle at SV_PC_COMMANDED_SPINDLE_SPEED
+; once INP26 goes TRUE. A program M5 (e.g. inside M6) correctly keeps it off.
 
-;IF StopSpinBeforeATC_T THEN
-  ; feedrate to zero
+; -- Clear the once-per-entry latch whenever Z is clear of the changer
+IF ATC_Z_ClearedToolChanger_I THEN RST ChangerHoldDone_M
+
+; -- Keep the spindle commanded OFF the entire time Z is in the zone, during a run
+IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I THEN
+  RST SpindleEnableOut_O
+
+; -- Clean bail-out if the program is stopped/canceled mid-hold
+IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN
+  RST ChangerHoldActive_M, RST ChangerStopTimer_T
+
+;-----------------------------------------------------------------------------
+; OPTION A  (DEFAULT / ACTIVE): fixed 3-second dwell, then confirm-or-fault
+; Any time Z enters the zone during a run: hold feed, stop spindle, dwell 3 s,
+; then resume if ZeroSpeed_I confirms a stop — otherwise fault.
+;-----------------------------------------------------------------------------
+IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I
+   && !ChangerHoldDone_M && !ChangerHoldActive_M THEN
+  SET ChangerHoldActive_M,
+  SET ActivateFeedHold_M,            ; hold ALL programmed motion (feed + rapid)
+  ChangerStopTimer_T = 3000,
+  SET ChangerStopTimer_T
+
+IF ChangerHoldActive_M && ChangerStopTimer_T == 0 && ZeroSpeed_I THEN
+  SET ChangerHoldDone_M,             ; stopped within the dwell — auto-resume
+  RST ChangerHoldActive_M,
+  RST ChangerStopTimer_T,
+  (DoCycleStart_SV)
+
+IF ChangerHoldActive_M && ChangerStopTimer_T == 0 && !ZeroSpeed_I THEN
+  FaultMsg_W = SPINDLE_FAULT_MSG_C,  ; dwell elapsed, spindle still turning
+  SET ShowFaultStage,
+  SET OtherFault_M,
+  SET ChangerHoldDone_M,             ; latch handled so we don't re-arm/loop
+  RST ChangerHoldActive_M,
+  RST ChangerStopTimer_T             ; NOTE: no cycle-start — motion stays held
+
+;-----------------------------------------------------------------------------
+; OPTION B  (COMMENTED): resume as soon as the zero-speed SIGNAL confirms a stop
+; To switch: comment out ALL THREE OPTION A "IF" blocks above, uncomment these.
+; Arms only when the spindle is actually turning (!ZeroSpeed_I); resumes the
+; instant ZeroSpeed_I confirms a stop; faults if it never stops within 5 s.
+;-----------------------------------------------------------------------------
+; IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I
+;    && !ZeroSpeed_I && !ChangerHoldDone_M && !ChangerHoldActive_M THEN
+;   SET ChangerHoldActive_M,
+;   SET ActivateFeedHold_M,
+;   ChangerStopTimer_T = 5000,
+;   SET ChangerStopTimer_T
+; IF ChangerHoldActive_M && ZeroSpeed_I THEN
+;   SET ChangerHoldDone_M,
+;   RST ChangerHoldActive_M,
+;   RST ChangerStopTimer_T,
+;   (DoCycleStart_SV)
+; IF ChangerHoldActive_M && ChangerStopTimer_T == 0 && !ZeroSpeed_I THEN
+;   FaultMsg_W = SPINDLE_FAULT_MSG_C,
+;   SET ShowFaultStage,
+;   SET OtherFault_M,
+;   SET ChangerHoldDone_M,
+;   RST ChangerHoldActive_M,
+;   RST ChangerStopTimer_T
+
   
 
 ;=============================================================================
    ATCStage ; Acroloc
 ;=============================================================================
 ;TODO: add timer to error so carousol doesn't spin for ever if tool not found
+
+; Additional safety check - ensure spindle is stopped before ATC operation
+IF ATCStage && !ZeroSpeed_I THEN
+  FaultMsg_W = SPINDLE_FAULT_MSG_C,
+  SET ShowFaultStage,
+  SET OtherFault_M,
+  RST ATCStage
 
 IF !ATC_Z_Zero_Release_I THEN
   FaultMsg_W = ATC_Spindle_Not_Parked_C,
