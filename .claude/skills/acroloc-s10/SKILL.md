@@ -30,6 +30,25 @@ For PLC language syntax and resource-addressing rules, see the
 
 ---
 
+## Machine reference (by subsystem)
+
+Each subsystem of this machine has its own reference file. Confirmed facts are recorded;
+unconfirmed values are marked `TBD — confirm with owner` (the machine owner is the source
+of truth — no specifications are guessed).
+
+| Subsystem | Reference | Covers |
+|-----------|-----------|--------|
+| Axes & travel | [reference/axes-and-travel.md](reference/axes-and-travel.md) | X/Y/Z travel, usable Z envelope, rapids/feeds, ways, accuracy, home |
+| Spindle & transmission | [reference/spindle-transmission.md](reference/spindle-transmission.md) | Two-speed gear ranges, max RPM, shift mechanism, taper, drawbar, motor |
+| ATC & tooling | [reference/atc.md](reference/atc.md) | Carousel capacity (12), tool numbering, tool size/weight limits, retention, air |
+| Work envelope & table | [reference/work-envelope-and-table.md](reference/work-envelope-and-table.md) | Table size, T-slots, max workpiece weight, footprint, machine weight |
+
+**Adding a new subsystem over time:** create `reference/<feature>.md` (one subsystem,
+self-contained), add one row to the table above, fill known values, and leave anything
+unconfirmed as `TBD — confirm with owner`.
+
+---
+
 ## Custom I/O & variables at a glance
 
 All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1DC.src`.
@@ -132,6 +151,10 @@ grep -n "SymbolName" Centroid-Acroloc-ALLIN1DC.src
 
 - [reference/atc-flow.md](reference/atc-flow.md) — M6 tool-change state machine, carousel encoding table, and known gaps
 - [reference/macros.md](reference/macros.md) — mfunc*.mac quick reference
+- [reference/axes-and-travel.md](reference/axes-and-travel.md) — axis travels and usable envelope
+- [reference/spindle-transmission.md](reference/spindle-transmission.md) — spindle and two-speed transmission
+- [reference/atc.md](reference/atc.md) — ATC capacity and tooling limits
+- [reference/work-envelope-and-table.md](reference/work-envelope-and-table.md) — table and machine envelope
 - [centroid-plc-programming](../centroid-plc-programming/SKILL.md) — PLC language syntax, resource addressing, stage mechanics
 - [README.md](../../README.md) — machine overview, file descriptions, build/deploy
 - [CLAUDE.md](../../CLAUDE.md) — PLC architecture, ATC flow summary, coding conventions
