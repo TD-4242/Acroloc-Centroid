@@ -175,13 +175,13 @@ IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I
   ChangerStopTimer_T = 3000,
   SET ChangerStopTimer_T
 
-IF ChangerHoldActive_M && ChangerStopTimer_T == 0 && ZeroSpeed_I THEN
-  SET ChangerHoldDone_M,             ; stopped within the dwell — auto-resume
+IF ChangerHoldActive_M && ChangerStopTimer_T && ZeroSpeed_I THEN
+  SET ChangerHoldDone_M,             ; dwell elapsed & spindle confirmed stopped — auto-resume
   RST ChangerHoldActive_M,
   RST ChangerStopTimer_T,
   (DoCycleStart_SV)
 
-IF ChangerHoldActive_M && ChangerStopTimer_T == 0 && !ZeroSpeed_I THEN
+IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
   FaultMsg_W = SPINDLE_FAULT_MSG_C,  ; dwell elapsed, spindle still turning
   SET ShowFaultStage,
   SET OtherFault_M,
@@ -206,7 +206,7 @@ IF ChangerHoldActive_M && ChangerStopTimer_T == 0 && !ZeroSpeed_I THEN
 ;   RST ChangerHoldActive_M,
 ;   RST ChangerStopTimer_T,
 ;   (DoCycleStart_SV)
-; IF ChangerHoldActive_M && ChangerStopTimer_T == 0 && !ZeroSpeed_I THEN
+; IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
 ;   FaultMsg_W = SPINDLE_FAULT_MSG_C,
 ;   SET ShowFaultStage,
 ;   SET OtherFault_M,

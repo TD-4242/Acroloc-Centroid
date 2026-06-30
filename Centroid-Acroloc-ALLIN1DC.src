@@ -2912,7 +2912,7 @@ IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I
   SET ChangerStopTimer_T
 
 IF ChangerHoldActive_M && ChangerStopTimer_T && ZeroSpeed_I THEN
-  SET ChangerHoldDone_M,             ; stopped within the dwell — auto-resume
+  SET ChangerHoldDone_M,             ; dwell elapsed & spindle confirmed stopped — auto-resume
   RST ChangerHoldActive_M,
   RST ChangerStopTimer_T,
   SET DoCycleStart_SV                ; pulse cycle-start (SET, not a coil: a coil here
