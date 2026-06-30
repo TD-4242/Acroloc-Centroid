@@ -2868,8 +2868,11 @@ IF !ATC_Z_ClearedToolChanger_I THEN
   RST SpindleEnableOut_O,
   SET StopSpinBeforATC_T
 
-; ???
-IF StopSpinBeforeATC_T THEN (FeedHoldPD)
+; ??? — original line referenced two undefined symbols (StopSpinBeforeATC_T and
+;       FeedHoldPD) and never compiled, so it was never in the running mpu.plc.
+;       Commented out to restore a compiling baseline. If feed-hold-on-timeout is
+;       wanted, the correctly-spelled form is:
+; IF StopSpinBeforATC_T THEN (FeedHoldPD_PD)
 
   
 
