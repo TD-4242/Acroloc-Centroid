@@ -1,3 +1,6 @@
 # The machine PLC source is edited/compiled on Windows (C:\cncm); keep CRLF
 # so a checkout compiles byte-identically to the running machine binary.
 /Centroid-Acroloc-ALLIN1DC.src text eol=crlf
+
+# Vendor Centroid compiler is a Windows binary — never line-ending normalize it.
+*.exe binary

@@ -3,3 +3,11 @@
 
 # Local extraction scratch for skill authoring (e.g. pdftotext output)
 scratchpad/
+
+# Centroid mpucomp scratch outputs (compile.sh writes to a temp dir, but these
+# appear if mpucomp is run by hand in the repo root)
+plc.out
+mpu.dbg
+mpu.sym
+xplc.sym
+mpu-stats.txt
