@@ -2915,7 +2915,9 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && ZeroSpeed_I THEN
   SET ChangerHoldDone_M,             ; stopped within the dwell — auto-resume
   RST ChangerHoldActive_M,
   RST ChangerStopTimer_T,
-  (DoCycleStart_SV)
+  SET DoCycleStart_SV                ; pulse cycle-start (SET, not a coil: a coil here
+                                     ; would RST DoCycleStart_SV every non-resume scan and
+                                     ; clobber the stock operator cycle-start at line ~2028)
 
 ; Recovery: ChangerHoldDone_M stays latched until Z clears the changer
 ; (INP26 TRUE), so after clearing this fault the operator should jog Z out of
@@ -2945,7 +2947,7 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
 ;   SET ChangerHoldDone_M,
 ;   RST ChangerHoldActive_M,
 ;   RST ChangerStopTimer_T,
-;   (DoCycleStart_SV)
+;   SET DoCycleStart_SV
 ; IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
 ;   FaultMsg_W = SPINDLE_FAULT_MSG_C,
 ;   SET ShowFaultStage,
