@@ -66,8 +66,11 @@ Understand this before touching tool-change logic; it spans `mfunc6.mac`, `MainS
    `G53 Z0`, sends the target tool with `M107`, then sets `M6_SV` (`M94 /8`) to kick off the
    tool-change stage and resets it (`M95 /8`) when `ATCStage` clears.
 2. `MainStage` sees `M6_SV`, latches the target into `ChangeToTool_W`, and `SET ATCStage`.
-   It also enforces **spindle-stopped-before-entry** safety (`ZeroSpeed_I`, timer
-   `StopSpinBeforeATC_T`) and Z-parked checks before allowing carousel motion.
+   The spindle is stopped before the changer by the general **spindle-in-changer feed-hold
+   interlock** (feed hold + spindle-off + dwell/`ZeroSpeed_I` + auto-resume, timer
+   `ChangerStopTimer_T`), which fires for *any* program/MDI move into the zone — not just M6.
+   `ATCStage` then independently re-checks `ZeroSpeed_I` and Z-parked
+   (`ATC_Z_Zero_Release_I`) before allowing carousel motion.
 3. `ATCStage` spins the carousel (`ATCMotor_O`, `ATCUnlocked_O`) and reads the **5 position
    switches** (`ATC_Pos1_I`..`ATC_Pos5_I`, INP32..INP28). Tool IDs are **base-16 encoded as
    decimal** across those 5 bits (note `ATC_Pos5_I` adds `10`, not `16`). The accumulated

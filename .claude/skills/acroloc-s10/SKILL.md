@@ -104,7 +104,7 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 The M6 flow spans three cooperating places — read all three before changing anything:
 
 1. **`mfunc6.mac`** — G-code orchestrator: stops spindle/coolant, parks Z, asserts `M6_SV`, waits for `ATCStage` to reset, then deasserts `M6_SV`. It drives no ATC hardware directly.
-2. **`MainStage`** (STG4) — latches `ChangeToTool_W = SV_TOOL_NUMBER` and `SET ATCStage` when `M6_SV` fires; enforces spindle-stop safety via `StopSpinBeforeATC_T` (T23) and `ZeroSpeed_I` (INP12) before the carousel may move.
+2. **`MainStage`** (STG4) — latches `ChangeToTool_W = SV_TOOL_NUMBER` and `SET ATCStage` when `M6_SV` fires. The spindle is stopped before the changer by the general **spindle-in-changer feed-hold interlock** (timer `ChangerStopTimer_T` (T23), `ZeroSpeed_I` (INP12)), which fires for *any* program/MDI move into the changer zone — not just M6. `ATCStage` independently re-checks `ZeroSpeed_I` before the carousel may move.
 3. **`ATCStage`** (STG16) — unlocks carousel (`ATCUnlocked_O`), starts motor (`ATCMotor_O`), accumulates `CarouselToolID_W` from position switches, and stops/relocks when the ID matches `ChangeToTool_W`.
 
 Full state-machine details, timing, and exact PLC snippets: **[reference/atc-flow.md](reference/atc-flow.md)**.

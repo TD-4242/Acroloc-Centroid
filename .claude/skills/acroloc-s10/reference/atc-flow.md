@@ -55,24 +55,30 @@ IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
 the macro fires `M94 /8`, this line latches the requested tool number into
 `ChangeToTool_W` (W72) and enables `ATCStage` (STG16).
 
-**Spindle-stop safety — `StopSpinBeforeATC_T` and `ZeroSpeed_I`:**
+**Spindle-stop safety — the spindle-in-changer feed-hold interlock:**
 
-Search for `; Acroloc Make sure spindle stops before entering tool changer`.
+Search for `; Acroloc — Spindle-in-changer feed-hold interlock`.
 
-```plc
-IF M6_SV && !ATC_Z_ClearedToolChanger_I && !ZeroSpeed_I THEN
-  RST SpindleEnableOut_O,
-  SET StopSpinBeforeATC_T          ; T23, initialized to 5000 ms
-```
+The old M6-only spindle-stop block (`IF M6_SV && !ATC_Z_ClearedToolChanger_I &&
+!ZeroSpeed_I ...` with `StopSpinBeforeATC_T`) was **replaced** by ONE general
+interlock that fires for **any** program/MDI move driving Z into the changer
+(`!ATC_Z_ClearedToolChanger_I`, INP26 FALSE) — not just M6:
 
-- `StopSpinBeforeATC_T` is a countdown (5 seconds, set in `InitialStage`).
-- Each scan while the timer is counting and `ZeroSpeed_I` is still false:
-  the spindle is still spinning; the PLC waits.
-- If the timer reaches 0 before `ZeroSpeed_I` asserts: fault —
-  `FaultMsg_W = SPINDLE_FAULT_MSG_C`, `SET ShowFaultStage`,
-  `SET OtherFault_M`, `RST ATCStage`. The carousel **never starts**.
-- If `ZeroSpeed_I` asserts before timeout: `RST StopSpinBeforeATC_T` —
-  the coast is clear; `ATCStage` proceeds.
+- Holds feed (`ActivateFeedHold_M`) and commands the spindle off
+  (`RST SpindleEnableOut_O`, re-applied every scan Z is in the zone).
+- Waits for zero speed — **Option A** (default): a 3 s dwell (`ChangerStopTimer_T`,
+  T23 — renamed from `StopSpinBeforeATC_T`) then a `ZeroSpeed_I` check; **Option B**
+  (commented): resume the instant `ZeroSpeed_I` confirms a stop, 5 s timeout.
+- On confirmed zero: pulses `DoCycleStart_SV` to auto-resume. On timeout with the
+  spindle still turning: faults (`FaultMsg_W = SPINDLE_FAULT_MSG_C`,
+  `SET ShowFaultStage`, `SET OtherFault_M`) and leaves motion held — no resume.
+- `ChangerHoldActive_M` / `ChangerHoldDone_M` (MEM448/449) latch the once-per-entry
+  behaviour; `ChangerHoldDone_M` clears when Z leaves the zone or on a run
+  stop/cancel (so a fresh run re-arms). The spindle restarts at commanded speed
+  once Z clears (INP26 TRUE), unless a program `M5` keeps it off.
+
+`ATCStage` then independently re-checks `ZeroSpeed_I` before indexing (below), so
+the carousel can never spin against a turning spindle.
 
 **Manual unlock (outside M6):**
 ```plc
