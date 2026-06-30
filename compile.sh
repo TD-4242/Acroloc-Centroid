@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 #
-# compile.sh — compile the Acroloc PLC source with Centroid mpucomp and check
-# whether it still matches the binary currently running on the machine.
+# compile.sh — syntax/lint check the Acroloc PLC source with Centroid mpucomp.
 #
-# Use this to test changes to Centroid-Acroloc-ALLIN1DC.src before loading them:
-#   ./compile.sh                 # compile + verify against the running baseline
-#   ./compile.sh -o mpu.plc      # also write the compiled output to mpu.plc
+# Use this to catch compile errors and warnings in Centroid-Acroloc-ALLIN1DC.src
+# before loading changes on the machine:
+#   ./compile.sh            # compile; report errors + a warning summary
+#   ./compile.sh -v         # also print every compiler warning
+#   ./compile.sh -o out.plc # keep the compiled binary at out.plc
 #
-# Runs mpucomp.exe natively on Windows, or via Wine on Linux/macOS.
+# Runs mpucomp.exe natively on Windows, or via Wine on Linux/macOS. This only
+# exercises the compiler's syntax checking/linting — it does NOT check that the
+# output matches the binary currently on the machine (after real changes it
+# shouldn't).
 #
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -15,16 +19,14 @@ cd "$(dirname "$0")"
 SRC="Centroid-Acroloc-ALLIN1DC.src"
 COMPILER="mpucomp.exe"
 
-# Checksums of the PLC running on the machine (mpu.plc, C:\cncm source,
-# file date 2024-04-18). A clean checkout compiles byte-for-byte to this.
-EXPECTED="EEB77825 E1E90F82 4EF4D51D E514E66E"
-
-OUT=""                          # optional: -o <file> to keep the compiled binary
-while getopts ":o:h" opt; do
+OUT=""                          # -o <file>: keep the compiled binary
+VERBOSE=0                       # -v: print all warnings, not just a count
+while getopts ":o:vh" opt; do
   case "$opt" in
     o) OUT="$OPTARG" ;;
-    h) sed -n '2,12p' "$0"; exit 0 ;;
-    *) echo "usage: $0 [-o output.plc]" >&2; exit 2 ;;
+    v) VERBOSE=1 ;;
+    h) sed -n '2,15p' "$0"; exit 0 ;;
+    *) echo "usage: $0 [-v] [-o output.plc]" >&2; exit 2 ;;
   esac
 done
 
@@ -34,41 +36,41 @@ fail() { echo "ERROR: $*" >&2; exit 1; }
 [[ -f "$SRC" ]]      || fail "source '$SRC' not found"
 [[ -f "$COMPILER" ]] || fail "compiler '$COMPILER' not found in repo root"
 
+# Invoke as ./mpucomp.exe — Git Bash/MSYS does not search the CWD for binaries.
 if [[ "${OS:-}" == "Windows_NT" ]]; then
-  RUN=()                                            # native Windows
+  RUN=("./$COMPILER")                               # native Windows
 else
   command -v wine >/dev/null 2>&1 \
     || fail "wine not found — needed to run $COMPILER on this OS (e.g. 'sudo apt install wine')"
-  RUN=(env WINEDEBUG=-all wine)
+  RUN=(env WINEDEBUG=-all wine "./$COMPILER")
 fi
 
-# --- compile a CRLF-normalized copy ----------------------------------------
-# mpucomp's checksum is line-ending sensitive and the machine source is CRLF,
-# so normalize to CRLF in a temp copy. This keeps the result deterministic no
-# matter how the working tree was checked out, and never edits your source.
-TMP="$(mktemp -d)"; trap 'rm -rf "$TMP"' EXIT
-CRLF_SRC="$TMP/$(basename "$SRC")"
-PLC_OUT="$TMP/plc.out"
-sed 's/\r$//' "$SRC" | sed 's/$/\r/' > "$CRLF_SRC"
+# --- compile ----------------------------------------------------------------
+# Portable temp file (GNU mktemp needs no template; BSD/macOS does, hence -t).
+PLC_OUT="$(mktemp 2>/dev/null || mktemp -t plc)"
+LOG="$(mktemp 2>/dev/null || mktemp -t plclog)"
+trap 'rm -f "$PLC_OUT" "$LOG"' EXIT
 
 echo "Compiling $SRC ..."
-if ! "${RUN[@]}" "$COMPILER" "$CRLF_SRC" "$PLC_OUT" > "$TMP/log" 2>&1; then
-  grep -iE "error|fail" "$TMP/log" || cat "$TMP/log"
+set +e
+"${RUN[@]}" -w "$SRC" "$PLC_OUT" > "$LOG" 2>&1
+rc=$?
+set -e
+
+# --- report errors / warnings ----------------------------------------------
+if grep -qiE "Compilation failed|^Error|Error Line" "$LOG" || [[ $rc -ne 0 ]]; then
+  echo
+  grep -iE "Error|Compilation failed" "$LOG" || cat "$LOG"
   fail "compilation failed"
 fi
-grep -iE "Compilation successful|Program size" "$TMP/log" || true
-grep -iE "error|Compilation failed" "$TMP/log" && fail "compilation reported errors"
 
-# --- report + verify checksum ----------------------------------------------
-ACTUAL="$(grep -i -a -m1 'Checksums' "$PLC_OUT" | sed 's/.*: *//; s/[[:space:]]*$//')"
-echo
-echo "Checksums (this build) : $ACTUAL"
-echo "Checksums (running PLC): $EXPECTED"
-echo
-if [[ "$ACTUAL" == "$EXPECTED" ]]; then
-  echo "MATCH — compiles byte-for-byte to the PLC running on the machine."
-else
-  echo "DIFFERS from the running PLC (expected if you changed logic on purpose)."
+warn_count=$(grep -ciE "^Warning:" "$LOG" || true)
+grep -iE "Compilation successful|Program size" "$LOG" || true
+echo "Warnings: ${warn_count}"
+if [[ "$VERBOSE" -eq 1 && "$warn_count" -gt 0 ]]; then
+  echo "----"
+  grep -iE "^Warning:" "$LOG"
+  echo "----"
 fi
 
 if [[ -n "$OUT" ]]; then
