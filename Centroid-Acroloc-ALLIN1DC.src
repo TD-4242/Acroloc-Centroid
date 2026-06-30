@@ -2271,11 +2271,12 @@ IF SV_PLC_SPINDLE_KNOB > 100 THEN (SpinOverPlusLED_O), (DoIncreaseSpindleOR_SV)
 ;    0          1         1         0   SV_SPINDLE_MID_RANGE M
 ;    0          0         1         1   SV_SPINDLE_LOW_RANGE
 
-; Use input switches, M functions, or other means to determine the gear
-; range number (1-4).  For basic mills, look for one low-range switch.
-; Default to high range until proven otherwise (fail-safe choice)
+; Stock CNC12 here would read an input switch / M function to pick the gear
+; range number (1-4) and default to high range as a fail-safe. That scheme does
+; NOT apply on this machine.
 ; Acroloc: RPM-based automatic gear selection (replaces the old INP13 sense-switch
-; selection).  DesiredRange_W is held in the hysteresis deadband; P941<=0 disables.
+; selection). The power-up default is LOW range (see init), not high.
+; DesiredRange_W is held in the hysteresis deadband; P941<=0 disables.
 IF SV_MACHINE_PARAMETER_941 <= 0.0 THEN DesiredRange_W = EngagedRange_W
 IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
    (SV_PC_COMMANDED_SPINDLE_SPEED >= (SV_MACHINE_PARAMETER_941 + SV_MACHINE_PARAMETER_942))

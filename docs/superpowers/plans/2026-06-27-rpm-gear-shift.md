@@ -55,7 +55,7 @@ Documentation: `README.md` "Spindle speed & range" section is updated to reflect
 
 Run:
 ```bash
-cd /home/bwarner/github/Acroloc-Centroid
+# from the repo root
 grep -nE "IS (STG17|W73|W74|T25|T26|MEM452|MEM453)\b" Centroid-Acroloc-ALLIN1DC.src || echo "all free"
 ```
 Expected: `all free` (no existing definitions collide). If any collide, STOP and report.
