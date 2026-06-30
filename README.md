@@ -246,8 +246,10 @@ remains as defense-in-depth.
    at its commanded RPM — unless the program issued `M5` (e.g. inside M6), which keeps it off.
 
 `ChangerHoldDone_M` makes the hold fire **once per entry** (it is set on both the resume and the
-fault paths), preventing re-arm/oscillation; it clears only when Z leaves the zone. After a
-stuck-spindle fault, recovery expects Z to be jogged clear of the changer to re-arm.
+fault paths), preventing re-arm/oscillation; it clears when Z leaves the zone **and** on a
+program stop/cancel, so a fresh run re-arms the hold if Z is still in the zone (e.g. the
+operator manually spun the spindle while stopped). After a stuck-spindle fault, recovery
+expects Z to be jogged clear of the changer to re-arm.
 
 ### Option B (commented alternative)
 
@@ -265,7 +267,7 @@ resulting per-scan decision flow for the active Option A:
 ```mermaid
 flowchart TD
     A(["Each PLC scan (MainStage)"]) --> B{"Program or MDI running?"}
-    B -- no --> BAIL["Bail out:<br/>RST ChangerHoldActive_M<br/>RST ChangerStopTimer_T"]
+    B -- no --> BAIL["Bail out:<br/>RST ChangerHoldActive_M<br/>RST ChangerStopTimer_T<br/>RST ChangerHoldDone_M (re-arm next run)"]
     B -- yes --> C{"Z in changer zone?<br/>(ATC_Z_ClearedToolChanger_I = FALSE)"}
     C -- "no — clear" --> CLR["RST ChangerHoldDone_M<br/>spindle seal-in restores commanded speed"]
     C -- "yes — danger" --> KILL["RST SpindleEnableOut_O<br/>(spindle held OFF every scan in zone)"]

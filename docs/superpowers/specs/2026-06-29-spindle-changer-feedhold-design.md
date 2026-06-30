@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-29
 **File touched:** `Centroid-Acroloc-ALLIN1DC.src` (PLC stage language)
-**Status:** Design approved, pending implementation plan
+**Status:** Implemented on branch `spindle-changer-feedhold` (PR #6); on-machine validation pending
 
 ---
 
@@ -155,9 +155,13 @@ IF ATC_Z_ClearedToolChanger_I THEN RST ChangerHoldDone_M
 IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I THEN
   RST SpindleEnableOut_O
 
-; -- Clean bail-out if the program is stopped/canceled mid-hold
+; -- Clean bail-out if the program is stopped/canceled mid-hold.
+; Also clear ChangerHoldDone_M so a fresh run RE-ARMS the hold if Z is still in
+; the zone (an operator could manually spin the spindle while stopped, since the
+; zone-kill above is gated to a run). Without this, the once-per-entry latch could
+; let motion resume into the zone with the spindle still coasting.
 IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN
-  RST ChangerHoldActive_M, RST ChangerStopTimer_T
+  RST ChangerHoldActive_M, RST ChangerStopTimer_T, RST ChangerHoldDone_M
 
 ;-----------------------------------------------------------------------------
 ; OPTION A  (DEFAULT / ACTIVE): fixed 3-second dwell, then confirm-or-fault
@@ -224,7 +228,7 @@ IF ChangerHoldActive_M && ChangerStopTimer_T == 0 && !ZeroSpeed_I THEN
 | Timeout → fault | `SPINDLE_FAULT_MSG_C` + `ShowFaultStage`/`OtherFault_M`, no cycle-start, on deadline with `!ZeroSpeed_I` |
 | Auto-resume motion | `(DoCycleStart_SV)` pulse on confirmed stop |
 | Spindle speed resumes on clear | Line-2210 seal-in + line-2300 speed reload; modal `M3`/`M4` never cleared |
-| No oscillation / no re-arm loop | Spindle can't re-spin in the zone; `ChangerHoldDone_M` (set on resume *and* on fault) blocks re-arming until Z exits |
+| No oscillation / no re-arm loop | Spindle can't re-spin in the zone; `ChangerHoldDone_M` (set on resume *and* on fault) blocks re-arming until Z exits — but it is also cleared on the run-stopped bail-out, so a fresh run re-arms if Z is still in the zone |
 | Carousel never indexes a spinning spindle | `ATCStage`'s existing `!ZeroSpeed_I` guard (line 2897), retained |
 
 ## Behavior walkthrough (general case — spindle running, errant Z plunge)
