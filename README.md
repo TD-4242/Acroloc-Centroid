@@ -114,11 +114,11 @@ work tagged `; Acroloc`.
 | `ATCMotor_O` | `OUT17` | Spins the tool carousel |
 | `ATCUnlocked_O` | `OUT18` | Releases the carousel lock |
 | `ATC_Pos1_I`..`ATC_Pos5_I` | `INP32`..`INP28` | 5 carousel position switches |
-| `ATC_Z_ClearedToolChanger_I` | `INP26` | Spindle/Z has entered the tool changer |
+| `ATC_Z_ClearedToolChanger_I` | `INP26` | Z clearance: **TRUE = clear** (spindle may run), **FALSE = Z in changer** |
 | `ATC_Z_Zero_Release_I` | `INP27` | Z axis has cleared the tool ring (parked) |
 | `ATCManualUnlock_I` | `INP24` | Manual unlock button on the front of the machine |
 | `ZeroSpeed_I` | `INP12` | Spindle at zero RPM |
-| `StopSpinBeforeATC_T` | timer | Spindle-stop timeout guard |
+| `ChangerStopTimer_T` | `T23` | Spindle-stop dwell / timeout for the changer feed-hold interlock |
 
 ### Tool change flow
 
@@ -129,11 +129,13 @@ work tagged `; Acroloc`.
    (`IF #4201 || #4202 THEN GOTO 1000`) and ends at `N1000`.
 
 2. **`MainStage` kickoff & safety:** on `M6_SV` it latches the target
-   (`ChangeToTool_W = SV_TOOL_NUMBER`) and `SET ATCStage`. Before the carousel may move it
-   enforces:
-   - **Spindle stopped** — if the spindle isn't at `ZeroSpeed_I` it drops
-     `SpindleEnableOut_O` and starts `StopSpinBeforeATC_T`; if the timer expires before zero
-     speed it raises `SPINDLE_FAULT_MSG_C` and aborts (`RST ATCStage`).
+   (`ChangeToTool_W = SV_TOOL_NUMBER`) and `SET ATCStage`. The spindle is stopped on the way
+   into the changer by the general
+   [spindle-in-changer feed-hold interlock](#spindle-in-changer-feed-hold-interlock) — the
+   `G53 Z0` park move trips it like any other move into the zone. `ATCStage` then independently
+   re-checks before indexing:
+   - **Spindle stopped** — `ATCStage` requires `ZeroSpeed_I`; otherwise it raises
+     `SPINDLE_FAULT_MSG_C` and aborts (`RST ATCStage`).
    - **Z parked** — `ATCStage` also checks `ATC_Z_Zero_Release_I`; if Z hasn't cleared the
      tool ring it raises `ATC_Spindle_Not_Parked_C` and aborts.
 
@@ -178,3 +180,72 @@ lock (`SET ATCUnlocked_O`) provided Z is parked (`ATC_Z_Zero_Release_I`), and po
 the requested tool is never matched — e.g. an off-by-one in the position decode or a failed
 switch — `ATCMotor_O` keeps spinning indefinitely. Take care when editing the match/exit
 conditions.
+
+## Spindle-in-changer feed-hold interlock
+
+The spindle must never be turning — not even coasting — while it is inside the tool changer.
+A general interlock in `MainStage` enforces this for **any** programmed or MDI move that drives
+Z into the changer (not just a tool change): it holds feed, commands the spindle off, waits for
+it to reach zero, then auto-resumes — and the spindle restarts at its commanded speed once Z
+clears. It replaced the old M6-only spindle-stop block; `ATCStage`'s own zero-speed guard
+remains as defense-in-depth.
+
+### Signals
+
+| Symbol | Resource | Role |
+| --- | --- | --- |
+| `ATC_Z_ClearedToolChanger_I` | `INP26` | **TRUE = Z clear** (spindle may run); **FALSE = Z in changer** (danger) |
+| `ZeroSpeed_I` | `INP12` | Spindle at zero RPM |
+| `SpindleEnableOut_O` | `OUT7` | Spindle enable — dropped every scan Z is in the zone |
+| `ActivateFeedHold_M` | `MEM45` | Stock feed-hold trigger (self-clears; the hold is latched by `FeedHoldLED_O` until cycle start) |
+| `DoCycleStart_SV` | `SV_PLC_FUNCTION_2` | Cycle start — pulsed to auto-resume |
+| `ChangerHoldActive_M` | `MEM448` | Latched while holding feed and waiting for the spindle to stop |
+| `ChangerHoldDone_M` | `MEM449` | Once-per-entry latch; cleared only when Z clears the changer |
+| `ChangerStopTimer_T` | `T23` | Spindle-stop dwell (Option A) / timeout (Option B) |
+
+### Steps (Option A — default)
+
+1. **Enter the zone** (`!ATC_Z_ClearedToolChanger_I`) during a program/MDI run → engage feed
+   hold (`ActivateFeedHold_M`), drop the spindle (`RST SpindleEnableOut_O`), and start a
+   **3-second dwell** (`ChangerStopTimer_T = 3000`).
+2. **Spindle stays off the whole time Z is in the zone** — the kill is re-applied every scan,
+   so it cannot spin back up while inside.
+3. **At the end of the dwell:**
+   - spindle stopped (`ZeroSpeed_I`) → pulse `DoCycleStart_SV` to **auto-resume**;
+   - still turning (`!ZeroSpeed_I`) → raise `SPINDLE_FAULT_MSG_C`, **stay held**, no resume.
+4. **Z clears** (`ATC_Z_ClearedToolChanger_I` TRUE) → the spindle seal-in restores the spindle
+   at its commanded RPM — unless the program issued `M5` (e.g. inside M6), which keeps it off.
+
+`ChangerHoldDone_M` makes the hold fire **once per entry** (it is set on both the resume and the
+fault paths), preventing re-arm/oscillation; it clears only when Z leaves the zone. After a
+stuck-spindle fault, recovery expects Z to be jogged clear of the changer to re-arm.
+
+### Option B (commented alternative)
+
+The source ships a second variant, commented out, that **waits for the `ZeroSpeed_I` signal**
+instead of a fixed dwell — it resumes the instant a stop is confirmed, with a 5-second timeout
+→ fault. Switching is a comment swap between the `OPTION A` / `OPTION B` blocks in `MainStage`.
+Option A is sensor-light (one zero-speed check at the dwell's end); Option B will not resume
+until the sensor confirms a real stop.
+
+### Flow
+
+The interlock is a set of independent rungs evaluated every PLC scan; this chart shows the
+resulting per-scan decision flow for the active Option A:
+
+```mermaid
+flowchart TD
+    A(["Each PLC scan (MainStage)"]) --> B{"Program or MDI running?"}
+    B -- no --> BAIL["Bail out:<br/>RST ChangerHoldActive_M<br/>RST ChangerStopTimer_T"]
+    B -- yes --> C{"Z in changer zone?<br/>(ATC_Z_ClearedToolChanger_I = FALSE)"}
+    C -- "no — clear" --> CLR["RST ChangerHoldDone_M<br/>spindle seal-in restores commanded speed"]
+    C -- "yes — danger" --> KILL["RST SpindleEnableOut_O<br/>(spindle held OFF every scan in zone)"]
+    KILL --> ARM{"Fresh entry?<br/>ChangerHoldDone_M = 0 AND ChangerHoldActive_M = 0"}
+    ARM -- yes --> SET["SET ChangerHoldActive_M<br/>SET ActivateFeedHold_M (feed hold)<br/>ChangerStopTimer_T = 3000, start"]
+    ARM -- no --> WAIT["hold in place"]
+    SET --> DEC{"Hold active AND dwell elapsed?"}
+    WAIT --> DEC
+    DEC -- no --> HOLD["keep feed held, spindle off"]
+    DEC -- "yes + ZeroSpeed_I" --> RES["SET ChangerHoldDone_M<br/>RST hold + timer<br/>DoCycleStart_SV → auto-resume"]
+    DEC -- "yes + spindle still turning" --> FLT["FAULT SPINDLE_FAULT_MSG_C<br/>SET ChangerHoldDone_M<br/>RST hold + timer<br/>no resume — motion stays held"]
+```
