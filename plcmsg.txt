@@ -1,0 +1,94 @@
+1   9001 PLC_EXECUTOR_FLT_MSG
+3   4003 Axis Faults Cleared
+4   4004 KEYBOARD JOGGING DISABLED
+5   9005 X Axis Communication In Fault
+6   9006 Y Axis Communication In Fault
+7   9007 Z Axis Communication In Fault
+8   9008 A Axis Communication In Fault
+9   9009 B Axis Communication In Fault
+10  9010 C Axis Communication In Fault
+11  9011 U Axis Communication In Fault
+12  9012 V Axis Communication In Fault
+13  9013 W Axis Communication In Fault
+14  9014 X Axis Communication Out Fault
+15  9015 Y Axis Communication Out Fault
+16  9016 Z Axis Communication Out Fault
+17  9017 A Axis Communication Out Fault
+18  9018 B Axis Communication Out Fault
+19  9019 C Axis Communication Out Fault
+20  9020 U Axis Communication Out Fault
+21  9021 V Axis Communication Out Fault
+22  9022 W Axis Communication Out Fault
+23  9023 PLC Communication In Fault  (Fiber 3)
+24  9024 PLC Communication Out Fault (Fiber 1)
+25  9025 PLC Faults Cleared
+26  9026 LUBE FAULT!!!
+27  8027 PROBE TRIPPED WHILE JOGGING
+28  9028 SPINDLE FAULT!
+29  9029 Jog Panel Communication In Fault
+30  9030 Jog Panel Communication Out Fault
+31  9031 FAULT! REMOVE PROBE FROM SPINDLE!!!
+32  4032 Reset Cleared 
+33  9033 Reset Initiated, Press Reset to Clear
+34  4034 Auto Coolant Selected
+35  4035 Manual Coolant Selected
+36  4036 Warning!! Lube Low!!
+37  4037 Please Select Auto Spindle To Continue
+38  4038 Please Select Auto Coolant To Continue
+39  9039 Software Exited, Cycle E-Stop/Reset to Continue
+40  5040 SPECIFIED SPIN SPEED < MIN SPIN SPEED
+41  4041 RAPID_OVERRIDE_ENABLED 
+42  4042 RAPID_OVERRIDE_DISABLED
+
+60  9060 LOW AIR FAULT
+61  9061 ATC WHILE MANUAL INDEX
+62  9062 MANUAL INDEX WHILE ATC
+63  9063 CAROUSEL MOVE TIME OUT
+64  9064 TOOL CLAMP UNCLAMP FAULT
+65  9065 ORIENT LOST FAULT
+66  9066 ORIENT TIMEOUT
+
+70  9070 SPINDLE CHILLER FAULT!
+71  9071 POT UP/DOWN TIMEOUT FAULT!
+72  9072 ARM MOTOR TIMEOUT FAULT!
+73  9073 POT NOT UP FOR CAROUSEL FAULT!
+
+92  8092 DOOR SAFETY SWITCH OPEN
+93  8093 Close Door to Operate the Spindle
+
+99  2099 Message Cleared
+100 5100 BAD MESSAGE VALUE
+
+101 9101 TOOL CHANGE CANCELLED
+102 9102 TURRET LOCK FAULT
+103 9103 TOOL REQUEST INVALID
+104 9104 ATC TIMEOUT 
+105 9105 TOOL POSITION FAULT
+106 9106 TURRET INDEX FAULT!!!
+107 9107 COLLET CLOSE FAULT!!!
+108 9108 TOOL CHANGE FAULT!
+
+109 9109 SPINDLE DISABLED COLLET OPEN!!!
+110 9110 Spindle Locked
+
+153 9153 Mini PLC 1 Communication Fault
+154 9154 Mini PLC 2 Communication Fault
+155 9155 Mini PLC 3 Communication Fault
+156 9156 Mini PLC 4 Communication Fault
+157 9157 Mini PLC 5 Communication Fault
+158 9158 Mini PLC 6 Communication Fault
+159 9159 Mini PLC 7 Communication Fault
+160 9160 Mini PLC 8 Communication Fault
+161 5161 Unconfigured Mini PLC 1 Found
+162 5162 Unconfigured Mini PLC 2 Found
+163 5163 Unconfigured Mini PLC 3 Found
+164 5164 Unconfigured Mini PLC 4 Found
+165 5165 Unconfigured Mini PLC 5 Found
+166 5166 Unconfigured Mini PLC 6 Found
+167 5167 Unconfigured Mini PLC 7 Found
+168 5168 Unconfigured Mini PLC 8 Found
+
+171 5171 Tool Carousel manual unlock
+172 5172 Spindle not parked.  Z Axis not at zero.
+173 5173 Tool Carousel not locked.
+174 5174 Tool Carousel locked.
