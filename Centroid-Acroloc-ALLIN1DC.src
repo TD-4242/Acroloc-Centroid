@@ -698,6 +698,7 @@ KbFloodOnOff_M                IS MEM437 ; "ctrl" + "n"
 KbMistOnOff_M                 IS MEM451 ; "ctrl" + "k"
 GearRevMatched_M              IS MEM452 ; Acroloc rev-match achieved flag
 GearRevMatchStarted_M         IS MEM453 ; Acroloc rev-match timer started flag
+GearSettleActive_M            IS MEM454 ; Acroloc post-shift settle lockout active (held until GearClutchSettle_T expires)
 KbTogCoolAutoMan_M            IS MEM438 ; "ctrl" + "m"
 KbFeedHold_M                  IS MEM439 ; space bar
 KbIncSpinOver_M               IS MEM440 ; "ctrl" + ">" (.)
@@ -1282,6 +1283,7 @@ IF 1==1 THEN SET True_M,
              EngagedRange_W = 1,
              DesiredRange_W = 1,
              SpindleRange_W = 1,
+             RST GearSettleActive_M,
              RST InitialStage
 
 ;=============================================================================
@@ -2289,9 +2291,17 @@ IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
 ; ratio/DAC math below always reflects reality.
 IF !GearShiftStage THEN SpindleRange_W = EngagedRange_W
 
+; Post-shift settle lockout: GearSettleActive_M is latched when a shift completes (in
+; GearShiftStage) and held until the settle dwell GearClutchSettle_T expires. A bare
+; timer is true once it reaches its set point, so this fires at expiry; clearing the
+; timer too returns its elapsed count to 0 so it is reusable for the next shift.
+IF GearSettleActive_M && GearClutchSettle_T THEN
+  RST GearSettleActive_M,
+  RST GearClutchSettle_T
+
 ; Kick off a shift when the desired gear differs from the engaged gear and we are not
 ; already shifting, not in a tool change, and not inside the post-shift settle lockout.
-IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && !GearClutchSettle_T
+IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && !GearSettleActive_M
   THEN SET GearShiftStage
 
 ; Use the gear range number to set the range flags and speed ratio.
@@ -3011,13 +3021,16 @@ IF GearShiftStage && GearRevMatched_M && (DesiredRange_W == 4) THEN
 IF GearShiftStage && GearRevMatched_M THEN
   EngagedRange_W = DesiredRange_W,
   SET GearClutchSettle_T,
+  SET GearSettleActive_M,
   RST GearRevMatched_M,
   RST GearRevMatchStarted_M,
   RST GearRevMatch_T,
   RST GearShiftStage
 
 ; --- Timeout: rev-match never achieved -> fault, hold neutral, drop spindle enable ---
-IF GearShiftStage && GearRevMatchStarted_M && !GearRevMatched_M && (GearRevMatch_T == 0) THEN
+; A bare timer is true once it reaches its set point, so GearRevMatch_T fires at the
+; timeout (NOT == 0, which would mean "0 ms elapsed / just armed" and fault instantly).
+IF GearShiftStage && GearRevMatchStarted_M && !GearRevMatched_M && GearRevMatch_T THEN
   RST Spindle_Low_gear_O,
   RST Spindle_High_gear_O,
   RST SpindleEnableOut_O,

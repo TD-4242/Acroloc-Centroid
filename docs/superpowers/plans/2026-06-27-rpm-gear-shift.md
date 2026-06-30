@@ -49,7 +49,7 @@ Documentation: `README.md` "Spindle speed & range" section is updated to reflect
 - Modify: `Centroid-Acroloc-ALLIN1DC.src` (definitions area: stages ~1199, words ~1079-1095, timers ~1181, memory ~ after 451)
 
 **Interfaces:**
-- Produces: `GearShiftStage` (STG17), `DesiredRange_W` (W73), `EngagedRange_W` (W74), `GearRevMatch_T` (T25), `GearClutchSettle_T` (T26), `GearRevMatched_M` (MEM452), `GearRevMatchStarted_M` (MEM453). Consumed by Tasks 2-4.
+- Produces: `GearShiftStage` (STG17), `DesiredRange_W` (W73), `EngagedRange_W` (W74), `GearRevMatch_T` (T25), `GearClutchSettle_T` (T26), `GearRevMatched_M` (MEM452), `GearRevMatchStarted_M` (MEM453), `GearSettleActive_M` (MEM454). Consumed by Tasks 2-4.
 
 - [ ] **Step 1: Confirm the target resource numbers are still free**
 
@@ -89,6 +89,7 @@ Find the highest existing `IS MEM45x` definition (around `MEM451`) and add after
 ```
 GearRevMatched_M                IS MEM452 ; Acroloc rev-match achieved flag
 GearRevMatchStarted_M           IS MEM453 ; Acroloc rev-match timer started flag
+GearSettleActive_M              IS MEM454 ; Acroloc post-shift settle lockout active (held until GearClutchSettle_T expires)
 ```
 
 - [ ] **Step 6: Add a parameter documentation comment near the gear definitions**
@@ -107,11 +108,11 @@ Immediately after the `EngagedRange_W` line added in Step 3, add this comment bl
 
 Run:
 ```bash
-grep -nE "GearShiftStage +IS STG17|DesiredRange_W +IS W73|EngagedRange_W +IS W74|GearRevMatch_T +IS T25|GearClutchSettle_T +IS T26|GearRevMatched_M +IS MEM452|GearRevMatchStarted_M +IS MEM453" Centroid-Acroloc-ALLIN1DC.src
+grep -nE "GearShiftStage +IS STG17|DesiredRange_W +IS W73|EngagedRange_W +IS W74|GearRevMatch_T +IS T25|GearClutchSettle_T +IS T26|GearRevMatched_M +IS MEM452|GearRevMatchStarted_M +IS MEM453|GearSettleActive_M +IS MEM454" Centroid-Acroloc-ALLIN1DC.src
 # no duplicate resource assignment anywhere:
-for r in STG17 W73 W74 T25 T26 MEM452 MEM453; do n=$(grep -cE "IS $r\b" Centroid-Acroloc-ALLIN1DC.src); echo "$r: $n"; done
+for r in STG17 W73 W74 T25 T26 MEM452 MEM453 MEM454; do n=$(grep -cE "IS $r\b" Centroid-Acroloc-ALLIN1DC.src); echo "$r: $n"; done
 ```
-Expected: all 7 definition lines print once; each resource count is exactly `1`.
+Expected: all 8 definition lines print once; each resource count is exactly `1`.
 
 - [ ] **Step 8: Commit**
 
@@ -142,15 +143,16 @@ In the `IF 1==1 THEN SET True_M, ...` block, find the line `StopSpinBeforeATC_T 
              EngagedRange_W = 1,
              DesiredRange_W = 1,
              SpindleRange_W = 1,
+             RST GearSettleActive_M,
 ```
 
 - [ ] **Step 2: Verify the actions are inside InitialStage and the block still ends correctly**
 
 Run:
 ```bash
-sed -n '/^                          InitialStage/,/RST InitialStage/p' Centroid-Acroloc-ALLIN1DC.src | grep -nE "SET Spindle_Low_gear_O|RST Spindle_High_gear_O|EngagedRange_W = 1|DesiredRange_W = 1|SpindleRange_W = 1|RST InitialStage"
+sed -n '/^                          InitialStage/,/RST InitialStage/p' Centroid-Acroloc-ALLIN1DC.src | grep -nE "SET Spindle_Low_gear_O|RST Spindle_High_gear_O|EngagedRange_W = 1|DesiredRange_W = 1|SpindleRange_W = 1|RST GearSettleActive_M|RST InitialStage"
 ```
-Expected: the five new actions appear, followed by `RST InitialStage` as the last line. Confirm every added action line ends with a comma except that `RST InitialStage` remains the terminator.
+Expected: the six new actions appear, followed by `RST InitialStage` as the last line. Confirm every added action line ends with a comma except that `RST InitialStage` remains the terminator.
 
 - [ ] **Step 3: Commit**
 
@@ -169,7 +171,7 @@ git commit -m "feat(plc): default to low gear on power-up"
 - Modify: `Centroid-Acroloc-ALLIN1DC.src` (replace the sense-switch selection at ~lines 2259-2260; add interlock near ~line 2344)
 
 **Interfaces:**
-- Consumes: `SV_PC_COMMANDED_SPINDLE_SPEED`, `SV_MACHINE_PARAMETER_941/942`, `DesiredRange_W`, `EngagedRange_W`, `SpindleRange_W`, `GearShiftStage`, `ATCStage`, `GearClutchSettle_T`, `Spindle_Low_gear_O`, `Spindle_High_gear_O`, `SPINDLE_FAULT_MSG_C`, `ShowFaultStage`, `OtherFault_M`.
+- Consumes: `SV_PC_COMMANDED_SPINDLE_SPEED`, `SV_MACHINE_PARAMETER_941/942`, `DesiredRange_W`, `EngagedRange_W`, `SpindleRange_W`, `GearShiftStage`, `ATCStage`, `GearClutchSettle_T`, `GearSettleActive_M`, `Spindle_Low_gear_O`, `Spindle_High_gear_O`, `SPINDLE_FAULT_MSG_C`, `ShowFaultStage`, `OtherFault_M`.
 - Produces: `DesiredRange_W` each scan; `SET GearShiftStage` trigger; `SpindleRange_W` tracking the engaged gear when not shifting; the both-clutch safety interlock. Consumed by Task 4 / the existing DAC math.
 
 - [ ] **Step 1: Replace the sense-switch selection lines**
@@ -195,9 +197,17 @@ IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
 ; ratio/DAC math below always reflects reality.
 IF !GearShiftStage THEN SpindleRange_W = EngagedRange_W
 
+; Post-shift settle lockout: GearSettleActive_M is latched when a shift completes (in
+; GearShiftStage) and held until the settle dwell GearClutchSettle_T expires. A bare
+; timer is true once it reaches its set point, so this fires at expiry; clearing the
+; timer too returns its elapsed count to 0 so it is reusable for the next shift.
+IF GearSettleActive_M && GearClutchSettle_T THEN
+  RST GearSettleActive_M,
+  RST GearClutchSettle_T
+
 ; Kick off a shift when the desired gear differs from the engaged gear and we are not
 ; already shifting, not in a tool change, and not inside the post-shift settle lockout.
-IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && !GearClutchSettle_T
+IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && !GearSettleActive_M
   THEN SET GearShiftStage
 ```
 
@@ -230,7 +240,7 @@ Expected: `removed (good)`, and all four new markers print.
 
 Run:
 ```bash
-grep -nE "DesiredRange_W != EngagedRange_W.*!GearShiftStage.*!ATCStage.*!GearClutchSettle_T" Centroid-Acroloc-ALLIN1DC.src
+grep -nE "DesiredRange_W != EngagedRange_W.*!GearShiftStage.*!ATCStage.*!GearSettleActive_M" Centroid-Acroloc-ALLIN1DC.src
 ```
 Expected: one line — the trigger includes all three guards (not already shifting, not in ATC, not in settle lockout).
 
@@ -252,6 +262,7 @@ git commit -m "feat(plc): RPM gear decision, shift trigger, and clutch interlock
 
 **Interfaces:**
 - Consumes: `GearShiftStage`, `DesiredRange_W`, `EngagedRange_W`, `SpindleRange_W`, `Spindle_Low_gear_O`, `Spindle_High_gear_O`, `SpindleEnableOut_O`, `SV_MEASURED_SPINDLE_SPEED`, `SV_PC_COMMANDED_SPINDLE_SPEED`, `SV_MACHINE_PARAMETER_943/944/945`, `GearRevMatch_T`, `GearClutchSettle_T`, `GearRevMatched_M`, `GearRevMatchStarted_M`, `SPINDLE_FAULT_MSG_C`, `ShowFaultStage`, `OtherFault_M`.
+- Produces: `SET GearSettleActive_M` on shift completion (held until `GearClutchSettle_T` expires, then both cleared in MainStage).
 - Produces: the completed shift (engaged clutch + `EngagedRange_W` updated), or a clean timeout fault (neutral + spindle disabled).
 
 - [ ] **Step 1: Insert the GearShiftStage block**
@@ -304,13 +315,16 @@ IF GearShiftStage && GearRevMatched_M && (DesiredRange_W == 4) THEN
 IF GearShiftStage && GearRevMatched_M THEN
   EngagedRange_W = DesiredRange_W,
   SET GearClutchSettle_T,
+  SET GearSettleActive_M,
   RST GearRevMatched_M,
   RST GearRevMatchStarted_M,
   RST GearRevMatch_T,
   RST GearShiftStage
 
 ; --- Timeout: rev-match never achieved -> fault, hold neutral, drop spindle enable ---
-IF GearShiftStage && GearRevMatchStarted_M && !GearRevMatched_M && (GearRevMatch_T == 0) THEN
+; A bare timer is true once it reaches its set point, so GearRevMatch_T fires at the
+; timeout (NOT == 0, which would mean "0 ms elapsed / just armed" and fault instantly).
+IF GearShiftStage && GearRevMatchStarted_M && !GearRevMatched_M && GearRevMatch_T THEN
   RST Spindle_Low_gear_O,
   RST Spindle_High_gear_O,
   RST SpindleEnableOut_O,
