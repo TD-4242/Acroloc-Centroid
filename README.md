@@ -143,6 +143,35 @@ work tagged `; Acroloc`.
    carousel (`SET ATCUnlocked_O, SET ATCMotor_O`) and decodes the position switches as each
    tool passes.
 
+### ATCStage flow
+
+`ATCStage` will not release or spin the carousel until **both** Z-axis conditions hold: the
+spindle is stopped (`ZeroSpeed_I`, INP12) **and** Z is fully parked at the top so the tool ring
+is cleared (`ATC_Z_Zero_Release_I`, **INP27**). INP27 is the carousel-release gate — it is the
+park position (Z ≈ 0), a higher Z than the changer **danger band** (INP26) that the
+[feed-hold interlock](#spindle-in-changer-feed-hold-interlock) acts on. The same INP27 also
+gates the front-panel [manual unlock](#manual-unlock).
+
+```mermaid
+flowchart TD
+    A(["ATCStage SET (by M6_SV in MainStage)"]) --> B{"Spindle stopped?<br/>ZeroSpeed_I (INP12)"}
+    B -- no --> BF["FAULT SPINDLE_FAULT_MSG_C<br/>RST ATCStage — abort"]
+    B -- yes --> C{"Z parked / tool ring cleared?<br/>ATC_Z_Zero_Release_I (INP27)"}
+    C -- "no — not parked" --> CF["FAULT ATC_Spindle_Not_Parked_C<br/>RST ATCStage — abort"]
+    C -- "yes — parked" --> D{"ChangeToTool_W > 0?"}
+    D -- yes --> E["SET ATCUnlocked_O — release carousel lock<br/>SET ATCMotor_O — spin carousel"]
+    E --> F{"Position switch passing?<br/>ATC_Pos1..5_I"}
+    F -- "yes — tool in window" --> G["CarouselToolID_W = 0, SET InToolSelect_M<br/>accumulate +1/+2/+4/+8/+10 (see encoding below)"]
+    F -- "no — gap, all switches 0" --> H["RST InToolSelect_M<br/>(CarouselToolID_W now = last tool seen)"]
+    G --> I{"CarouselToolID_W == ChangeToTool_W?"}
+    H --> I
+    I -- "no — keep turning" --> F
+    I -- yes --> K["SET ToolSelected_M<br/>RST ATCMotor_O + ATCUnlocked_O — stop & relock<br/>RST M6_SV, RST ATCStage — done"]
+```
+
+> ⚠️ The "keep turning" loop has **no timeout** — if `ChangeToTool_W` is never matched the
+> carousel spins indefinitely (see the no-carousel-timeout note below).
+
 ### Carousel position encoding
 
 Tool IDs are encoded across the 5 position switches as **base-16 written in decimal**. While
