@@ -4,7 +4,7 @@
 
 **Goal:** Make `Centroid-Acroloc-ALLIN1DC.src` automatically select and engage the two-speed transmission gear from the commanded spindle RPM, driving the previously-unused clutch outputs `Spindle_Low_gear_O` (OUT19) / `Spindle_High_gear_O` (OUT20).
 
-**Architecture:** A range-decision block in `MainStage` (STG4) computes `DesiredRange_W` from `SV_PC_COMMANDED_SPINDLE_SPEED` vs a crossover machine parameter with hysteresis, and triggers a new `GearShiftStage` (STG17). `GearShiftStage` performs an open-loop clutch swap: release both clutches → coast in neutral for a fixed dwell (the DAC already re-commands the motor through the new gear's ratio, a passive motor-side speed match) → engage the target clutch. No speed feedback is read and there is no fault path (a dwell always elapses). The two clutch outputs are mutually exclusive at all times.
+**Architecture:** A range-decision block in `MainStage` (STG4) computes `DesiredRange_W` from the un-overridden S value (`GearBaseSpeed_FW` — `SV_PC_COMMANDED_SPINDLE_SPEED` with the spindle-override knob backed out, so the override never triggers a shift) vs a crossover machine parameter with hysteresis, and triggers a new `GearShiftStage` (STG17). `GearShiftStage` performs an open-loop clutch swap: release both clutches → coast in neutral for a fixed dwell (the DAC already re-commands the motor through the new gear's ratio, a passive motor-side speed match) → engage the target clutch. No speed feedback is read and there is no fault path (a dwell always elapses). The two clutch outputs are mutually exclusive at all times.
 
 **Tech Stack:** Centroid CNC12 / MPU11 PLC stage language (`.src`). There is **no build/test tooling in this repo** — the `.src` is compiled by CNC12's PLC compiler on the Windows control PC, and behavior is validated on the machine/simulator.
 
@@ -24,7 +24,7 @@ Treat "Run:" blocks below as the structural checks. Do not invent a test framewo
 - Open-loop: there is no gear-position input. Engaged gear is tracked in `EngagedRange_W` and reflected by the clutch output state. `SpinLowRange_I` (INP13) is no longer used for selection.
 - Power-up default is **low** range.
 - Crossover RPM **≤ 0 disables** auto-shift (hold current gear) — a freshly loaded, unconfigured PLC must not shift on its own.
-- Fixed resource assignments (verified free against the current source on 2026-06-27): `GearShiftStage IS STG17`, `DesiredRange_W IS W73`, `EngagedRange_W IS W74`, `GearCoast_T IS T25`, `GearClutchSettle_T IS T26`, `GearCoastStarted_M IS MEM453`. Machine parameters: `SV_MACHINE_PARAMETER_941` crossover RPM, `_942` hysteresis RPM, `_943` reserved (was rev-match tolerance; unused), `_944` coast dwell ms (0 → default 1500), `_945` clutch-settle/lockout ms.
+- Fixed resource assignments (verified free against the current source on 2026-06-27): `GearShiftStage IS STG17`, `DesiredRange_W IS W73`, `EngagedRange_W IS W74`, `GearBaseSpeed_FW IS FW7`, `GearCoast_T IS T25`, `GearClutchSettle_T IS T26`, `GearCoastStarted_M IS MEM453`. Machine parameters: `SV_MACHINE_PARAMETER_941` crossover RPM, `_942` hysteresis RPM, `_943` reserved (was rev-match tolerance; unused), `_944` coast dwell ms (0 → default 1500), `_945` clutch-settle/lockout ms.
 - Reuse the existing `SPINDLE_FAULT_MSG_C` message for shift faults (deviation from the spec's `GearShiftFault_C`: avoids needing an external CNC12 `plcmsg.txt` edit that can't be made or verified in this repo; a dedicated message can be added later).
 - Branch: `feat/rpm-gear-shift`. Commit after each task.
 
@@ -73,6 +73,11 @@ Find `SpindleRange_W                  IS W64  ; 1 = low ... 4 = high` and add im
 ```
 DesiredRange_W                  IS W73  ; Acroloc gear wanted by RPM logic (1=low, 4=high)
 EngagedRange_W                  IS W74  ; Acroloc gear currently engaged (open-loop, tracks clutch outputs)
+```
+
+Also find `SpinSpeedCommand_FW           IS FW6` (the float-word group) and add after it:
+```
+GearBaseSpeed_FW              IS FW7 ; Acroloc un-overridden commanded S (override knob backed out)
 ```
 
 - [ ] **Step 4: Add the timer definitions after `ATCSpin_T`**
@@ -171,7 +176,7 @@ git commit -m "feat(plc): default to low gear on power-up"
 - Modify: `Centroid-Acroloc-ALLIN1DC.src` (replace the sense-switch selection at ~lines 2259-2260; add interlock near ~line 2344)
 
 **Interfaces:**
-- Consumes: `SV_PC_COMMANDED_SPINDLE_SPEED`, `SV_MACHINE_PARAMETER_941/942`, `DesiredRange_W`, `EngagedRange_W`, `SpindleRange_W`, `GearShiftStage`, `ATCStage`, `GearClutchSettle_T`, `GearSettleActive_M`, `Spindle_Low_gear_O`, `Spindle_High_gear_O`, `SPINDLE_FAULT_MSG_C`, `ShowFaultStage`, `OtherFault_M`.
+- Consumes: `SV_PC_COMMANDED_SPINDLE_SPEED`, `SV_PLC_SPINDLE_KNOB`, `GearBaseSpeed_FW`, `SV_MACHINE_PARAMETER_941/942`, `DesiredRange_W`, `EngagedRange_W`, `SpindleRange_W`, `GearShiftStage`, `ATCStage`, `GearClutchSettle_T`, `GearSettleActive_M`, `Spindle_Low_gear_O`, `Spindle_High_gear_O`, `SPINDLE_FAULT_MSG_C`, `ShowFaultStage`, `OtherFault_M`.
 - Produces: `DesiredRange_W` each scan; `SET GearShiftStage` trigger; `SpindleRange_W` tracking the engaged gear when not shifting; the both-clutch safety interlock. Consumed by Task 4 / the existing DAC math.
 
 - [ ] **Step 1: Replace the sense-switch selection lines**
@@ -185,12 +190,19 @@ Replace them with:
 ```
 ; Acroloc: RPM-based automatic gear selection (replaces the old INP13 sense-switch
 ; selection).  DesiredRange_W is held in the hysteresis deadband; P941<=0 disables.
+;
+; Decide from the UN-overridden S value: SV_PC_COMMANDED_SPINDLE_SPEED includes
+; the spindle-override knob (SV_PLC_SPINDLE_KNOB, clamped 1-200 in the override
+; section above), so back the knob out — otherwise sweeping the override across
+; the crossover mid-cut would trigger a gear shift (a neutral drop under load).
+IF True_M THEN GearBaseSpeed_FW = SV_PC_COMMANDED_SPINDLE_SPEED * 100.0 / SV_PLC_SPINDLE_KNOB
+
 IF SV_MACHINE_PARAMETER_941 <= 0.0 THEN DesiredRange_W = EngagedRange_W
 IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
-   (SV_PC_COMMANDED_SPINDLE_SPEED >= (SV_MACHINE_PARAMETER_941 + SV_MACHINE_PARAMETER_942))
+   (GearBaseSpeed_FW >= (SV_MACHINE_PARAMETER_941 + SV_MACHINE_PARAMETER_942))
   THEN DesiredRange_W = 4
 IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
-   (SV_PC_COMMANDED_SPINDLE_SPEED <= (SV_MACHINE_PARAMETER_941 - SV_MACHINE_PARAMETER_942))
+   (GearBaseSpeed_FW <= (SV_MACHINE_PARAMETER_941 - SV_MACHINE_PARAMETER_942))
   THEN DesiredRange_W = 1
 
 ; While not shifting, the effective range tracks the actually-engaged clutch so the
@@ -377,9 +389,11 @@ Find the subsection beginning `### ⚠️ Not yet implemented: commanding the sh
 The PLC now **commands** the two-speed transmission automatically from the commanded
 spindle RPM (it no longer relies on the `SpinLowRange_I`/INP13 lever sense for selection).
 
-- `MainStage` computes `DesiredRange_W` from `SV_PC_COMMANDED_SPINDLE_SPEED` versus a
-  crossover machine parameter with a hysteresis deadband (Parameter 941 crossover RPM,
-  942 hysteresis; 941 ≤ 0 disables auto-shift).
+- `MainStage` computes `DesiredRange_W` from the **un-overridden S value**
+  (`GearBaseSpeed_FW` = `SV_PC_COMMANDED_SPINDLE_SPEED` with the spindle-override knob
+  backed out) versus a crossover machine parameter with a hysteresis deadband
+  (Parameter 941 crossover RPM, 942 hysteresis; 941 ≤ 0 disables auto-shift). Sweeping
+  the override knob never triggers a shift.
 - When the desired gear differs from the engaged gear, `GearShiftStage` (STG17) performs an
   **open-loop clutch swap**: release both clutches (`Spindle_Low_gear_O`/OUT19,
   `Spindle_High_gear_O`/OUT20), **coast in neutral for a fixed dwell** (Parameter 944 ms;

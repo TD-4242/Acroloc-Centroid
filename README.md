@@ -85,9 +85,11 @@ low range on this machine).
 The PLC now **commands** the two-speed transmission automatically from the commanded
 spindle RPM (it no longer relies on the `SpinLowRange_I`/INP13 lever sense for selection).
 
-- `MainStage` computes `DesiredRange_W` from `SV_PC_COMMANDED_SPINDLE_SPEED` versus a
-  crossover machine parameter with a hysteresis deadband (Parameter 941 crossover RPM,
-  942 hysteresis; 941 ≤ 0 disables auto-shift).
+- `MainStage` computes `DesiredRange_W` from the **un-overridden S value**
+  (`GearBaseSpeed_FW` = `SV_PC_COMMANDED_SPINDLE_SPEED` with the spindle-override knob
+  backed out) versus a crossover machine parameter with a hysteresis deadband
+  (Parameter 941 crossover RPM, 942 hysteresis; 941 ≤ 0 disables auto-shift). Sweeping
+  the override knob changes speed within the engaged gear but never triggers a shift.
 - When the desired gear differs from the engaged gear, `GearShiftStage` (STG17) performs an
   **open-loop clutch swap**: release both clutches (`Spindle_Low_gear_O`/OUT19,
   `Spindle_High_gear_O`/OUT20), **coast in neutral for a fixed dwell** (Parameter 944 ms;

@@ -56,9 +56,12 @@ Two pieces, both tagged `; Acroloc`:
 
 1. **Range-decision block in `MainStage`** (replaces the current
    `IF True_M THEN SpindleRange_W = 4` / `IF SpinLowRange_I THEN SpindleRange_W = 1` pair):
-   - Compute `DesiredRange_W` from `SV_PC_COMMANDED_SPINDLE_SPEED`:
-     - `commanded >= Crossover + Hysteresis` → high (4)
-     - `commanded <= Crossover - Hysteresis` → low (1)
+   - Compute the un-overridden S:
+     `GearBaseSpeed_FW = SV_PC_COMMANDED_SPINDLE_SPEED * 100 / SV_PLC_SPINDLE_KNOB`
+     (the override knob must not trigger shifts).
+   - Compute `DesiredRange_W` from `GearBaseSpeed_FW`:
+     - `base >= Crossover + Hysteresis` → high (4)
+     - `base <= Crossover - Hysteresis` → low (1)
      - inside the deadband → leave `DesiredRange_W` unchanged (no hunting)
    - If `DesiredRange_W != EngagedRange_W` AND not already shifting AND not `ATCStage`
      → `SET GearShiftStage`.
@@ -102,6 +105,7 @@ Names are fixed here; concrete resource/parameter numbers are assigned during pl
 | Symbol | Kind | Role |
 | --- | --- | --- |
 | `GearShiftStage` | `STG` | The shift state machine |
+| `GearBaseSpeed_FW` | `FW` | Un-overridden commanded S (override knob backed out) — the decision input |
 | `DesiredRange_W` | `W` | Gear wanted by RPM logic (1 low / 4 high; 0 = unknown after a both-clutch fault) |
 | `EngagedRange_W` | `W` | Gear currently engaged (open-loop; tracks the energized clutch) |
 | `GearCoast_T` | `T` | Neutral coast dwell before engaging |
@@ -115,8 +119,8 @@ Names are fixed here; concrete resource/parameter numbers are assigned during pl
 
 The both-clutch fault reuses the stock `SPINDLE_FAULT_MSG_C` message rather than a new
 `_C` constant. Reused existing symbols: `SpindleRange_W` (W64), `SpinRangeAdjust_FW` (FW1),
-`SV_PC_COMMANDED_SPINDLE_SPEED`, `Spindle_Low_gear_O` (OUT19), `Spindle_High_gear_O`
-(OUT20).
+`SV_PC_COMMANDED_SPINDLE_SPEED`, `SV_PLC_SPINDLE_KNOB`, `Spindle_Low_gear_O` (OUT19),
+`Spindle_High_gear_O` (OUT20).
 
 ## Faults & edge cases
 
@@ -131,10 +135,13 @@ The both-clutch fault reuses the stock `SPINDLE_FAULT_MSG_C` message rather than
   coasts the dwell at zero speed and engages. (A threshold-crossing S-word while the
   spindle is off costs one dwell, never a fault.)
 - **Hunting near the threshold:** prevented by the hysteresis deadband.
-- **Known, accepted:** `SV_PC_COMMANDED_SPINDLE_SPEED` includes the spindle-override knob,
-  so sweeping the override across the crossover mid-cut triggers a shift (neutral drop
-  under load). If this proves disruptive in practice, derive the decision from the
-  un-overridden S value or debounce the desire before kicking a shift.
+- **Spindle-override knob does NOT trigger shifts:** `SV_PC_COMMANDED_SPINDLE_SPEED`
+  includes the override, so the decision backs it out —
+  `GearBaseSpeed_FW = SV_PC_COMMANDED_SPINDLE_SPEED * 100 / SV_PLC_SPINDLE_KNOB` (the knob
+  is PLC-owned and clamped 1–200 earlier in the same scan, so the division is safe) — and
+  compares the un-overridden S value against the crossover. Sweeping the override mid-cut
+  changes speed within the engaged gear; only a programmed S change can cross the
+  threshold.
 
 ## Why a fixed coast dwell (not a rev-match)
 

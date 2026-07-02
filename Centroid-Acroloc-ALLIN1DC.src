@@ -1108,6 +1108,7 @@ CfgMinSpeed_FW                IS FW3
 CfgMaxSpeed_FW                IS FW4
 TwelveBitSpeed_FW             IS FW5
 SpinSpeedCommand_FW           IS FW6
+GearBaseSpeed_FW              IS FW7 ; Acroloc un-overridden commanded S (override knob backed out)
 
 ;------------------------------------------------------------------------------
 ;            One Shot Definitions
@@ -2278,12 +2279,19 @@ IF SV_PLC_SPINDLE_KNOB > 100 THEN (SpinOverPlusLED_O), (DoIncreaseSpindleOR_SV)
 ; Acroloc: RPM-based automatic gear selection (replaces the old INP13 sense-switch
 ; selection). The power-up default is LOW range (see init), not high.
 ; DesiredRange_W is held in the hysteresis deadband; P941<=0 disables.
+;
+; Decide from the UN-overridden S value: SV_PC_COMMANDED_SPINDLE_SPEED includes
+; the spindle-override knob (SV_PLC_SPINDLE_KNOB, clamped 1-200 in the override
+; section above), so back the knob out — otherwise sweeping the override across
+; the crossover mid-cut would trigger a gear shift (a neutral drop under load).
+IF True_M THEN GearBaseSpeed_FW = SV_PC_COMMANDED_SPINDLE_SPEED * 100.0 / SV_PLC_SPINDLE_KNOB
+
 IF SV_MACHINE_PARAMETER_941 <= 0.0 THEN DesiredRange_W = EngagedRange_W
 IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
-   (SV_PC_COMMANDED_SPINDLE_SPEED >= (SV_MACHINE_PARAMETER_941 + SV_MACHINE_PARAMETER_942))
+   (GearBaseSpeed_FW >= (SV_MACHINE_PARAMETER_941 + SV_MACHINE_PARAMETER_942))
   THEN DesiredRange_W = 4
 IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
-   (SV_PC_COMMANDED_SPINDLE_SPEED <= (SV_MACHINE_PARAMETER_941 - SV_MACHINE_PARAMETER_942))
+   (GearBaseSpeed_FW <= (SV_MACHINE_PARAMETER_941 - SV_MACHINE_PARAMETER_942))
   THEN DesiredRange_W = 1
 
 ; While not shifting, the effective range tracks the actually-engaged clutch so the
