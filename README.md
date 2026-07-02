@@ -28,26 +28,22 @@ The Acroloc spindle has a **two-speed transmission** (low / high range). The PLC
 range the gearbox is in, reports it to the CNC, and scales the analog speed command so the
 displayed/commanded RPM matches the gear that is actually engaged.
 
-### Range selection input
+### Range selection
 
-The current gear is determined by a single feedback input:
-
-```
-SpinLowRange_I   IS INP13        ; transmission-in-low-gear sense switch
-```
-
-In the spindle-range logic inside `MainStage`:
+The current gear (`SpindleRange_W`) is now tracked from the **clutch outputs the PLC itself
+commands** (`EngagedRange_W`; see "Automatic RPM-based gear shifting" below), not from a
+sense switch. The stock scheme this replaced read a low-gear sense input and defaulted to
+high range as a fail-safe:
 
 ```
+; stock code, REPLACED by the RPM auto-shift decision block
 IF True_M         THEN SpindleRange_W = 4     ; default to HIGH range (fail-safe)
 IF SpinLowRange_I THEN SpindleRange_W = 1     ; INP13 active  -> LOW range
 ```
 
-- **INP13 active → low range** (`SpindleRange_W = 1`)
-- **INP13 inactive → high range** (`SpindleRange_W = 4`, the default)
-
-> The stock PLC also defines `SpinMedRange_I (INP14)` and `SpinHighRange_I (INP15)` for
-> 4-range gearboxes, but neither is referenced — consistent with this two-speed head.
+> The stock inputs `SpinLowRange_I (INP13)`, `SpinMedRange_I (INP14)` and
+> `SpinHighRange_I (INP15)` remain defined but are **no longer referenced by any logic** —
+> gear position is tracked open-loop from the commanded clutches.
 
 ### Range → speed-scaling ratio
 
@@ -92,18 +88,21 @@ spindle RPM (it no longer relies on the `SpinLowRange_I`/INP13 lever sense for s
 - `MainStage` computes `DesiredRange_W` from `SV_PC_COMMANDED_SPINDLE_SPEED` versus a
   crossover machine parameter with a hysteresis deadband (Parameter 941 crossover RPM,
   942 hysteresis; 941 ≤ 0 disables auto-shift).
-- When the desired gear differs from the engaged gear, `GearShiftStage` (STG16-adjacent,
-  STG17) performs an **open-loop, on-the-fly clutch swap**: release both clutches
-  (`Spindle_Low_gear_O`/OUT19, `Spindle_High_gear_O`/OUT20), command the new gear so the
-  motor rev-matches, and — when `SV_MEASURED_SPINDLE_SPEED` is within tolerance
-  (Parameter 943) of the commanded speed — engage the target clutch. A rev-match timeout
-  (Parameter 944) faults into neutral with the spindle disabled.
+- When the desired gear differs from the engaged gear, `GearShiftStage` (STG17) performs an
+  **open-loop clutch swap**: release both clutches (`Spindle_Low_gear_O`/OUT19,
+  `Spindle_High_gear_O`/OUT20), **coast in neutral for a fixed dwell** (Parameter 944 ms;
+  0 → default 1500), then engage the target clutch. No exact rev-match is required — during
+  the coast the DAC already commands the motor through the new gear's ratio, so the motor
+  side arrives near the right speed passively. There is **no fault path**: a dwell always
+  elapses, so a shift always completes.
 - The two clutch outputs are **mutually exclusive** (a safety interlock forces neutral if
-  both are ever energized). Power-up engages **low** range.
+  both are ever energized, and marks the gear unknown so the next demand re-shifts).
+  Power-up engages **low** range.
 
-> **Open-loop caveat:** there is no gear-position feedback; the engaged gear is tracked in
-> `EngagedRange_W` from the clutch-output state, and the rev-match + clutch-settle dwell
-> (Parameter 945) are the only confirmation that a shift completed.
+> **Open-loop caveat:** there is no gear-position or speed feedback in the shift sequence;
+> the engaged gear is tracked in `EngagedRange_W` from the clutch-output state, and the
+> coast dwell + clutch-settle lockout (Parameter 945) are the only confirmation that a
+> shift completed.
 
 ## Automatic tool changer (ATC)
 

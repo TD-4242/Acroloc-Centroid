@@ -4,7 +4,7 @@
 
 **Goal:** Make `Centroid-Acroloc-ALLIN1DC.src` automatically select and engage the two-speed transmission gear from the commanded spindle RPM, driving the previously-unused clutch outputs `Spindle_Low_gear_O` (OUT19) / `Spindle_High_gear_O` (OUT20).
 
-**Architecture:** A range-decision block in `MainStage` (STG4) computes `DesiredRange_W` from `SV_PC_COMMANDED_SPINDLE_SPEED` vs a crossover machine parameter with hysteresis, and triggers a new `GearShiftStage` (STG17). `GearShiftStage` performs an open-loop, on-the-fly clutch swap: release both clutches → command the new gear so the motor rev-matches → when `SV_MEASURED_SPINDLE_SPEED` is within tolerance of the commanded speed, engage the target clutch. The two clutch outputs are mutually exclusive at all times.
+**Architecture:** A range-decision block in `MainStage` (STG4) computes `DesiredRange_W` from `SV_PC_COMMANDED_SPINDLE_SPEED` vs a crossover machine parameter with hysteresis, and triggers a new `GearShiftStage` (STG17). `GearShiftStage` performs an open-loop clutch swap: release both clutches → coast in neutral for a fixed dwell (the DAC already re-commands the motor through the new gear's ratio, a passive motor-side speed match) → engage the target clutch. No speed feedback is read and there is no fault path (a dwell always elapses). The two clutch outputs are mutually exclusive at all times.
 
 **Tech Stack:** Centroid CNC12 / MPU11 PLC stage language (`.src`). There is **no build/test tooling in this repo** — the `.src` is compiled by CNC12's PLC compiler on the Windows control PC, and behavior is validated on the machine/simulator.
 
@@ -24,7 +24,7 @@ Treat "Run:" blocks below as the structural checks. Do not invent a test framewo
 - Open-loop: there is no gear-position input. Engaged gear is tracked in `EngagedRange_W` and reflected by the clutch output state. `SpinLowRange_I` (INP13) is no longer used for selection.
 - Power-up default is **low** range.
 - Crossover RPM **≤ 0 disables** auto-shift (hold current gear) — a freshly loaded, unconfigured PLC must not shift on its own.
-- Fixed resource assignments (verified free against the current source on 2026-06-27): `GearShiftStage IS STG17`, `DesiredRange_W IS W73`, `EngagedRange_W IS W74`, `GearRevMatch_T IS T25`, `GearClutchSettle_T IS T26`, `GearRevMatched_M IS MEM452`, `GearRevMatchStarted_M IS MEM453`. Machine parameters: `SV_MACHINE_PARAMETER_941` crossover RPM, `_942` hysteresis RPM, `_943` rev-match tolerance RPM, `_944` rev-match timeout ms, `_945` clutch-settle/lockout ms.
+- Fixed resource assignments (verified free against the current source on 2026-06-27): `GearShiftStage IS STG17`, `DesiredRange_W IS W73`, `EngagedRange_W IS W74`, `GearCoast_T IS T25`, `GearClutchSettle_T IS T26`, `GearCoastStarted_M IS MEM453`. Machine parameters: `SV_MACHINE_PARAMETER_941` crossover RPM, `_942` hysteresis RPM, `_943` reserved (was rev-match tolerance; unused), `_944` coast dwell ms (0 → default 1500), `_945` clutch-settle/lockout ms.
 - Reuse the existing `SPINDLE_FAULT_MSG_C` message for shift faults (deviation from the spec's `GearShiftFault_C`: avoids needing an external CNC12 `plcmsg.txt` edit that can't be made or verified in this repo; a dedicated message can be added later).
 - Branch: `feat/rpm-gear-shift`. Commit after each task.
 
@@ -49,14 +49,14 @@ Documentation: `README.md` "Spindle speed & range" section is updated to reflect
 - Modify: `Centroid-Acroloc-ALLIN1DC.src` (definitions area: stages ~1199, words ~1079-1095, timers ~1181, memory ~ after 451)
 
 **Interfaces:**
-- Produces: `GearShiftStage` (STG17), `DesiredRange_W` (W73), `EngagedRange_W` (W74), `GearRevMatch_T` (T25), `GearClutchSettle_T` (T26), `GearRevMatched_M` (MEM452), `GearRevMatchStarted_M` (MEM453), `GearSettleActive_M` (MEM454). Consumed by Tasks 2-4.
+- Produces: `GearShiftStage` (STG17), `DesiredRange_W` (W73), `EngagedRange_W` (W74), `GearCoast_T` (T25), `GearClutchSettle_T` (T26), `GearCoastStarted_M` (MEM453), `GearSettleActive_M` (MEM454). Consumed by Tasks 2-4.
 
 - [ ] **Step 1: Confirm the target resource numbers are still free**
 
 Run:
 ```bash
 # from the repo root
-grep -nE "IS (STG17|W73|W74|T25|T26|MEM452|MEM453)\b" Centroid-Acroloc-ALLIN1DC.src || echo "all free"
+grep -nE "IS (STG17|W73|W74|T25|T26|MEM453|MEM454)\b" Centroid-Acroloc-ALLIN1DC.src || echo "all free"
 ```
 Expected: `all free` (no existing definitions collide). If any collide, STOP and report.
 
@@ -79,7 +79,7 @@ EngagedRange_W                  IS W74  ; Acroloc gear currently engaged (open-l
 
 Find `ATCSpin_T                       IS T24 ; used to detect fault if unable to find position` and add immediately after it:
 ```
-GearRevMatch_T                  IS T25 ; Acroloc rev-match wait timeout
+GearCoast_T                     IS T25 ; Acroloc gear-shift coast dwell (neutral) before engage
 GearClutchSettle_T              IS T26 ; Acroloc post-engage clutch settle / re-shift lockout
 ```
 
@@ -87,8 +87,7 @@ GearClutchSettle_T              IS T26 ; Acroloc post-engage clutch settle / re-
 
 Find the highest existing `IS MEM45x` definition (around `MEM451`) and add after the last one in that group:
 ```
-GearRevMatched_M                IS MEM452 ; Acroloc rev-match achieved flag
-GearRevMatchStarted_M           IS MEM453 ; Acroloc rev-match timer started flag
+GearCoastStarted_M              IS MEM453 ; Acroloc gear-shift coast dwell timer started flag
 GearSettleActive_M              IS MEM454 ; Acroloc post-shift settle lockout active (held until GearClutchSettle_T expires)
 ```
 
@@ -99,8 +98,8 @@ Immediately after the `EngagedRange_W` line added in Step 3, add this comment bl
 ; Acroloc gear-shift machine parameters (set in CNC12 machine parameters):
 ;   P941 = gear crossover RPM (commanded speed at/above which high gear is used; 0 disables auto-shift)
 ;   P942 = crossover hysteresis (RPM) — deadband half-width to prevent hunting
-;   P943 = rev-match speed tolerance (RPM) — |measured - commanded| allowed before engaging
-;   P944 = rev-match timeout (ms; 0 -> default 3000)
+;   P943 = reserved (was rev-match tolerance; no longer used)
+;   P944 = coast dwell (ms) spent in neutral before engaging the new gear (0 -> default 1500)
 ;   P945 = clutch settle / re-shift lockout (ms; 0 -> default 500)
 ```
 
@@ -108,11 +107,11 @@ Immediately after the `EngagedRange_W` line added in Step 3, add this comment bl
 
 Run:
 ```bash
-grep -nE "GearShiftStage +IS STG17|DesiredRange_W +IS W73|EngagedRange_W +IS W74|GearRevMatch_T +IS T25|GearClutchSettle_T +IS T26|GearRevMatched_M +IS MEM452|GearRevMatchStarted_M +IS MEM453|GearSettleActive_M +IS MEM454" Centroid-Acroloc-ALLIN1DC.src
+grep -nE "GearShiftStage +IS STG17|DesiredRange_W +IS W73|EngagedRange_W +IS W74|GearCoast_T +IS T25|GearClutchSettle_T +IS T26|GearCoastStarted_M +IS MEM453|GearSettleActive_M +IS MEM454" Centroid-Acroloc-ALLIN1DC.src
 # no duplicate resource assignment anywhere:
-for r in STG17 W73 W74 T25 T26 MEM452 MEM453 MEM454; do n=$(grep -cE "IS $r\b" Centroid-Acroloc-ALLIN1DC.src); echo "$r: $n"; done
+for r in STG17 W73 W74 T25 T26 MEM453 MEM454; do n=$(grep -cE "IS $r\b" Centroid-Acroloc-ALLIN1DC.src); echo "$r: $n"; done
 ```
-Expected: all 8 definition lines print once; each resource count is exactly `1`.
+Expected: all 7 definition lines print once; each resource count is exactly `1`.
 
 - [ ] **Step 8: Commit**
 
@@ -138,13 +137,14 @@ git commit -m "feat(plc): add gear-shift symbol definitions"
 
 In the `IF 1==1 THEN SET True_M, ...` block, find the line `StopSpinBeforeATC_T = 5000,` and add immediately after it (keeping the trailing comma chain intact — these are additional comma-separated actions before the final `RST InitialStage`):
 ```
-             SET Spindle_Low_gear_O,
-             RST Spindle_High_gear_O,
-             EngagedRange_W = 1,
-             DesiredRange_W = 1,
-             SpindleRange_W = 1,
-             RST GearSettleActive_M,
+             SET Spindle_Low_gear_O,   ; Acroloc power-up gear = LOW
+             RST Spindle_High_gear_O,  ; Acroloc
+             EngagedRange_W = 1,       ; Acroloc
+             DesiredRange_W = 1,       ; Acroloc
+             SpindleRange_W = 1,       ; Acroloc
+             RST GearSettleActive_M,   ; Acroloc
 ```
+(Every custom line inside stock code carries an `; Acroloc` tag per CLAUDE.md.)
 
 - [ ] **Step 2: Verify the actions are inside InitialStage and the block still ends correctly**
 
@@ -217,9 +217,12 @@ Find the line `IF True_M THEN SV_PLC_SPINDLE_SPEED = SpinSpeedCommand_FW` (~line
 ```
 
 ; Acroloc: clutches are mutually exclusive — never allow both engaged.
+; EngagedRange_W = 0 marks the gear state unknown (we forced neutral), so the
+; next valid demand re-triggers a full shift instead of trusting a stale value.
 IF Spindle_Low_gear_O && Spindle_High_gear_O THEN
   RST Spindle_Low_gear_O,
   RST Spindle_High_gear_O,
+  EngagedRange_W = 0,
   FaultMsg_W = SPINDLE_FAULT_MSG_C,
   SET ShowFaultStage,
   SET OtherFault_M
@@ -261,9 +264,9 @@ git commit -m "feat(plc): RPM gear decision, shift trigger, and clutch interlock
 - Modify: `Centroid-Acroloc-ALLIN1DC.src` (insert a new stage block after `ATCStage`, before `SafetySwitchInterruptStage` ~line 2947)
 
 **Interfaces:**
-- Consumes: `GearShiftStage`, `DesiredRange_W`, `EngagedRange_W`, `SpindleRange_W`, `Spindle_Low_gear_O`, `Spindle_High_gear_O`, `SpindleEnableOut_O`, `SV_MEASURED_SPINDLE_SPEED`, `SV_PC_COMMANDED_SPINDLE_SPEED`, `SV_MACHINE_PARAMETER_943/944/945`, `GearRevMatch_T`, `GearClutchSettle_T`, `GearRevMatched_M`, `GearRevMatchStarted_M`, `SPINDLE_FAULT_MSG_C`, `ShowFaultStage`, `OtherFault_M`.
+- Consumes: `GearShiftStage`, `DesiredRange_W`, `EngagedRange_W`, `SpindleRange_W`, `Spindle_Low_gear_O`, `Spindle_High_gear_O`, `SV_MACHINE_PARAMETER_944/945`, `GearCoast_T`, `GearClutchSettle_T`, `GearCoastStarted_M`.
 - Produces: `SET GearSettleActive_M` on shift completion (held until `GearClutchSettle_T` expires, then both cleared in MainStage).
-- Produces: the completed shift (engaged clutch + `EngagedRange_W` updated), or a clean timeout fault (neutral + spindle disabled).
+- Produces: the completed shift (engaged clutch + `EngagedRange_W` updated). There is no fault path — a dwell always elapses.
 
 - [ ] **Step 1: Insert the GearShiftStage block**
 
@@ -274,65 +277,49 @@ Find the `ATCStage` block's final action line (the one ending `RST ATCStage` ins
    GearShiftStage ; Acroloc
 ;=============================================================================
 ; Open-loop two-clutch gear shift driven by DesiredRange_W (1=low, 4=high).
-; Sequence: release BOTH clutches (neutral) -> command the new gear so the motor
-; rev-matches -> when measured spindle speed is within tolerance of the commanded
-; speed, engage the target clutch.  The two clutches are never engaged together.
-; There is no gear-position feedback (open loop); the rev-match + settle dwell are
-; the only assurances.
+; Sequence: release BOTH clutches (neutral) -> coast for a fixed dwell -> engage
+; the target clutch.  No exact rev-match is required: during the coast the DAC
+; already commands the motor through the NEW gear's ratio (Step A retargets
+; SpindleRange_W), so the motor side arrives near the right speed passively while
+; the spindle side coasts.  The two clutches are never engaged together.  There
+; is no gear-position or speed feedback in this sequence (open loop); the coast
+; dwell + settle lockout are the only assurances.  There is no fault path — a
+; dwell always elapses, so a shift always completes.
 
-; --- Step A: neutral + rev-match command (every scan while shifting) ---
+; --- Step A: neutral + retarget the motor (every scan while shifting) ---
 IF GearShiftStage THEN
   RST Spindle_Low_gear_O,
   RST Spindle_High_gear_O,
   SpindleRange_W = DesiredRange_W
 
-; --- Step B: start the rev-match timeout once on entry ---
-IF GearShiftStage && !GearRevMatchStarted_M THEN GearRevMatch_T = 3000
-IF GearShiftStage && !GearRevMatchStarted_M && (SV_MACHINE_PARAMETER_944 > 0) THEN
-  GearRevMatch_T = SV_MACHINE_PARAMETER_944
-IF GearShiftStage && !GearRevMatchStarted_M THEN
-  SET GearRevMatch_T,
-  SET GearRevMatchStarted_M
+; --- Step B: start the coast dwell once on entry ---
+IF GearShiftStage && !GearCoastStarted_M THEN GearCoast_T = 1500
+IF GearShiftStage && !GearCoastStarted_M && (SV_MACHINE_PARAMETER_944 > 0) THEN
+  GearCoast_T = SV_MACHINE_PARAMETER_944
+IF GearShiftStage && !GearCoastStarted_M THEN
+  SET GearCoast_T,
+  SET GearCoastStarted_M
 
-; --- Step C: detect rev-match (measured within tolerance of commanded) ---
-IF GearShiftStage && GearRevMatchStarted_M &&
-   (SV_MEASURED_SPINDLE_SPEED >= (SV_PC_COMMANDED_SPINDLE_SPEED - SV_MACHINE_PARAMETER_943)) &&
-   (SV_MEASURED_SPINDLE_SPEED <= (SV_PC_COMMANDED_SPINDLE_SPEED + SV_MACHINE_PARAMETER_943))
-  THEN SET GearRevMatched_M
-
-; --- Step D: choose settle/lockout dwell value (before starting the timer) ---
-IF GearShiftStage && GearRevMatched_M THEN GearClutchSettle_T = 500
-IF GearShiftStage && GearRevMatched_M && (SV_MACHINE_PARAMETER_945 > 0) THEN
+; --- Step C: choose the settle/lockout dwell value (before starting the timer) ---
+; A bare timer is true once it reaches its set point, so GearCoast_T below fires
+; when the coast dwell has fully elapsed (NOT == 0, which would mean "just armed").
+IF GearShiftStage && GearCoastStarted_M && GearCoast_T THEN GearClutchSettle_T = 500
+IF GearShiftStage && GearCoastStarted_M && GearCoast_T && (SV_MACHINE_PARAMETER_945 > 0) THEN
   GearClutchSettle_T = SV_MACHINE_PARAMETER_945
 
-; --- Step E: engage exactly one clutch, then finish the shift ---
-IF GearShiftStage && GearRevMatched_M && (DesiredRange_W == 1) THEN
+; --- Step D: coast elapsed -> engage exactly one clutch, then finish the shift ---
+IF GearShiftStage && GearCoastStarted_M && GearCoast_T && (DesiredRange_W == 1) THEN
   SET Spindle_Low_gear_O,
   RST Spindle_High_gear_O
-IF GearShiftStage && GearRevMatched_M && (DesiredRange_W == 4) THEN
+IF GearShiftStage && GearCoastStarted_M && GearCoast_T && (DesiredRange_W == 4) THEN
   SET Spindle_High_gear_O,
   RST Spindle_Low_gear_O
-IF GearShiftStage && GearRevMatched_M THEN
+IF GearShiftStage && GearCoastStarted_M && GearCoast_T THEN
   EngagedRange_W = DesiredRange_W,
   SET GearClutchSettle_T,
   SET GearSettleActive_M,
-  RST GearRevMatched_M,
-  RST GearRevMatchStarted_M,
-  RST GearRevMatch_T,
-  RST GearShiftStage
-
-; --- Timeout: rev-match never achieved -> fault, hold neutral, drop spindle enable ---
-; A bare timer is true once it reaches its set point, so GearRevMatch_T fires at the
-; timeout (NOT == 0, which would mean "0 ms elapsed / just armed" and fault instantly).
-IF GearShiftStage && GearRevMatchStarted_M && !GearRevMatched_M && GearRevMatch_T THEN
-  RST Spindle_Low_gear_O,
-  RST Spindle_High_gear_O,
-  RST SpindleEnableOut_O,
-  FaultMsg_W = SPINDLE_FAULT_MSG_C,
-  SET ShowFaultStage,
-  SET OtherFault_M,
-  RST GearRevMatchStarted_M,
-  RST GearRevMatch_T,
+  RST GearCoastStarted_M,
+  RST GearCoast_T,
   RST GearShiftStage
 ```
 
@@ -342,10 +329,10 @@ Run:
 ```bash
 # header present and placed before SafetySwitchInterruptStage:
 grep -nE "GearShiftStage ; Acroloc|SafetySwitchInterruptStage" Centroid-Acroloc-ALLIN1DC.src | head
-# all five phases present:
-grep -nE "Step A: neutral|Step B: start the rev-match|Step C: detect rev-match|Step E: engage exactly one clutch|Timeout: rev-match never achieved" Centroid-Acroloc-ALLIN1DC.src
+# all four phases present:
+grep -nE "Step A: neutral|Step B: start the coast dwell|Step C: choose the settle|Step D: coast elapsed" Centroid-Acroloc-ALLIN1DC.src
 ```
-Expected: the `GearShiftStage ; Acroloc` header line number is **less** than the `SafetySwitchInterruptStage` line number; all five phase markers print.
+Expected: the `GearShiftStage ; Acroloc` header line number is **less** than the `SafetySwitchInterruptStage` line number; all four phase markers print.
 
 - [ ] **Step 3: Verify the never-both-engaged invariant textually**
 
@@ -354,7 +341,7 @@ Run:
 # every line that SETs one clutch must RST the other in the same action group:
 grep -nE "SET Spindle_(Low|High)_gear_O" Centroid-Acroloc-ALLIN1DC.src
 ```
-Expected: in `GearShiftStage` Step E, `SET Spindle_Low_gear_O` is paired with `RST Spindle_High_gear_O` and vice versa; the only unpaired `SET Spindle_Low_gear_O` is in `InitialStage` (where `RST Spindle_High_gear_O` immediately follows). Confirm by eye there is no `SET` of one clutch without an adjacent `RST` of the other.
+Expected: in `GearShiftStage` Step D, `SET Spindle_Low_gear_O` is paired with `RST Spindle_High_gear_O` and vice versa; the only unpaired `SET Spindle_Low_gear_O` is in `InitialStage` (where `RST Spindle_High_gear_O` immediately follows). Confirm by eye there is no `SET` of one clutch without an adjacent `RST` of the other.
 
 - [ ] **Step 4: Commit**
 
@@ -368,8 +355,8 @@ git commit -m "feat(plc): add GearShiftStage open-loop clutch shift state machin
 This cannot be done in-repo. Hand off to the operator with these instructions and record the result in the PR:
 1. Load `Centroid-Acroloc-ALLIN1DC.src` in CNC12's PLC compiler (`cncm` / PLC Detective) on the control PC.
 2. Confirm it **compiles with no errors** and emits an updated `plc.map`.
-3. On the machine/simulator, set `P941` (crossover), `P942` (hysteresis), `P943` (tolerance), `P944` (timeout ms), `P945` (settle ms) and verify: commanding S below/above the crossover engages exactly one clutch; a crossing S triggers neutral→rev-match→engage; both outputs are never on together; power-up leaves the low clutch engaged.
-4. **Validate the rev-match assumption:** confirm `SV_MEASURED_SPINDLE_SPEED` tracks the motor through the neutral phase (it is documented to scale by the LOW/MID range flags the PLC sets). If it instead reads a coasting spindle and never converges, the shift will time out — switch Step C to a fixed dwell (engage after `GearRevMatch_T` regardless of measured speed). Report findings on the PR.
+3. On the machine/simulator, set `P941` (crossover), `P942` (hysteresis), `P944` (coast dwell ms), `P945` (settle ms) and verify: commanding S below/above the crossover engages exactly one clutch; a crossing S triggers neutral→coast→engage; both outputs are never on together; power-up leaves the low clutch engaged.
+4. **Tune the coast dwell (P944):** shift under load and at various speeds; lengthen the dwell if engagement is rough (the spindle side needs longer to coast toward the motor side), shorten it if shifts feel needlessly slow. Start at the 1500 ms default. Report findings on the PR.
 
 ---
 
@@ -393,18 +380,21 @@ spindle RPM (it no longer relies on the `SpinLowRange_I`/INP13 lever sense for s
 - `MainStage` computes `DesiredRange_W` from `SV_PC_COMMANDED_SPINDLE_SPEED` versus a
   crossover machine parameter with a hysteresis deadband (Parameter 941 crossover RPM,
   942 hysteresis; 941 ≤ 0 disables auto-shift).
-- When the desired gear differs from the engaged gear, `GearShiftStage` (STG16-adjacent,
-  STG17) performs an **open-loop, on-the-fly clutch swap**: release both clutches
-  (`Spindle_Low_gear_O`/OUT19, `Spindle_High_gear_O`/OUT20), command the new gear so the
-  motor rev-matches, and — when `SV_MEASURED_SPINDLE_SPEED` is within tolerance
-  (Parameter 943) of the commanded speed — engage the target clutch. A rev-match timeout
-  (Parameter 944) faults into neutral with the spindle disabled.
+- When the desired gear differs from the engaged gear, `GearShiftStage` (STG17) performs an
+  **open-loop clutch swap**: release both clutches (`Spindle_Low_gear_O`/OUT19,
+  `Spindle_High_gear_O`/OUT20), **coast in neutral for a fixed dwell** (Parameter 944 ms;
+  0 → default 1500), then engage the target clutch. No exact rev-match is required — during
+  the coast the DAC already commands the motor through the new gear's ratio, so the motor
+  side arrives near the right speed passively. There is **no fault path**: a dwell always
+  elapses, so a shift always completes.
 - The two clutch outputs are **mutually exclusive** (a safety interlock forces neutral if
-  both are ever energized). Power-up engages **low** range.
+  both are ever energized, and marks the gear unknown so the next demand re-shifts).
+  Power-up engages **low** range.
 
-> **Open-loop caveat:** there is no gear-position feedback; the engaged gear is tracked in
-> `EngagedRange_W` from the clutch-output state, and the rev-match + clutch-settle dwell
-> (Parameter 945) are the only confirmation that a shift completed.
+> **Open-loop caveat:** there is no gear-position or speed feedback in the shift sequence;
+> the engaged gear is tracked in `EngagedRange_W` from the clutch-output state, and the
+> coast dwell + clutch-settle lockout (Parameter 945) are the only confirmation that a
+> shift completed.
 ```
 
 - [ ] **Step 2: Verify the stale text is gone and the new text is present**
@@ -427,7 +417,8 @@ git commit -m "docs: README — document implemented RPM gear shifting"
 
 ## Self-Review (completed by plan author)
 
-- **Spec coverage:** RPM decision + hysteresis (Task 3); on-the-fly neutral→rev-match→engage sequence (Task 4); mutual-exclusion interlock (Task 3 + verified Task 4); open-loop tracking via `EngagedRange_W`/output state (Tasks 2-4); parameter-driven crossover/tolerance/timeouts (Tasks 1,3,4); low-range power-up default (Task 2); ATC inhibit (Task 3 trigger guard); rev-match timeout → neutral + disable + fault (Task 4); the speed-feedback risk + fixed-dwell fallback (Task 4 operator gate); docs (Task 5). All spec success criteria map to a task. ✓
+- **Spec coverage:** RPM decision + hysteresis (Task 3); neutral→coast-dwell→engage sequence (Task 4); mutual-exclusion interlock with `EngagedRange_W = 0` on fault (Task 3 + verified Task 4); open-loop tracking via `EngagedRange_W`/output state (Tasks 2-4); parameter-driven crossover/hysteresis/dwells (Tasks 1,3,4); low-range power-up default (Task 2); ATC inhibit (Task 3 trigger guard); coast-dwell tuning (Task 4 operator gate); docs (Task 5). All spec success criteria map to a task. ✓
 - **Deviation (documented):** spec's `GearShiftFault_C` is replaced by reusing `SPINDLE_FAULT_MSG_C` to avoid an unverifiable external `plcmsg.txt` edit — noted in Global Constraints. ✓
+- **Design revision (owner decision):** the original rev-match gate (measured-vs-commanded tolerance + timeout fault, P943/P944, `GearRevMatched_M`/MEM452) was replaced by the fixed coast dwell — no speed feedback, no fault path; see the spec's "Why a fixed coast dwell" section. MEM452 and P943 are now unused/reserved. ✓
 - **Placeholder scan:** no TBD/TODO; every code step shows the exact lines. ✓
-- **Name/resource consistency:** symbol names and resource numbers (STG17, W73/74, T25/26, MEM452/453, P941-945) are identical across Tasks 1-4; no double assignment (Task 1 Step 7 enforces). ✓
+- **Name/resource consistency:** symbol names and resource numbers (STG17, W73/74, T25/26, MEM453/454, P941/942/944/945) are identical across Tasks 1-4; no double assignment (Task 1 Step 7 enforces). ✓

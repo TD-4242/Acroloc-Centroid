@@ -696,8 +696,7 @@ KbSpinStart_M                 IS MEM435 ; "ctrl" + "s"
 KbSpinStop_M                  IS MEM436 ; "ctrl" + "q"
 KbFloodOnOff_M                IS MEM437 ; "ctrl" + "n"
 KbMistOnOff_M                 IS MEM451 ; "ctrl" + "k"
-GearRevMatched_M              IS MEM452 ; Acroloc rev-match achieved flag
-GearRevMatchStarted_M         IS MEM453 ; Acroloc rev-match timer started flag
+GearCoastStarted_M            IS MEM453 ; Acroloc gear-shift coast dwell timer started flag
 GearSettleActive_M            IS MEM454 ; Acroloc post-shift settle lockout active (held until GearClutchSettle_T expires)
 KbTogCoolAutoMan_M            IS MEM438 ; "ctrl" + "m"
 KbFeedHold_M                  IS MEM439 ; space bar
@@ -1085,8 +1084,8 @@ EngagedRange_W                  IS W74  ; Acroloc gear currently engaged (open-l
 ; Acroloc gear-shift machine parameters (set in CNC12 machine parameters):
 ;   P941 = gear crossover RPM (commanded speed at/above which high gear is used; 0 disables auto-shift)
 ;   P942 = crossover hysteresis (RPM) — deadband half-width to prevent hunting
-;   P943 = rev-match speed tolerance (RPM) — |measured - commanded| allowed before engaging
-;   P944 = rev-match timeout (ms; 0 -> default 3000)
+;   P943 = reserved (was rev-match tolerance; no longer used)
+;   P944 = coast dwell (ms) spent in neutral before engaging the new gear (0 -> default 1500)
 ;   P945 = clutch settle / re-shift lockout (ms; 0 -> default 500)
 PrevFeedOverride_W              IS W65
 P148Value_W                     IS W66
@@ -1190,7 +1189,7 @@ NoMacroKeyPressedTimer_T        IS T18
 
 StopSpinBeforATC_T              IS T23
 ATCSpin_T                       IS T24 ; used to detect fault if unable to find position
-GearRevMatch_T                  IS T25 ; Acroloc rev-match wait timeout
+GearCoast_T                     IS T25 ; Acroloc gear-shift coast dwell (neutral) before engage
 GearClutchSettle_T              IS T26 ; Acroloc post-engage clutch settle / re-shift lockout
 ;------------------------------------------------------------------------------
 ;                       Stage Definitions
@@ -1278,12 +1277,12 @@ IF 1==1 THEN SET True_M,
              ErrorFlag_T = 1000,
              MsgClear_T = 1000,
              StopSpinBeforATC_T = 1000,
-             SET Spindle_Low_gear_O,
-             RST Spindle_High_gear_O,
-             EngagedRange_W = 1,
-             DesiredRange_W = 1,
-             SpindleRange_W = 1,
-             RST GearSettleActive_M,
+             SET Spindle_Low_gear_O,   ; Acroloc power-up gear = LOW
+             RST Spindle_High_gear_O,  ; Acroloc
+             EngagedRange_W = 1,       ; Acroloc
+             DesiredRange_W = 1,       ; Acroloc
+             SpindleRange_W = 1,       ; Acroloc
+             RST GearSettleActive_M,   ; Acroloc
              RST InitialStage
 
 ;=============================================================================
@@ -2392,9 +2391,12 @@ IF True_M THEN WTB TwelveBitSpeed_W SpinAnalogOutBit0_O 12
 IF True_M THEN SV_PLC_SPINDLE_SPEED = SpinSpeedCommand_FW
 
 ; Acroloc: clutches are mutually exclusive — never allow both engaged.
+; EngagedRange_W = 0 marks the gear state unknown (we forced neutral), so the
+; next valid demand re-triggers a full shift instead of trusting a stale value.
 IF Spindle_Low_gear_O && Spindle_High_gear_O THEN
   RST Spindle_Low_gear_O,
   RST Spindle_High_gear_O,
+  EngagedRange_W = 0,
   FaultMsg_W = SPINDLE_FAULT_MSG_C,
   SET ShowFaultStage,
   SET OtherFault_M
@@ -2980,65 +2982,49 @@ IF CarouselToolID_W == ChangeToTool_W THEN
    GearShiftStage ; Acroloc
 ;=============================================================================
 ; Open-loop two-clutch gear shift driven by DesiredRange_W (1=low, 4=high).
-; Sequence: release BOTH clutches (neutral) -> command the new gear so the motor
-; rev-matches -> when measured spindle speed is within tolerance of the commanded
-; speed, engage the target clutch.  The two clutches are never engaged together.
-; There is no gear-position feedback (open loop); the rev-match + settle dwell are
-; the only assurances.
+; Sequence: release BOTH clutches (neutral) -> coast for a fixed dwell -> engage
+; the target clutch.  No exact rev-match is required: during the coast the DAC
+; already commands the motor through the NEW gear's ratio (Step A retargets
+; SpindleRange_W), so the motor side arrives near the right speed passively while
+; the spindle side coasts.  The two clutches are never engaged together.  There
+; is no gear-position or speed feedback in this sequence (open loop); the coast
+; dwell + settle lockout are the only assurances.  There is no fault path — a
+; dwell always elapses, so a shift always completes.
 
-; --- Step A: neutral + rev-match command (every scan while shifting) ---
+; --- Step A: neutral + retarget the motor (every scan while shifting) ---
 IF GearShiftStage THEN
   RST Spindle_Low_gear_O,
   RST Spindle_High_gear_O,
   SpindleRange_W = DesiredRange_W
 
-; --- Step B: start the rev-match timeout once on entry ---
-IF GearShiftStage && !GearRevMatchStarted_M THEN GearRevMatch_T = 3000
-IF GearShiftStage && !GearRevMatchStarted_M && (SV_MACHINE_PARAMETER_944 > 0) THEN
-  GearRevMatch_T = SV_MACHINE_PARAMETER_944
-IF GearShiftStage && !GearRevMatchStarted_M THEN
-  SET GearRevMatch_T,
-  SET GearRevMatchStarted_M
+; --- Step B: start the coast dwell once on entry ---
+IF GearShiftStage && !GearCoastStarted_M THEN GearCoast_T = 1500
+IF GearShiftStage && !GearCoastStarted_M && (SV_MACHINE_PARAMETER_944 > 0) THEN
+  GearCoast_T = SV_MACHINE_PARAMETER_944
+IF GearShiftStage && !GearCoastStarted_M THEN
+  SET GearCoast_T,
+  SET GearCoastStarted_M
 
-; --- Step C: detect rev-match (measured within tolerance of commanded) ---
-IF GearShiftStage && GearRevMatchStarted_M &&
-   (SV_MEASURED_SPINDLE_SPEED >= (SV_PC_COMMANDED_SPINDLE_SPEED - SV_MACHINE_PARAMETER_943)) &&
-   (SV_MEASURED_SPINDLE_SPEED <= (SV_PC_COMMANDED_SPINDLE_SPEED + SV_MACHINE_PARAMETER_943))
-  THEN SET GearRevMatched_M
-
-; --- Step D: choose settle/lockout dwell value (before starting the timer) ---
-IF GearShiftStage && GearRevMatched_M THEN GearClutchSettle_T = 500
-IF GearShiftStage && GearRevMatched_M && (SV_MACHINE_PARAMETER_945 > 0) THEN
+; --- Step C: choose the settle/lockout dwell value (before starting the timer) ---
+; A bare timer is true once it reaches its set point, so GearCoast_T below fires
+; when the coast dwell has fully elapsed (NOT == 0, which would mean "just armed").
+IF GearShiftStage && GearCoastStarted_M && GearCoast_T THEN GearClutchSettle_T = 500
+IF GearShiftStage && GearCoastStarted_M && GearCoast_T && (SV_MACHINE_PARAMETER_945 > 0) THEN
   GearClutchSettle_T = SV_MACHINE_PARAMETER_945
 
-; --- Step E: engage exactly one clutch, then finish the shift ---
-IF GearShiftStage && GearRevMatched_M && (DesiredRange_W == 1) THEN
+; --- Step D: coast elapsed -> engage exactly one clutch, then finish the shift ---
+IF GearShiftStage && GearCoastStarted_M && GearCoast_T && (DesiredRange_W == 1) THEN
   SET Spindle_Low_gear_O,
   RST Spindle_High_gear_O
-IF GearShiftStage && GearRevMatched_M && (DesiredRange_W == 4) THEN
+IF GearShiftStage && GearCoastStarted_M && GearCoast_T && (DesiredRange_W == 4) THEN
   SET Spindle_High_gear_O,
   RST Spindle_Low_gear_O
-IF GearShiftStage && GearRevMatched_M THEN
+IF GearShiftStage && GearCoastStarted_M && GearCoast_T THEN
   EngagedRange_W = DesiredRange_W,
   SET GearClutchSettle_T,
   SET GearSettleActive_M,
-  RST GearRevMatched_M,
-  RST GearRevMatchStarted_M,
-  RST GearRevMatch_T,
-  RST GearShiftStage
-
-; --- Timeout: rev-match never achieved -> fault, hold neutral, drop spindle enable ---
-; A bare timer is true once it reaches its set point, so GearRevMatch_T fires at the
-; timeout (NOT == 0, which would mean "0 ms elapsed / just armed" and fault instantly).
-IF GearShiftStage && GearRevMatchStarted_M && !GearRevMatched_M && GearRevMatch_T THEN
-  RST Spindle_Low_gear_O,
-  RST Spindle_High_gear_O,
-  RST SpindleEnableOut_O,
-  FaultMsg_W = SPINDLE_FAULT_MSG_C,
-  SET ShowFaultStage,
-  SET OtherFault_M,
-  RST GearRevMatchStarted_M,
-  RST GearRevMatch_T,
+  RST GearCoastStarted_M,
+  RST GearCoast_T,
   RST GearShiftStage
 
 ;==============================================================================
