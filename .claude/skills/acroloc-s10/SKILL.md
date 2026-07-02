@@ -59,7 +59,7 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 |--------|----------|------|
 | `ATCManualUnlock_I` | INP24 | Front-panel button — unlocks carousel by hand (only when Z is clear and `ATCStage` is not running) |
 | `ATCLocked_I` | INP25 | Piston sensor confirming carousel is locked |
-| `ATC_Z_ClearedToolChanger_I` | INP26 | Spindle has entered the tool changer (at zero RPM zone) |
+| `ATC_Z_ClearedToolChanger_I` | INP26 | **TRUE = Z clear** of the changer (spindle may run); **FALSE = spindle in changer** (danger) |
 | `ATC_Z_Zero_Release_I` | INP27 | Z axis has cleared the tool ring (Z parked high) |
 | `ATC_Pos5_I` | INP28 | Carousel position switch — contributes **+10** to `CarouselToolID_W` (not +16; see encoding note) |
 | `ATC_Pos4_I` | INP29 | Carousel position switch — contributes +8 |

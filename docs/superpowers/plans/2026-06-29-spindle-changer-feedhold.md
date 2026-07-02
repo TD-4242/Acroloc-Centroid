@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a single PLC interlock that holds feed and stops the spindle whenever a program/MDI move drives Z into the tool changer, faults if the spindle won't stop, and auto-resumes (restoring spindle speed) once Z clears — replacing the M6-only stop block.
+**Goal:** Add a single PLC interlock that holds feed and stops the spindle whenever a program/MDI move drives Z into the tool changer with the spindle not confirmed stopped, faults if the spindle won't stop, and auto-resumes (restoring spindle speed) once Z clears — replacing the original always-on stop block while keeping its unconditional zone spindle-kill.
 
-**Architecture:** One new logic block in `MainStage` of `Centroid-Acroloc-ALLIN1DC.src`, gated on `(SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I`. It uses the stock feed-hold mechanism (`ActivateFeedHold_M`), drops the spindle enable output, dwells/waits for zero speed, then pulses `DoCycleStart_SV`. The old M6-only spindle-stop block is removed; `ATCStage`'s own zero-speed carousel guard is retained as defense-in-depth.
+**Architecture:** One new logic block in `MainStage` of `Centroid-Acroloc-ALLIN1DC.src`. The zone spindle-kill (`IF !ATC_Z_ClearedToolChanger_I THEN RST SpindleEnableOut_O`) is **unconditional** (every mode); the hold machinery is gated on `(SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I && !ZeroSpeed_I`. It uses the stock feed-hold mechanism (`ActivateFeedHold_M`), dwells/waits for zero speed, then pulses cycle start with `SET DoCycleStart_SV`. A new zero-speed carousel guard is **added** to `ATCStage` as defense-in-depth (with full abort cleanup).
 
 **Tech Stack:** Centroid CNC12 / MPU11 (ALLIN1DC) PLC stage language (`.src`). Single source file. No application code, no package manager.
 
@@ -109,7 +109,7 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 3: Replace the M6-only stop block with the unified interlock (and rename the timer)
+### Task 3: Replace the original always-on stop block with the unified interlock (and rename the timer)
 
 This task is **atomic** — the three edits must ship together so the source still compiles and the machine is never left without changer spindle protection. Do all edits, then verify, then a single commit.
 
@@ -120,58 +120,40 @@ This task is **atomic** — the three edits must ship together so the source sti
 
 **Interfaces:**
 - Consumes: `ChangerHoldActive_M`, `ChangerHoldDone_M` (Task 2); existing `ATC_Z_ClearedToolChanger_I` (INP26), `SpindleEnableOut_O` (OUT7), `ActivateFeedHold_M` (MEM45), `ZeroSpeed_I` (INP12), `DoCycleStart_SV` (SV_PLC_FUNCTION_2), `FaultMsg_W`, `SPINDLE_FAULT_MSG_C`, `ShowFaultStage`, `OtherFault_M`, `SV_PROGRAM_RUNNING`, `SV_MDI_MODE`.
-- Produces: `ChangerStopTimer_T` (T23, renamed from `StopSpinBeforeATC_T`) and the live interlock. Removes the symbol `StopSpinBeforeATC_T` from the codebase entirely.
+- Produces: `ChangerStopTimer_T` (T23, renamed from `StopSpinBeforATC_T` — note the original's missing "e") and the live interlock. Removes the symbol `StopSpinBeforATC_T` from the codebase entirely.
 
-- [ ] **Step 1: Rename the timer definition (line 1180)**
+- [ ] **Step 1: Rename the timer definition**
 
 Old:
 ```
-StopSpinBeforeATC_T             IS T23
+StopSpinBeforATC_T              IS T23
 ```
 New:
 ```
 ChangerStopTimer_T              IS T23 ; Acroloc spindle stop dwell / timeout for changer-entry hold
 ```
 
-- [ ] **Step 2: Rename the InitialStage preset (line 1266)**
+- [ ] **Step 2: Delete the InitialStage preset**
 
-This line is one entry in a comma-separated `InitialStage` assignment block — preserve the leading indentation and trailing comma.
+The old block relied on a boot-time set point (`StopSpinBeforATC_T = 1000,` in the
+`InitialStage` assignment chain). The new interlock assigns the set point inline at every
+arm (`= 3000` for Option A, `= 5000` for Option B), so the boot preset would be dead code
+and a misleading second source of truth — **delete the line** (preserve the comma structure
+of the surrounding chain).
 
-Old:
-```
-             StopSpinBeforeATC_T = 5000,
-```
-New:
-```
-             ChangerStopTimer_T = 5000,
-```
+- [ ] **Step 3: Remove the old stop block and insert the unified interlock**
 
-- [ ] **Step 3: Remove the old M6 stop block and insert the unified interlock (lines 2866–2887)**
-
-Delete this entire block:
+Delete this entire block (note: it was **unconditional** — no `M6_SV`, no run gate, no
+zero-speed check; its always-on kill is preserved inside the new interlock):
 ```
 ; Acroloc Make sure spindle stops before entering tool changer
-; Enhanced spindle stop logic with speed monitoring and timeout protection
-
-; Start spindle stop sequence when ATC is requested and spindle is not cleared
-IF M6_SV && !ATC_Z_ClearedToolChanger_I && !ZeroSpeed_I THEN
+IF !ATC_Z_ClearedToolChanger_I THEN
   RST SpindleEnableOut_O,
-  SET StopSpinBeforeATC_T
+  SET StopSpinBeforATC_T
+  ;SavedCurrentFeedrate = CurrentFeedrate ??
 
-; Monitor spindle stop with timeout protection (5 seconds)
-IF StopSpinBeforeATC_T && !ZeroSpeed_I THEN
-  ; Spindle still running - continue waiting
-  IF StopSpinBeforeATC_T == 0 THEN
-    ; Timeout reached - spindle failed to stop
-    FaultMsg_W = SPINDLE_FAULT_MSG_C,
-    SET ShowFaultStage,
-    SET OtherFault_M,
-    RST ATCStage,
-    RST StopSpinBeforeATC_T
-
-; Spindle has stopped successfully - clear timer and allow ATC to proceed
-IF StopSpinBeforeATC_T && ZeroSpeed_I THEN
-  RST StopSpinBeforeATC_T
+;IF StopSpinBeforeATC_T THEN
+  ; feedrate to zero
 ```
 
 Replace it with the unified interlock:
@@ -185,38 +167,47 @@ Replace it with the unified interlock:
 ; to reach zero, then auto-resumed. The spindle is held OFF the whole time Z is
 ; in the zone and resumes at its commanded speed only after Z exits.
 ;
-; This is the ONE place the spindle is stopped on changer entry. The old M6-only
-; stop block was removed; ATCStage still independently guards the carousel with
-; its own !ZeroSpeed_I check, so the carousel can never index a spinning spindle.
+; This replaces the original always-on stop block ("Make sure spindle stops
+; before entering tool changer"), KEEPING its unconditional zone spindle-kill
+; and adding the feed-hold / dwell / confirm machinery for program moves.
+; A NEW defense-in-depth check in ATCStage (added together with this
+; interlock) also refuses to run the carousel unless ZeroSpeed_I confirms
+; the spindle is stopped.
 ;
 ; Spindle resume is automatic: we only drop the enable output (SpindleEnableOut_O)
 ; while Z is in the zone; the modal M3/M4 command (SpinStart_M) is untouched, so
-; the line-2210 seal-in restores the spindle at SV_PC_COMMANDED_SPINDLE_SPEED
+; the SpinStart_M seal-in coil (in the "Turn spindle on/off" section above)
+; restores the spindle at SV_PC_COMMANDED_SPINDLE_SPEED
 ; once INP26 goes TRUE. A program M5 (e.g. inside M6) correctly keeps it off.
 
 ; -- Clear the once-per-entry latch whenever Z is clear of the changer
 IF ATC_Z_ClearedToolChanger_I THEN RST ChangerHoldDone_M
 
-; -- Keep the spindle commanded OFF the entire time Z is in the zone, during a run
-IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I THEN
+; -- Keep the spindle commanded OFF the entire time Z is in the zone — in ALL
+; modes, exactly like the original block this interlock replaced. This also
+; kills a manual spindle-start (jog panel / keyboard key) attempted with Z
+; parked inside the changer, and kills a running spindle jogged into the zone.
+IF !ATC_Z_ClearedToolChanger_I THEN
   RST SpindleEnableOut_O
 
 ; -- Clean bail-out if the program is stopped/canceled mid-hold.
-; Also clear the once-per-entry latch: if a run is stopped/canceled with Z still
-; in the zone, the next run must RE-ARM the hold (an operator could manually spin
-; the spindle while stopped, since the zone-kill above is gated to a run). Without
-; this, ChangerHoldDone_M would stay latched and motion could resume into the zone
-; with the spindle still coasting.
+; Also clear the once-per-entry latch so the next run re-arms the hold and
+; re-confirms zero speed from scratch instead of trusting a latch left over
+; from the canceled run.
 IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN
   RST ChangerHoldActive_M, RST ChangerStopTimer_T, RST ChangerHoldDone_M
 
 ;-----------------------------------------------------------------------------
 ; OPTION A  (DEFAULT / ACTIVE): fixed 3-second dwell, then confirm-or-fault
-; Any time Z enters the zone during a run: hold feed, stop spindle, dwell 3 s,
-; then resume if ZeroSpeed_I confirms a stop — otherwise fault.
+; If Z enters the zone during a run with the spindle NOT confirmed stopped:
+; hold feed, stop spindle, dwell 3 s, then resume if ZeroSpeed_I confirms a
+; stop — otherwise fault. If ZeroSpeed_I already reads stopped at entry (M6
+; issued M5 well before the Z move, or a run starts with Z parked in the
+; changer), NO hold is taken — the unconditional zone-kill above still holds
+; the spindle off for the whole visit, so skipping the dwell costs no safety.
 ;-----------------------------------------------------------------------------
 IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I
-   && !ChangerHoldDone_M && !ChangerHoldActive_M THEN
+   && !ZeroSpeed_I && !ChangerHoldDone_M && !ChangerHoldActive_M THEN
   SET ChangerHoldActive_M,
   SET ActivateFeedHold_M,            ; hold ALL programmed motion (feed + rapid)
   ChangerStopTimer_T = 3000,
@@ -226,7 +217,10 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && ZeroSpeed_I THEN
   SET ChangerHoldDone_M,             ; dwell elapsed & spindle confirmed stopped — auto-resume
   RST ChangerHoldActive_M,
   RST ChangerStopTimer_T,
-  (DoCycleStart_SV)
+  SET DoCycleStart_SV                ; pulse cycle-start (SET, not a coil: a coil would RST
+                                     ; DoCycleStart_SV every non-resume scan and clobber the
+                                     ; stock operator cycle-start coil; that coil clears this
+                                     ; SET next scan, making it a one-scan pulse)
 
 IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
   FaultMsg_W = SPINDLE_FAULT_MSG_C,  ; dwell elapsed, spindle still turning
@@ -239,8 +233,9 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
 ;-----------------------------------------------------------------------------
 ; OPTION B  (COMMENTED): resume as soon as the zero-speed SIGNAL confirms a stop
 ; To switch: comment out ALL THREE OPTION A "IF" blocks above, uncomment these.
-; Arms only when the spindle is actually turning (!ZeroSpeed_I); resumes the
-; instant ZeroSpeed_I confirms a stop; faults if it never stops within 5 s.
+; Same arm condition as Option A (only when the spindle is actually turning);
+; differs on resume: Option A always waits the full dwell, Option B resumes the
+; instant ZeroSpeed_I confirms a stop, faulting if it never stops within 5 s.
 ;-----------------------------------------------------------------------------
 ; IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I
 ;    && !ZeroSpeed_I && !ChangerHoldDone_M && !ChangerHoldActive_M THEN
@@ -252,7 +247,7 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
 ;   SET ChangerHoldDone_M,
 ;   RST ChangerHoldActive_M,
 ;   RST ChangerStopTimer_T,
-;   (DoCycleStart_SV)
+;   SET DoCycleStart_SV
 ; IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
 ;   FaultMsg_W = SPINDLE_FAULT_MSG_C,
 ;   SET ShowFaultStage,
@@ -262,20 +257,39 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
 ;   RST ChangerStopTimer_T
 ```
 
-Note: the `ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage` kickoff (around line 2853) and the manual-unlock logic just above the removed block are **not** touched — only the spindle-stop block from `; Acroloc Make sure spindle stops...` through the final `RST StopSpinBeforeATC_T` is removed.
+Note: the `ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage` kickoff and the manual-unlock logic just above the replaced block are **not** touched.
+
+- [ ] **Step 3b: Add the ATCStage defense-in-depth guard (new code, with full abort cleanup)**
+
+At the top of `ATCStage`, add a zero-speed guard, and give the pre-existing
+`!ATC_Z_Zero_Release_I` check the same cleanup. Both aborts must stop the motor, relock,
+and drop the M6 request — `RST ATCStage` alone leaves `ATCMotor_O` energized (outputs a
+stage SET are not cleared when the stage stops running) and MainStage would re-arm the
+stage every scan while `M6_SV` stayed set:
+```
+IF ATCStage && !ZeroSpeed_I THEN
+  FaultMsg_W = SPINDLE_FAULT_MSG_C,
+  SET ShowFaultStage,
+  SET OtherFault_M,
+  ChangeToTool_W = 0,
+  RST ATCMotor_O,
+  RST ATCUnlocked_O,
+  RST M6_SV,
+  RST ATCStage
+```
 
 - [ ] **Step 4: Verify the old symbol is gone everywhere**
 
-Run: `grep -n "StopSpinBeforeATC_T" Centroid-Acroloc-ALLIN1DC.src`
-Expected: **no output** (definition renamed, preset renamed, all M6-block uses deleted).
+Run: `grep -n "StopSpinBefor" Centroid-Acroloc-ALLIN1DC.src`
+Expected: **no output** (definition renamed, preset deleted, old block removed — the grep
+covers both the original `StopSpinBeforATC_T` spelling and the corrected one).
 
 - [ ] **Step 5: Verify the rename and new logic are present**
 
 Run: `grep -n "ChangerStopTimer_T" Centroid-Acroloc-ALLIN1DC.src`
-Expected: the `IS T23` definition, the `= 5000` InitialStage preset, plus the Option-A uses (`= 3000`, `SET`, two `== 0` tests, and `RST` lines). At least 6 lines.
-
-Run: `grep -n "M6_SV && !ATC_Z_ClearedToolChanger_I" Centroid-Acroloc-ALLIN1DC.src`
-Expected: **no output** (old M6 stop trigger removed).
+Expected: the `IS T23` definition plus the Option-A uses (`= 3000`, `SET`, bare-timer tests,
+and `RST` lines) and the commented Option-B lines. No `== 0` tests (a timer compares TRUE at
+its set point when used bare; `== 0` means "just armed") and **no** InitialStage preset.
 
 Run: `grep -n "Spindle-in-changer feed-hold interlock" Centroid-Acroloc-ALLIN1DC.src`
 Expected: one line (the new block header).
@@ -286,7 +300,7 @@ Confirm OPTION A is live (uncommented) and OPTION B is commented:
 Run: `grep -n "ChangerStopTimer_T = 3000" Centroid-Acroloc-ALLIN1DC.src`
 Expected: one line, **not** starting with `;`.
 Run: `grep -n "ChangerStopTimer_T = 5000" Centroid-Acroloc-ALLIN1DC.src`
-Expected: two lines — the InitialStage preset (not commented) and the OPTION B arm (commented, starts with `;`).
+Expected: one line — the OPTION B arm (commented, starts with `;`).
 
 - [ ] **Step 7: Confirm no dangling references to undefined symbols**
 
@@ -300,12 +314,14 @@ Expected: every symbol prints a count `>= 1` (each has a definition). If any pri
 git add Centroid-Acroloc-ALLIN1DC.src
 git commit -m "feat(plc): unified spindle-in-changer feed-hold interlock
 
-Replace the M6-only spindle-stop block with one rule that fires on any
-program/MDI move into the changer (INP26 FALSE): feed hold, stop spindle,
-3 s dwell then confirm-or-fault on ZeroSpeed_I (Option A; Option B waits on
-the signal, commented), auto-resume on stop, spindle restarts at commanded
-speed once Z clears. Rename StopSpinBeforeATC_T (T23) -> ChangerStopTimer_T.
-ATCStage's own zero-speed carousel guard is retained.
+Replace the always-on spindle-stop block, keeping its unconditional zone
+kill and adding: on any program/MDI move into the changer (INP26 FALSE)
+with the spindle not confirmed stopped — feed hold, 3 s dwell then
+confirm-or-fault on ZeroSpeed_I (Option A; Option B waits on the signal,
+commented), auto-resume on stop, spindle restarts at commanded speed once
+Z clears. Rename StopSpinBeforATC_T (T23) -> ChangerStopTimer_T. Add a
+zero-speed carousel guard to ATCStage (defense-in-depth, full abort
+cleanup).
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 ```
@@ -316,10 +332,12 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 These steps require CNC12 and the machine/simulator; they are the real test of the change. Record results when run on the control PC.
 
-- [ ] **Compile** the `.src` in CNC12's PLC compiler. Expected: no new errors; `plc.map` regenerates. Confirm the symbols `ChangerStopTimer_T`, `ChangerHoldActive_M`, `ChangerHoldDone_M` appear and `StopSpinBeforeATC_T` does not.
+- [ ] **Compile** the `.src` in CNC12's PLC compiler. Expected: no new errors; `plc.map` regenerates. Confirm the symbols `ChangerStopTimer_T`, `ChangerHoldActive_M`, `ChangerHoldDone_M` appear and `StopSpinBeforATC_T` does not.
 - [ ] **MDI move into the zone, spindle running:** MDI a Z move that crosses into the changer with the spindle on. Expected: feed holds, spindle stops, ~3 s dwell, motion auto-resumes, and the spindle restarts at its commanded RPM after Z clears (INP26 TRUE).
+- [ ] **MDI move into the zone, spindle already stopped:** repeat with the spindle off. Expected: **no** hold or dwell — the move proceeds straight into the zone with the spindle enable held off.
+- [ ] **Manual spindle-start in the zone:** in manual mode with Z parked in the changer, press the jog-panel spindle-start key. Expected: the spindle does **not** start (unconditional zone-kill).
 - [ ] **Stuck-spindle fault:** force `ZeroSpeed_I` to stay false (e.g., bench/sim) and repeat. Expected: after the dwell, `SPINDLE_FAULT_MSG_C` is displayed, motion stays held, and there is no auto-resume.
-- [ ] **M6 regression:** run a tool change. Expected: spindle stops, carousel indexes, change completes; `ATCStage`'s `!ZeroSpeed_I` guard still aborts if the spindle is spinning at carousel entry.
+- [ ] **M6 regression:** run a tool change. Expected: spindle stops, carousel indexes, change completes; `ATCStage`'s `!ZeroSpeed_I` guard (new in this change) aborts with full cleanup — motor stopped, relocked, `M6_SV` dropped — if the spindle is spinning at carousel entry.
 - [ ] **M5-before-zone:** run a program that issues `M5` then moves Z through the zone. Expected: spindle stays off after Z clears (does not auto-restart).
 - [ ] **(Optional) Option B swap:** comment OPTION A's three `IF` blocks, uncomment OPTION B's, recompile, and confirm resume occurs on the `ZeroSpeed_I` signal rather than a fixed dwell.
 
@@ -327,6 +345,6 @@ These steps require CNC12 and the machine/simulator; they are the real test of t
 
 ## Plan self-review
 
-- **Spec coverage:** INP26 comment fix → Task 1. New latch bits → Task 2. Single unified rule, general protection, feed hold, spindle stop, zone-gated kill, dwell/signal reach-zero, timeout→fault, auto-resume, speed-resume-on-clear, M6-block removal, timer rename, ATCStage guard retained → Task 3. On-machine checks → Final validation. All spec sections map to a task.
+- **Spec coverage:** INP26 comment fix → Task 1. New latch bits → Task 2. Single unified rule, general protection, feed hold, unconditional spindle kill, dwell/signal reach-zero, timeout→fault, auto-resume, speed-resume-on-clear, old-block replacement, timer rename, ATCStage guard **added** (with abort cleanup) → Task 3. On-machine checks → Final validation. All spec sections map to a task.
 - **Placeholders:** none — every edit shows exact old/new text and exact verification commands.
-- **Symbol consistency:** `ChangerStopTimer_T`, `ChangerHoldActive_M`, `ChangerHoldDone_M` are defined in Tasks 2–3 and used consistently in Task 3's block; `StopSpinBeforeATC_T` is fully removed (Step 4 asserts zero occurrences).
+- **Symbol consistency:** `ChangerStopTimer_T`, `ChangerHoldActive_M`, `ChangerHoldDone_M` are defined in Tasks 2–3 and used consistently in Task 3's block; `StopSpinBeforATC_T` is fully removed (Step 4 asserts zero occurrences).

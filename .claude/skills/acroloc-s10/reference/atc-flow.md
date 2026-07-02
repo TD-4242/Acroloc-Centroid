@@ -59,16 +59,20 @@ the macro fires `M94 /8`, this line latches the requested tool number into
 
 Search for `; Acroloc — Spindle-in-changer feed-hold interlock`.
 
-The old M6-only spindle-stop block (`IF M6_SV && !ATC_Z_ClearedToolChanger_I &&
-!ZeroSpeed_I ...` with `StopSpinBeforeATC_T`) was **replaced** by ONE general
-interlock that fires for **any** program/MDI move driving Z into the changer
-(`!ATC_Z_ClearedToolChanger_I`, INP26 FALSE) — not just M6:
+The original spindle-stop block was a single always-on rule
+(`IF !ATC_Z_ClearedToolChanger_I THEN RST SpindleEnableOut_O, SET StopSpinBeforATC_T`
+— unconditional, all modes, no zero-speed check). It was **replaced** by an interlock
+that keeps that unconditional kill and adds hold/confirm machinery for program moves:
 
-- Holds feed (`ActivateFeedHold_M`) and commands the spindle off
-  (`RST SpindleEnableOut_O`, re-applied every scan Z is in the zone).
-- Waits for zero speed — **Option A** (default): a 3 s dwell (`ChangerStopTimer_T`,
-  T23 — renamed from `StopSpinBeforeATC_T`) then a `ZeroSpeed_I` check; **Option B**
-  (commented): resume the instant `ZeroSpeed_I` confirms a stop, 5 s timeout.
+- **Unconditional zone-kill:** `IF !ATC_Z_ClearedToolChanger_I THEN RST SpindleEnableOut_O`
+  — re-applied every scan Z is in the zone, in every mode (program, MDI, manual). A
+  manual spindle-start with Z parked in the changer is killed here too.
+- **Feed-hold on entry with the spindle turning:** any program/MDI move driving Z into
+  the changer with `!ZeroSpeed_I` holds motion (`ActivateFeedHold_M`) and waits —
+  **Option A** (default): a 3 s dwell (`ChangerStopTimer_T`, T23 — renamed from
+  `StopSpinBeforATC_T`) then a `ZeroSpeed_I` check; **Option B** (commented): resume
+  the instant `ZeroSpeed_I` confirms a stop, 5 s timeout. If the spindle already reads
+  stopped at entry, no hold is taken.
 - On confirmed zero: pulses `DoCycleStart_SV` to auto-resume. On timeout with the
   spindle still turning: faults (`FaultMsg_W = SPINDLE_FAULT_MSG_C`,
   `SET ShowFaultStage`, `SET OtherFault_M`) and leaves motion held — no resume.
@@ -77,8 +81,9 @@ interlock that fires for **any** program/MDI move driving Z into the changer
   stop/cancel (so a fresh run re-arms). The spindle restarts at commanded speed
   once Z clears (INP26 TRUE), unless a program `M5` keeps it off.
 
-`ATCStage` then independently re-checks `ZeroSpeed_I` before indexing (below), so
-the carousel can never spin against a turning spindle.
+`ATCStage` carries its own `ZeroSpeed_I` re-check before indexing (below) — added
+together with this interlock as defense-in-depth, not inherited from the old code —
+so the carousel can never spin against a turning spindle.
 
 **Manual unlock (outside M6):**
 ```plc
@@ -98,15 +103,21 @@ Find this stage with `; Acroloc` or the comment `; Acroloc ATC Stage`
 ```plc
 IF ATCStage && !ZeroSpeed_I THEN
   FaultMsg_W = SPINDLE_FAULT_MSG_C, SET ShowFaultStage,
-  SET OtherFault_M, RST ATCStage
+  SET OtherFault_M, ChangeToTool_W = 0,
+  RST ATCMotor_O, RST ATCUnlocked_O, RST M6_SV, RST ATCStage
 
 IF !ATC_Z_Zero_Release_I THEN
   FaultMsg_W = ATC_Spindle_Not_Parked_C, SET ShowFaultStage,
-  SET OtherFault_M, RST ATCStage
+  SET OtherFault_M, ChangeToTool_W = 0,
+  RST ATCMotor_O, RST ATCUnlocked_O, RST M6_SV, RST ATCStage
 ```
-Two defensive checks at stage entry: spindle must be stopped (`ZeroSpeed_I`,
-INP12) and Z must be clear of the carousel ring (`ATC_Z_Zero_Release_I`,
-INP27). Either failure aborts with a fault message.
+Two defensive checks, evaluated every scan the stage runs: spindle must be stopped
+(`ZeroSpeed_I`, INP12) and Z must be clear of the carousel ring
+(`ATC_Z_Zero_Release_I`, INP27). Either failure aborts with a fault message **and
+full cleanup**: stop the motor, relock, and drop the M6 request (`RST M6_SV`,
+`ChangeToTool_W = 0`). The cleanup matters — `RST ATCStage` alone would leave
+`ATCMotor_O` energized (outputs a stage SET are not cleared when the stage stops
+running), and with `M6_SV` still set MainStage would re-arm the stage every scan.
 
 **Start the carousel:**
 ```plc
