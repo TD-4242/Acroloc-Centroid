@@ -2,6 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Revision note (2026-07-05, after execution):** a post-review simplification pass
+> (owner: "simplest method first") changed the shipped code relative to the snippets
+> below. Deltas: the **post-shift settle lockout was removed entirely**
+> (`GearSettleActive_M`/MEM454, `GearClutchSettle_T`/T26, P945, the MainStage
+> reset rung, Step C, and the lockout term in the kickoff no longer exist — back-to-back
+> shifts are paced by the coast dwell itself); the **coast timer is loaded and armed in
+> the MainStage kickoff rung** instead of inside the stage, eliminating
+> `GearCoastStarted_M`/MEM453 and Step B; and the **coast dwell parameter is P943**
+> (P944/P945 retired; no reserved slot). The spec
+> (`docs/superpowers/specs/2026-06-27-rpm-gear-shift-design.md`) and the source are
+> current; the task snippets below are the historical record of the first
+> implementation.
+
 **Goal:** Make `Centroid-Acroloc-ALLIN1DC.src` automatically select and engage the two-speed transmission gear from the commanded spindle RPM, driving the previously-unused clutch outputs `Spindle_Low_gear_O` (OUT19) / `Spindle_High_gear_O` (OUT20).
 
 **Architecture:** A range-decision block in `MainStage` (STG4) computes `DesiredRange_W` from the un-overridden S value (`GearBaseSpeed_FW` — `SV_PC_COMMANDED_SPINDLE_SPEED` with the spindle-override knob backed out, so the override never triggers a shift) vs a crossover machine parameter with hysteresis, and triggers a new `GearShiftStage` (STG17). `GearShiftStage` performs an open-loop clutch swap: release both clutches → coast in neutral for a fixed dwell (the DAC already re-commands the motor through the new gear's ratio, a passive motor-side speed match) → engage the target clutch. No speed feedback is read and there is no fault path (a dwell always elapses). The two clutch outputs are mutually exclusive at all times.
@@ -24,7 +37,7 @@ Treat "Run:" blocks below as the structural checks. Do not invent a test framewo
 - Open-loop: there is no gear-position input. Engaged gear is tracked in `EngagedRange_W` and reflected by the clutch output state. `SpinLowRange_I` (INP13) is no longer used for selection.
 - Power-up default is **low** range.
 - Crossover RPM **≤ 0 disables** auto-shift (hold current gear) — a freshly loaded, unconfigured PLC must not shift on its own.
-- Fixed resource assignments (verified free against the current source on 2026-06-27): `GearShiftStage IS STG17`, `DesiredRange_W IS W73`, `EngagedRange_W IS W74`, `GearBaseSpeed_FW IS FW7`, `GearCoast_T IS T25`, `GearClutchSettle_T IS T26`, `GearCoastStarted_M IS MEM453`. Machine parameters: `SV_MACHINE_PARAMETER_941` crossover RPM, `_942` hysteresis RPM, `_943` reserved (was rev-match tolerance; unused), `_944` coast dwell ms (0 → default 1500), `_945` clutch-settle/lockout ms.
+- Fixed resource assignments (as shipped after the 2026-07-05 revision): `GearShiftStage IS STG17`, `DesiredRange_W IS W73`, `EngagedRange_W IS W74`, `GearBaseSpeed_FW IS FW7`, `GearCoast_T IS T25`. Machine parameters: `SV_MACHINE_PARAMETER_941` crossover RPM (intended 1100), `_942` hysteresis RPM (intended 100), `_943` coast dwell ms (0 → default 1500). (T26/MEM453/MEM454 and P944/P945 were used by the first revision only — see the revision note.)
 - Reuse the existing `SPINDLE_FAULT_MSG_C` message for shift faults (deviation from the spec's `GearShiftFault_C`: avoids needing an external CNC12 `plcmsg.txt` edit that can't be made or verified in this repo; a dedicated message can be added later).
 - Branch: `feat/rpm-gear-shift`. Commit after each task.
 

@@ -90,21 +90,27 @@ spindle RPM (it no longer relies on the `SpinLowRange_I`/INP13 lever sense for s
   backed out) versus a crossover machine parameter with a hysteresis deadband
   (Parameter 941 crossover RPM, 942 hysteresis; 941 ≤ 0 disables auto-shift). Sweeping
   the override knob changes speed within the engaged gear but never triggers a shift.
-- When the desired gear differs from the engaged gear, `GearShiftStage` (STG17) performs an
-  **open-loop clutch swap**: release both clutches (`Spindle_Low_gear_O`/OUT19,
-  `Spindle_High_gear_O`/OUT20), **coast in neutral for a fixed dwell** (Parameter 944 ms;
-  0 → default 1500), then engage the target clutch. No exact rev-match is required — during
-  the coast the DAC already commands the motor through the new gear's ratio, so the motor
-  side arrives near the right speed passively. There is **no fault path**: a dwell always
-  elapses, so a shift always completes.
+  On this machine low gear covers ~0–1200 RPM and high gear ~1000–3500 RPM, so the
+  intended settings are P941 = 1100, P942 = 100 (shift up at ≥ 1200, down at ≤ 1000).
+- When the desired gear differs from the engaged gear, the kickoff arms the coast timer
+  and `GearShiftStage` (STG17) performs an **open-loop clutch swap**: release both
+  clutches (`Spindle_Low_gear_O`/OUT19, `Spindle_High_gear_O`/OUT20), **coast in neutral
+  for a fixed dwell** (Parameter 943 ms; 0 → default 1500), then engage the target
+  clutch. No exact rev-match is required — during the coast the DAC already commands the
+  motor through the new gear's ratio, so the motor side arrives near the right speed
+  passively. There is **no fault path**: a dwell always elapses, so a shift always
+  completes. There is no post-shift lockout either — back-to-back shifts are paced by
+  the coast dwell itself.
 - The two clutch outputs are **mutually exclusive** (a safety interlock forces neutral if
   both are ever energized, and marks the gear unknown so the next demand re-shifts).
   Power-up engages **low** range.
 
 > **Open-loop caveat:** there is no gear-position or speed feedback in the shift sequence;
 > the engaged gear is tracked in `EngagedRange_W` from the clutch-output state, and the
-> coast dwell + clutch-settle lockout (Parameter 945) are the only confirmation that a
-> shift completed.
+> coast dwell is the only confirmation that a shift completed.
+
+On-machine verification steps (shift boundaries, coast-dwell tuning, RPM accuracy) are in
+[`docs/testing/rpm-gear-shift-test-plan.md`](docs/testing/rpm-gear-shift-test-plan.md).
 
 ## Automatic tool changer (ATC)
 

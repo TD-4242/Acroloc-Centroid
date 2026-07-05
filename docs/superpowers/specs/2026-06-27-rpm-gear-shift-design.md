@@ -26,9 +26,16 @@ never used (`Spindle_Low_gear_O`/OUT19, `Spindle_High_gear_O`/OUT20). Today the 
   sanity check — low commanded, settle elapsed, INP13 not made → fault — is a natural
   future hardening step.)
 - **No exact rev-match is required (owner decision):** the shift coasts in neutral for a
-  fixed dwell (1–2 s) and then engages. During the coast the DAC already commands the
-  motor through the new gear's ratio, so the motor side arrives near the right speed
-  passively; `SV_MEASURED_SPINDLE_SPEED` is not used.
+  fixed dwell (1–2 s, to be tuned down) and then engages. During the coast the DAC
+  already commands the motor through the new gear's ratio, so the motor side arrives
+  near the right speed passively; `SV_MEASURED_SPINDLE_SPEED` is not used.
+- **Gear speed bands (owner, 2026-07-05):** low gear ≈ 0–1200 RPM, high gear
+  ≈ 1000–3500 RPM. The shift boundary sits in the overlap: P941 = 1100, P942 = 100
+  (up-shift at ≥ 1200, down-shift at ≤ 1000).
+- **No post-shift settle lockout (owner decision, 2026-07-05):** an earlier revision
+  latched a 500 ms re-shift lockout after each engage. Removed — "simplest method
+  first": back-to-back shifts are already paced by the full neutral-coast dwell, and an
+  engage-then-immediate-release is acceptable for these clutches.
 
 ## Decisions (from brainstorming)
 
@@ -37,7 +44,8 @@ never used (`Spindle_Low_gear_O`/OUT19, `Spindle_High_gear_O`/OUT20). Today the 
 | Shift trigger | On-the-fly, RPM-driven (may shift while spinning) |
 | Shift sequence | Both clutches release → coast a fixed dwell (motor retargeted via DAC ratio) → engage target clutch |
 | Crossover source | Dedicated machine parameter + hysteresis deadband |
-| Engage gate | Fixed coast dwell (P944 ms, default 1500) — no rev-match, no speed feedback, no fault path |
+| Engage gate | Fixed coast dwell (P943 ms, default 1500) — no rev-match, no speed feedback, no fault path |
+| Post-shift lockout | None — the coast dwell itself paces back-to-back shifts |
 | Gear feedback | None — open-loop, gear = clutch-output state |
 | Power-up default | **Low** range (engage low clutch, `SpindleRange_W = 1`) |
 
@@ -45,8 +53,8 @@ never used (`Spindle_Low_gear_O`/OUT19, `Spindle_High_gear_O`/OUT20). Today the 
 
 - No more than two ranges (the existing 4-range scaffolding in the range block stays, but
   only ranges 1=low and 4=high are driven).
-- No closed-loop gear confirmation. The coast dwell + settle lockout are the only
-  assurances.
+- No closed-loop gear confirmation. The coast dwell is the only assurance.
+- No post-shift settle/re-shift lockout (removed 2026-07-05 — see Machine facts).
 - No change to the M3/M4 spindle start/stop, ATC, or coolant logic beyond the interlocks
   named below.
 
@@ -64,7 +72,10 @@ Two pieces, both tagged `; Acroloc`:
      - `base <= Crossover - Hysteresis` → low (1)
      - inside the deadband → leave `DesiredRange_W` unchanged (no hunting)
    - If `DesiredRange_W != EngagedRange_W` AND not already shifting AND not `ATCStage`
-     → `SET GearShiftStage`.
+     → load and arm the coast timer (`GearCoast_T` = P943 ms; 0 → default 1500) and
+     `SET GearShiftStage`. Arming at the kickoff is naturally one-shot (the SET makes
+     the kickoff condition false next scan) and a timer keeps counting regardless of
+     which stage armed it, so the stage needs no "coast started" flag.
    - When not shifting, `SpindleRange_W = EngagedRange_W` (so the existing
      `SpinRangeAdjust_FW`/DAC math always reflects the engaged gear).
 
@@ -73,14 +84,14 @@ Two pieces, both tagged `; Acroloc`:
    - **Step A — Neutral + retarget:** `RST Spindle_Low_gear_O, RST Spindle_High_gear_O`,
      and `SpindleRange_W = DesiredRange_W` so the existing DAC computation
      (`TwelveBitSpeed_FW / SpinRangeAdjust_FW`) re-commands the motor to the new gear's
-     speed for the current commanded S (a passive motor-side speed match).
-   - **Step B — Coast:** start `GearCoast_T` once on entry (P944 ms; 0 → default 1500) and
-     coast in neutral until it expires. No speed feedback is read; a dwell always elapses,
-     so there is **no fault path** in the shift.
-   - **Step C/D — Engage & complete:** on dwell expiry, `SET` the target clutch only
+     speed for the current commanded S (a passive motor-side speed match). The stage
+     coasts in neutral until `GearCoast_T` (armed at kickoff) expires; no speed feedback
+     is read; a dwell always elapses, so there is **no fault path** in the shift.
+   - **Step B — Engage & complete:** on dwell expiry, `SET` the target clutch only
      (low → `SET Spindle_Low_gear_O`; high → `SET Spindle_High_gear_O`),
-     `EngagedRange_W = DesiredRange_W`, start the settle lockout
-     (`GearClutchSettle_T` + `GearSettleActive_M`), `RST GearShiftStage`.
+     `EngagedRange_W = DesiredRange_W`, `RST GearCoast_T`, `RST GearShiftStage`. There
+     is no post-shift lockout — a new demand may start another shift on the very next
+     scan, which is paced by its own full coast dwell.
 
 ### Hard mutual-exclusion interlock
 
@@ -108,14 +119,10 @@ Names are fixed here; concrete resource/parameter numbers are assigned during pl
 | `GearBaseSpeed_FW` | `FW` | Un-overridden commanded S (override knob backed out) — the decision input |
 | `DesiredRange_W` | `W` | Gear wanted by RPM logic (1 low / 4 high; 0 = unknown after a both-clutch fault) |
 | `EngagedRange_W` | `W` | Gear currently engaged (open-loop; tracks the energized clutch) |
-| `GearCoast_T` | `T` | Neutral coast dwell before engaging |
-| `GearClutchSettle_T` | `T` | Post-engage settle / re-shift lockout dwell |
-| `GearCoastStarted_M` | `MEM` | Coast timer armed once per shift |
-| `GearSettleActive_M` | `MEM` | Settle lockout latch (blocks a re-shift until the dwell expires) |
-| Crossover RPM | `SV_MACHINE_PARAMETER_941` | Low/high changeover speed (≤ 0 disables auto-shift) |
-| Hysteresis RPM | `SV_MACHINE_PARAMETER_942` | Deadband half-width around crossover |
-| Coast dwell | `SV_MACHINE_PARAMETER_944` | Neutral coast time in ms (0 → default 1500). P943 is reserved (was rev-match tolerance; unused) |
-| Clutch settle dwell | `SV_MACHINE_PARAMETER_945` | Settle/lockout time in ms (0 → default 500) |
+| `GearCoast_T` | `T` | Neutral coast dwell before engaging (armed at kickoff in `MainStage`) |
+| Crossover RPM | `SV_MACHINE_PARAMETER_941` | Low/high changeover speed (≤ 0 disables auto-shift). Intended: 1100 |
+| Hysteresis RPM | `SV_MACHINE_PARAMETER_942` | Deadband half-width around crossover. Intended: 100 |
+| Coast dwell | `SV_MACHINE_PARAMETER_943` | Neutral coast time in ms (0 → default 1500); tune down on the machine |
 
 The both-clutch fault reuses the stock `SPINDLE_FAULT_MSG_C` message rather than a new
 `_C` constant. Reused existing symbols: `SpindleRange_W` (W64), `SpinRangeAdjust_FW` (FW1),
@@ -126,7 +133,7 @@ The both-clutch fault reuses the stock `SPINDLE_FAULT_MSG_C` message rather than
 
 - **The shift sequence itself has no fault path.** A coast dwell always elapses, so a
   shift always completes; a wrong dwell length shows up as a rough engagement to tune
-  (P944), not a fault.
+  (P943), not a fault.
 - **Both clutches asserted:** the interlock above forces neutral + fault and marks
   `EngagedRange_W = 0` so the next demand re-shifts.
 - **Shift requested during a tool change:** inhibited while `ATCStage` is set; the gear
@@ -152,7 +159,7 @@ encoder — a spindle-side encoder just coasts while decoupled and can never mat
 target; sign in M4/reverse was also unverified) and it hard-faulted in reachable states
 (e.g. a threshold-crossing S-word while the spindle is stopped). The coast dwell needs no
 feedback at all: the motor is passively retargeted through the new ratio during the coast,
-and the friction clutches absorb the residual mismatch. Tune P944 (1–2 s) on the machine.
+and the friction clutches absorb the residual mismatch. Tune P943 (start 1.5 s, tune down) on the machine.
 
 ## Success criteria
 
