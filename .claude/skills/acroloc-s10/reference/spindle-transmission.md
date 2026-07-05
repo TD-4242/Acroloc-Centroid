@@ -12,10 +12,13 @@ repo's PLC, the two ranges correspond to the `; Acroloc` outputs `Spindle_Low_ge
 > **Safety interlock:** the low-gear and high-gear outputs must **never** both be
 > energized at once. Any future shift logic must release one before engaging the other.
 
-- **Low-gear RPM range:** TBD — confirm with owner
-- **High-gear RPM range:** TBD — confirm with owner
-- **Maximum spindle RPM:** TBD — confirm with owner
-- **Shift mechanism (manual lever / pneumatic / electric):** TBD — confirm with owner
+- **Low-gear RPM range:** ~0–1200 RPM (owner, 2026-07-05)
+- **High-gear RPM range:** ~1000–3500 RPM (owner, 2026-07-05)
+- **Maximum spindle RPM:** ~3500 RPM (high gear)
+- **Shift mechanism:** two friction clutches, one per gear, driven by OUT19/OUT20; the
+  PLC shifts automatically from commanded RPM (crossover P941 = 1100 ± P942 = 100,
+  neutral coast dwell P943) — see the "Automatic RPM-based gear shifting" section of
+  the repo `README.md`.
 
 ## Spindle
 
