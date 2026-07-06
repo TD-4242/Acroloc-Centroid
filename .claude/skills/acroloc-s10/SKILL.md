@@ -38,7 +38,7 @@ of truth — no specifications are guessed).
 
 | Subsystem | Reference | Covers |
 |-----------|-----------|--------|
-| Axes & travel | [reference/axes-and-travel.md](reference/axes-and-travel.md) | X/Y/Z travel, usable Z envelope, rapids/feeds, ways, accuracy, home |
+| Axes & travel | [reference/axes-and-travel.md](reference/axes-and-travel.md) | X/Y/Z travel, usable Z envelope, rapids/feeds, ways, accuracy, home, limit-switch wiring & direction-reversal (Error 411 current-inhibit trap) |
 | Spindle & transmission | [reference/spindle-transmission.md](reference/spindle-transmission.md) | Two-speed gear ranges, max RPM, shift mechanism, taper, drawbar, motor |
 | ATC & tooling | [reference/atc.md](reference/atc.md) | Carousel capacity (12), tool numbering, tool size/weight limits, retention, air |
 | Work envelope & table | [reference/work-envelope-and-table.md](reference/work-envelope-and-table.md) | Table size, T-slots, max workpiece weight, footprint, machine weight |
