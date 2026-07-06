@@ -92,3 +92,5 @@ outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71`/`W72`.
   the carousel spins indefinitely.
 - `plc.map` is build output; never hand-edit it and don't rely on its line numbers staying
   in sync after you edit the `.src`.
+- When changing the PLC source, update the affected docs/plc-spec/ section(s) and their
+  pinned commit hash as part of the change.

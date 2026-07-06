@@ -207,7 +207,7 @@ clamp path could not be confirmed from this source file alone.
 ## ATC kickoff
 
 Full ATC carousel state-machine detail (position-switch decode, base-16-as-decimal tool ID,
-motor/lock outputs) lives in `atc.md` (not yet written) — this section only covers the
+motor/lock outputs) lives in [atc.md](atc.md) — this section only covers the
 hand-off rungs inside `MainStage` that arm `ATCStage`.
 
 - **Tool-change entry** (src:2911, tagged "Acroloc tool stage start" at
@@ -240,7 +240,7 @@ hand-off rungs inside `MainStage` that arm `ATCStage`.
 ## Gear decision
 
 Full gear-shift state-machine detail (the coast-dwell sequencing inside `GearShiftStage`,
-`STG17`) lives in `gear-shift.md` (not yet written). This section summarizes only the
+`STG17`) lives in [gear-shift.md](gear-shift.md). This section summarizes only the
 *decision* logic — where `DesiredRange_W` is computed and where the shift is kicked off —
 which physically sits inside the `JogPanelStage` banner block (src:1772-2406,
 decision rungs at src:2259-2333); see [Stage scope note](#stage-scope-note) for

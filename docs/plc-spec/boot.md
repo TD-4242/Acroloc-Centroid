@@ -96,7 +96,7 @@ Rung-by-rung (src:1257-1281), grouped by effect:
   to 1000 ms; only `Initialize_T` is armed (`SET`) in this same rung, so it is the one
   timer guaranteed to actually be running immediately after power-up. `StopSpinBeforATC_T`
   is the Acroloc ATC spindle-stopped-before-carousel-motion timer described in the
-  repo-level ATC flow — see `atc.md` (not yet written) for where it is armed and read.
+  repo-level ATC flow — see [atc.md](atc.md) for where it is armed and read.
 - **Acroloc power-up gear defaults** (src:1276-1280), all tagged `; Acroloc`:
   `SET Spindle_Low_gear_O`, `RST Spindle_High_gear_O`, `EngagedRange_W = 1`,
   `DesiredRange_W = 1`, `SpindleRange_W = 1`. See
