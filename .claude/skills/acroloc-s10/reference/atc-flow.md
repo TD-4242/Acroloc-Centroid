@@ -8,6 +8,8 @@
 > For machine overview and build/deploy instructions see `README.md` and
 > `CLAUDE.md`. This document focuses on the flow and gotchas, not the
 > background prose.
+>
+> For the fully line-referenced specification see ../../../../docs/plc-spec/atc.md.
 
 ---
 
