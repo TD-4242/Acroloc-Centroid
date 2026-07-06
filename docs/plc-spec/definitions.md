@@ -372,19 +372,19 @@ identifier bound — no name to cite.
 
 | Stage name | Resource | src line | Acroloc? | Detail file |
 |---|---|---|---|---|
-| `WatchDogStage` | STG1 | 1193 | | [scan-model.md](scan-model.md) |
+| `WatchDogStage` | STG1 | 1193 | | [boot.md](boot.md) |
 | `InitialStage` | STG2 | 1194 | | [boot.md](boot.md) |
 | `JogPanelStage` | STG3 | 1195 | | [jog-and-mpg.md](jog-and-mpg.md) |
 | `MainStage` | STG4 | 1196 | | [main-stage.md](main-stage.md) |
-| `AxesEnableStage` | STG5 | 1197 | | [main-stage.md](main-stage.md) |
-| `LoadMeterStage` | STG6 | 1198 | | [main-stage.md](main-stage.md) |
+| `AxesEnableStage` | STG5 | 1197 | | [faults-and-messages.md](faults-and-messages.md) |
+| `LoadMeterStage` | STG6 | 1198 | | [boot.md](boot.md) |
 | `MPGStage` | STG7 | 1199 | | [jog-and-mpg.md](jog-and-mpg.md) |
 | `CheckCycloneStatusStage` | STG8 | 1200 | | [faults-and-messages.md](faults-and-messages.md) |
 | `MiniPLCErrorStage` | STG9 | 1201 | | [faults-and-messages.md](faults-and-messages.md) |
-| `LoadParametersStage` | STG10 | 1202 | | [parameters.md](parameters.md) |
-| `KeyboardEventsStage` | STG11 | 1203 | | [jog-and-mpg.md](jog-and-mpg.md) |
-| `LubeUsePumpTimersStage` | STG13 | 1204 | | [main-stage.md](main-stage.md) |
-| `LubeUsePLCTimersStage` | STG14 | 1205 | | [main-stage.md](main-stage.md) |
+| `LoadParametersStage` | STG10 | 1202 | | [boot.md](boot.md) |
+| `KeyboardEventsStage` | STG11 | 1203 | | [main-stage.md](main-stage.md) |
+| `LubeUsePumpTimersStage` | STG13 | 1204 | | [boot.md](boot.md) |
+| `LubeUsePLCTimersStage` | STG14 | 1205 | | [boot.md](boot.md) |
 | `ATCStage` | STG16 | 1207 | Acroloc | [atc.md](atc.md) |
 | `GearShiftStage` | STG17 | 1208 | Acroloc | [gear-shift.md](gear-shift.md) |
 | `JogKeysNormalStage` | STG26 | 1210 | | [jog-and-mpg.md](jog-and-mpg.md) |
@@ -392,7 +392,7 @@ identifier bound — no name to cite.
 | `JogKeysSwappedStage` | STG28 | 1212 | | [jog-and-mpg.md](jog-and-mpg.md) |
 | `JogKeysSwapAndInvert2Stage` | STG29 | 1213 | | [jog-and-mpg.md](jog-and-mpg.md) |
 | `WirelessMpgStage` | STG60 | 1214 | | [jog-and-mpg.md](jog-and-mpg.md) |
-| `SafetySwitchInterruptStage` | STG62 | 1215 | | [main-stage.md](main-stage.md) |
+| `SafetySwitchInterruptStage` | STG62 | 1215 | | [boot.md](boot.md) (brief mention) |
 | `MessageStage` | STG90 | 1217 | | [faults-and-messages.md](faults-and-messages.md) |
 | `ShowFaultStage` | STG91 | 1218 | | [faults-and-messages.md](faults-and-messages.md) |
 | `ShowErrorStage` | STG92 | 1219 | | [faults-and-messages.md](faults-and-messages.md) |
