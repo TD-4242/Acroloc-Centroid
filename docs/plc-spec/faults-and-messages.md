@@ -140,6 +140,52 @@ several of the *other* fault latches the instant it goes true (main-stage.md,
 src:2846-2851) — see the gotcha called out there and echoed at
 src:2531 above for `DriveComFltIn_M`/`DriveComFltOut_M`.
 
+## `SafetySwitchInterruptStage` (STG62, src:1215, banner src:3018-3020)
+
+Purpose (inferred from the rungs, no source comment): watches the enclosure door/safety
+switch (`DoorClosed_I`) and posts one of two distinct fault messages depending on whether the
+door opens while the spindle is trying to run versus while a job is already in progress.
+Armed once at boot from `InitialStage` (`SET SafetySwitchInterruptStage`, boot.md src:1263)
+and never explicitly `RST` anywhere in this file — unlike every other stage documented in this
+file, it stays `SET` (swept every scan) for the life of the PLC program rather than
+self-disarming.
+
+- (src:3021) `IF DoorClosed_I THEN (SafetySwitch_M)` — `SafetySwitch_M IS MEM29`
+  (definitions.md, src:486) directly mirrors the door-closed input; there is no
+  latch here; the bit follows the switch live, every scan.
+- **Spindle-start interlock** (src:3022-3023): if the door is open
+  (`!SafetySwitch_M`) at the moment a spindle start is requested — from the panel
+  (`SpinStart_M`), the keyboard (`KbSpinStart_M`), or an M3/M4 program command (`M3_SV`/
+  `M4_SV`) — post `SAFETY_SWITCH_SPINDLE_MSG` (definitions.md src:177, `23809 = 1+256*93`) and
+  `SET ErrorFlag_M`. This is the "you tried to start the spindle with the door open" case.
+- **Job-in-progress interlock** (src:3025-3028): `SafetySwitchToolCheck_M`
+  (`MEM30`, definitions.md src:487) is forced `SET` whenever no job is running
+  (`!SV_JOB_IN_PROGRESS`, src:3025) — this is a "door was already open before/between jobs,
+  don't fault on it" arm-once-per-job-start guard. Once a job *is* in progress
+  (`SV_JOB_IN_PROGRESS`), if the door opens (`!SafetySwitch_M`) and the check hasn't already
+  latched (`!SafetySwitchToolCheck_M`) and the spindle isn't currently commanded on
+  (`!(M3_SV || M4_SV)`), post `SAFETY_SWITCH_OPEN_MSG` (definitions.md src:176,
+  `23553 = 1+256*92`), `SET ErrorFlag_M`, and `SET SafetySwitchToolCheck_M` in the same rung —
+  this is the "door opened mid-job" case, distinct from the spindle-start case above, and the
+  `SET SafetySwitchToolCheck_M` here immediately prevents the rung from re-firing every scan
+  the door stays open (it only fires once per open-door event).
+  - Gotcha: the `!(M3_SV || M4_SV)` guard means this rung is specifically for the
+    door-open-while-*not*-spinning-and-mid-job case; if the spindle is running
+    (`M3_SV`/`M4_SV` true) when the door opens mid-job, this particular rung does not fire —
+    that scenario is presumably expected to be caught elsewhere (e.g. a physical door
+    interlock that kills spindle power, or the spindle-start rung above catching the next
+    M3/M4) since nothing in this stage posts a message for "door open while spindle already
+    running mid-job."
+- (src:3030) `IF SafetySwitch_M THEN RST SafetySwitchToolCheck_M` — once the door closes again
+  (`SafetySwitch_M` true), the tool-check latch is cleared, re-arming the mid-job
+  door-open detection for the next time the door opens.
+- Both message paths only `SET ErrorFlag_M` (an *error*-severity message per
+  `MessageStage`'s dispatch above), not a fault-class bit — a safety-switch trip does not
+  itself add to the `SV_STOP` OR-gate documented in main-stage.md's
+  [Fault aggregation](main-stage.md#fault-aggregation) section; whatever machine-level
+  interlock actually stops the spindle when the door opens is external to this rung group
+  (purpose inferred; not shown in this stage).
+
 ## Message pipeline: `FaultMsg_W` / `ErrorMsg_W` / `InfoMsg_W` -> on-screen display
 
 Three severity-tiered message words (`FaultMsg_W IS W51`, `ErrorMsg_W IS W52`,

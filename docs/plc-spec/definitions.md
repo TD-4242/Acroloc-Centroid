@@ -392,7 +392,7 @@ identifier bound — no name to cite.
 | `JogKeysSwappedStage` | STG28 | 1212 | | [jog-and-mpg.md](jog-and-mpg.md) |
 | `JogKeysSwapAndInvert2Stage` | STG29 | 1213 | | [jog-and-mpg.md](jog-and-mpg.md) |
 | `WirelessMpgStage` | STG60 | 1214 | | [jog-and-mpg.md](jog-and-mpg.md) |
-| `SafetySwitchInterruptStage` | STG62 | 1215 | | [boot.md](boot.md) (brief mention) |
+| `SafetySwitchInterruptStage` | STG62 | 1215 | | [faults-and-messages.md](faults-and-messages.md) |
 | `MessageStage` | STG90 | 1217 | | [faults-and-messages.md](faults-and-messages.md) |
 | `ShowFaultStage` | STG91 | 1218 | | [faults-and-messages.md](faults-and-messages.md) |
 | `ShowErrorStage` | STG92 | 1219 | | [faults-and-messages.md](faults-and-messages.md) |
