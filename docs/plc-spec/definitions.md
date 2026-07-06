@@ -211,7 +211,9 @@ in the source.
 | `UsbAxisKnobChanged_M` | MEM287 | 655 | | Wireless MPG axis knob changed. [jog-and-mpg.md](jog-and-mpg.md) |
 | `MpgX100LockOut_M` | MEM288 | 656 | | Z-axis x100 lockout (parameter 19). [parameters.md](parameters.md) |
 | `MpgZAxisLocked_M` | MEM289 | 657 | | Z-axis MPG locked. [jog-and-mpg.md](jog-and-mpg.md) |
-| `KbCycleStart_M` .. `KbAux16Key_M` | MEM400-447 (see note) | 660-707 | | Keyboard jog/function key latches. [jog-and-mpg.md](jog-and-mpg.md) |
+| `KbCycleStart_M` .. `KbAux16Key_M` | MEM400-447 (see note; excludes the two out-of-sequence bindings listed next) | 660-707 | | Keyboard jog/function key latches. [jog-and-mpg.md](jog-and-mpg.md) |
+| `KbFeedOver100_M` | MEM450 | 668 | | Keyboard feed override 100% — "ctrl" + "\\" (bound out of numeric sequence inside the Kb block). [jog-and-mpg.md](jog-and-mpg.md) |
+| `KbMistOnOff_M` | MEM451 | 698 | | Keyboard mist on/off — "ctrl" + "k" (bound out of numeric sequence inside the Kb block). [jog-and-mpg.md](jog-and-mpg.md) |
 | `InToolSelect_M` | MEM443 | 710 | Acroloc | 0 = false, 1 = true — carousel currently accumulating a position ID. [atc.md](atc.md) |
 | `ToolSelected_M` | MEM444 | 711 | Acroloc | 0 = false, 1 = true — carousel has matched the target tool. [atc.md](atc.md) |
 
