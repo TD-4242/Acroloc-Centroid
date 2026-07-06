@@ -4,7 +4,7 @@ One-line purpose: reference for the drive/fiber/PLC-bus/MiniPLC communication-he
 (`CheckCycloneStatusStage`, `MiniPLCErrorStage`), the fault-bit -> message-word -> on-screen
 display pipeline (`MessageStage`, `ShowFaultStage`, `ShowErrorStage`, `ShowInfoStage`,
 `BadMsgStage`), and how the fault bits documented here feed the central OR-gate in
-`main-stage.md`'s [Fault aggregation](main-stage.md#fault-aggregation) section.
+`main-stage.md`'s [Fault aggregation](main-stage.md#fault-aggregation-src2840-2882) section.
 
 Line numbers as of commit 41f3fd6
 
@@ -18,7 +18,7 @@ Stage sweep order and timer semantics are defined in
 This file does not re-document `MainStage`'s fault OR-gate rung group
 (src:2840-2882, `SET SV_STOP` on any fault bit, and the single recovery
 rung) — that is covered in main-stage.md under
-[Fault aggregation](main-stage.md#fault-aggregation). This file covers the *producers* that
+[Fault aggregation](main-stage.md#fault-aggregation-src2840-2882). This file covers the *producers* that
 set those fault bits (comm-health checks) and the *consumer* pipeline that turns
 `FaultMsg_W`/`ErrorMsg_W`/`InfoMsg_W` into an on-screen operator message.
 
@@ -182,7 +182,7 @@ self-disarming.
 - Both message paths only `SET ErrorFlag_M` (an *error*-severity message per
   `MessageStage`'s dispatch above), not a fault-class bit — a safety-switch trip does not
   itself add to the `SV_STOP` OR-gate documented in main-stage.md's
-  [Fault aggregation](main-stage.md#fault-aggregation) section; whatever machine-level
+  [Fault aggregation](main-stage.md#fault-aggregation-src2840-2882) section; whatever machine-level
   interlock actually stops the spindle when the door opens is external to this rung group
   (purpose inferred; not shown in this stage).
 

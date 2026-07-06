@@ -89,7 +89,7 @@ button. It only drives `ATCUnlocked_O` (`OUT18`, `ATCUnlocked_O` (src:383)) whil
 ring") is true and `ATCStage` is **not** running — this keeps manual unlock from fighting
 `ATCStage`'s own lock/unlock control once an automatic change has started. Note the two
 `ATCManualUnlock_I` message rungs (`src:2917-2922`) are **unconditional** on `ATCStage`
-(no `!ATCStage` guard) — they post `ATC_Lock_Not_Released_C` (src:200) /
+(no `!ATCStage` guard) — they post `ATC_Lock_Not_Released_C` (src:201) /
 `ATC_Lock_Released_C` (src:202) via `ShowFaultStage` purely as an operator status echo of the
 button state, every scan the button state is read, independent of whether a change is in
 progress.
