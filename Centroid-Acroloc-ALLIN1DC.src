@@ -205,12 +205,22 @@ ATC_Lock_Released_C             IS 45546;(2+256*174) Tool Carousel locked.
 ;                        INPUT DEFINITIONS
 ;               Closed = 1 (green)  Open = 0 (red)
 ;------------------------------------------------------------------------------
-Ax1_MinusLimitOk_I              IS INP1
-Ax1_PlusLimitOk_I               IS INP2
-Ax2_MinusLimitOk_I              IS INP3
-Ax2_PlusLimitOk_I               IS INP4
-Ax3_MinusLimitOk_I              IS INP5
-Ax3_PlusLimitOk_I               IS INP6
+; Acroloc: INP1-INP6 are the ALLIN1DC's hardware current-inhibit limit inputs, one
+; pair per axis in the board's NATIVE (internal) motor direction -- odd = native
+; minus, even = native plus. The board blocks drive current toward a tripped input
+; below the PLC scan, so a switch on the wrong-direction input gives Error 411 "full
+; power without motion" when backing off. The names below are the board's native
+; direction. Y (axis 2) and Z (axis 3) have Direction Reversal = Yes (Machine Config
+; -> Motor Parameters), so their LOGICAL + is the board's NATIVE -: the physical +/-
+; switch wired to each reversed pair is swapped vs. the name, and the Motor Parameter
+; limit-input numbers are swapped to match (X 1/2 natural; Y 4/3; Z 6/5).
+; See the acroloc-s10 skill, reference/axes-and-travel.md.
+Ax1_MinusLimitOk_I              IS INP1  ;X not reversed: physical X- limit switch
+Ax1_PlusLimitOk_I               IS INP2  ;X not reversed: physical X+ limit switch
+Ax2_MinusLimitOk_I              IS INP3  ;Y REVERSED: wired to physical Y+ limit switch
+Ax2_PlusLimitOk_I               IS INP4  ;Y REVERSED: wired to physical Y- limit switch
+Ax3_MinusLimitOk_I              IS INP5  ;Z REVERSED: wired to physical Z+ limit switch
+Ax3_PlusLimitOk_I               IS INP6  ;Z REVERSED: wired to physical Z- limit switch
 RotaryTableHome_I               IS INP7
 DoorClosed_I                    IS INP8
 LubeOk_I                        IS INP9  ;Lube_O is "OK" when input is closed
@@ -1081,7 +1091,7 @@ DesiredRange_W                  IS W73  ; Acroloc gear wanted by RPM logic (1=lo
 EngagedRange_W                  IS W74  ; Acroloc gear currently engaged (open-loop, tracks clutch outputs)
 ; Acroloc gear-shift machine parameters (set in CNC12 machine parameters):
 ;   P941 = gear crossover RPM (commanded speed at/above which high gear is used; 0 disables auto-shift)
-;   P942 = crossover hysteresis (RPM) — deadband half-width to prevent hunting
+;   P942 = crossover hysteresis (RPM) -- deadband half-width to prevent hunting
 ;   P943 = coast dwell (ms) spent in neutral before engaging the new gear (0 -> default 1500)
 PrevFeedOverride_W              IS W65
 P148Value_W                     IS W66
@@ -2276,7 +2286,7 @@ IF SV_PLC_SPINDLE_KNOB > 100 THEN (SpinOverPlusLED_O), (DoIncreaseSpindleOR_SV)
 ;
 ; Decide from the UN-overridden S value: SV_PC_COMMANDED_SPINDLE_SPEED includes
 ; the spindle-override knob (SV_PLC_SPINDLE_KNOB, clamped 1-200 in the override
-; section above), so back the knob out — otherwise sweeping the override across
+; section above), so back the knob out -- otherwise sweeping the override across
 ; the crossover mid-cut would trigger a gear shift (a neutral drop under load).
 IF True_M THEN GearBaseSpeed_FW = SV_PC_COMMANDED_SPINDLE_SPEED * 100.0 / SV_PLC_SPINDLE_KNOB
 
@@ -2393,7 +2403,7 @@ IF True_M THEN WTB TwelveBitSpeed_W SpinAnalogOutBit0_O 12
 ;Display calculated RPM value on PC
 IF True_M THEN SV_PLC_SPINDLE_SPEED = SpinSpeedCommand_FW
 
-; Acroloc: clutches are mutually exclusive — never allow both engaged.
+; Acroloc: clutches are mutually exclusive -- never allow both engaged.
 ; EngagedRange_W = 0 marks the gear state unknown (we forced neutral), so the
 ; next valid demand re-triggers a full shift instead of trusting a stale value.
 IF Spindle_Low_gear_O && Spindle_High_gear_O THEN
@@ -2991,7 +3001,7 @@ IF CarouselToolID_W == ChangeToTool_W THEN
 ; SpindleRange_W), so the motor side arrives near the right speed passively while
 ; the spindle side coasts.  The two clutches are never engaged together.  There
 ; is no gear-position or speed feedback in this sequence (open loop); the coast
-; dwell is the only assurance.  There is no fault path — a dwell always elapses,
+; dwell is the only assurance.  There is no fault path -- a dwell always elapses,
 ; so a shift always completes.  The coast timer GearCoast_T is loaded and armed
 ; by the kickoff rung in MainStage, in the same scan this stage is SET.
 
