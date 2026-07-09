@@ -64,7 +64,7 @@ tracked from the clutch outputs the PLC itself commands (not a sense switch), an
 automatically shifts range based on the commanded spindle RPM — an open-loop, timed
 neutral-coast-then-engage clutch swap with no rev-match or position feedback. Power-up engages
 low range. Full line-referenced detail (decision logic, DAC-ratio math, clutch interlock, the
-`GearShiftStage` state machine, and the P941/P942/P943 parameter table) is in
+`GearShiftStage` state machine, and the P860/P861/P862 parameter table) is in
 [`docs/plc-spec/gear-shift.md`](docs/plc-spec/gear-shift.md); on-machine verification steps
 (shift boundaries, coast-dwell tuning, RPM accuracy) are in
 [`docs/testing/rpm-gear-shift-test-plan.md`](docs/testing/rpm-gear-shift-test-plan.md).

@@ -50,7 +50,7 @@
 ;                            Add 1 = MPG Ignore Encoder Error
 ;                            Add 2 = Lock Out Z Axis X100 with WMPG
 ;                            Add 4 = Enable Independent Z-Axis MPG Jogging 
-; ?? SV_MACHINE_PARAMETER_33 : Spindle Motor Gear Ration 2x
+; SV_MACHINE_PARAMETER_33  : High Range Gear Ratio 2x (Acroloc: read for SpindleRange_W==4)
 ; SV_MACHINE_PARAMETER_39  : Feedrate Override Percentage Limit
 ; SV_MACHINE_PARAMETER_65  : Low Range Gear Ratio .5x
 ; SV_MACHINE_PARAMETER_66  : Medium-Low Range Gear Ratio
@@ -391,8 +391,8 @@ ZBrakeRelease_O                 IS OUT9  ;SPDT Type
 ;begin at output17.
 ATCMotor_O                      IS OUT17 ; Acroloc spin tool carousel
 ATCUnlocked_O                   IS OUT18 ; Acroloc lock tool carousel in place
-Spindle_Low_gear_O              IS OUT19 ; Acroloc High gear must be released
-Spindle_High_gear_O             IS OUT20 ; Acroloc Low gear must be released
+Spindle_Low_gear_O              IS OUT19 ; Acroloc clutch: both off=LOCKUP, both on=neutral (see GearShiftStage)
+Spindle_High_gear_O             IS OUT20 ; Acroloc clutch: both off=LOCKUP, both on=neutral (see GearShiftStage)
 
 ; These bits control the actual analog hardware output on the ALLIN1DC.
 ; Output = 12bit (0-4095) 0-10VDC.
@@ -1089,10 +1089,10 @@ LubeS_W                         IS W63
 SpindleRange_W                  IS W64  ; 1 = low ... 4 = high
 DesiredRange_W                  IS W73  ; Acroloc gear wanted by RPM logic (1=low, 4=high)
 EngagedRange_W                  IS W74  ; Acroloc gear currently engaged (open-loop, tracks clutch outputs)
-; Acroloc gear-shift machine parameters (set in CNC12 machine parameters):
-;   P941 = gear crossover RPM (commanded speed at/above which high gear is used; 0 disables auto-shift)
-;   P942 = crossover hysteresis (RPM) -- deadband half-width to prevent hunting
-;   P943 = coast dwell (ms) spent in neutral before engaging the new gear (0 -> default 1500)
+; Acroloc gear-shift params (free 860-870 block; 900-block reserved: P941 = limit-defeat button):
+;   P860 = gear crossover RPM (commanded speed at/above which high gear is used; 0 disables auto-shift)
+;   P861 = crossover hysteresis (RPM) -- deadband half-width to prevent hunting
+;   P862 = coast dwell (ms) spent in neutral before engaging the new gear (0 -> default 1500)
 PrevFeedOverride_W              IS W65
 P148Value_W                     IS W66
 P146Value_W                     IS W67
@@ -2282,7 +2282,7 @@ IF SV_PLC_SPINDLE_KNOB > 100 THEN (SpinOverPlusLED_O), (DoIncreaseSpindleOR_SV)
 ; NOT apply on this machine.
 ; Acroloc: RPM-based automatic gear selection (replaces the old INP13 sense-switch
 ; selection). The power-up default is LOW range (see init), not high.
-; DesiredRange_W is held in the hysteresis deadband; P941<=0 disables.
+; DesiredRange_W is held in the hysteresis deadband; P860<=0 disables.
 ;
 ; Decide from the UN-overridden S value: SV_PC_COMMANDED_SPINDLE_SPEED includes
 ; the spindle-override knob (SV_PLC_SPINDLE_KNOB, clamped 1-200 in the override
@@ -2290,12 +2290,12 @@ IF SV_PLC_SPINDLE_KNOB > 100 THEN (SpinOverPlusLED_O), (DoIncreaseSpindleOR_SV)
 ; the crossover mid-cut would trigger a gear shift (a neutral drop under load).
 IF True_M THEN GearBaseSpeed_FW = SV_PC_COMMANDED_SPINDLE_SPEED * 100.0 / SV_PLC_SPINDLE_KNOB
 
-IF SV_MACHINE_PARAMETER_941 <= 0.0 THEN DesiredRange_W = EngagedRange_W
-IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
-   (GearBaseSpeed_FW >= (SV_MACHINE_PARAMETER_941 + SV_MACHINE_PARAMETER_942))
+IF SV_MACHINE_PARAMETER_860 <= 0.0 THEN DesiredRange_W = EngagedRange_W
+IF (SV_MACHINE_PARAMETER_860 > 0.0) &&
+   (GearBaseSpeed_FW >= (SV_MACHINE_PARAMETER_860 + SV_MACHINE_PARAMETER_861))
   THEN DesiredRange_W = 4
-IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
-   (GearBaseSpeed_FW <= (SV_MACHINE_PARAMETER_941 - SV_MACHINE_PARAMETER_942))
+IF (SV_MACHINE_PARAMETER_860 > 0.0) &&
+   (GearBaseSpeed_FW <= (SV_MACHINE_PARAMETER_860 - SV_MACHINE_PARAMETER_861))
   THEN DesiredRange_W = 1
 
 ; While not shifting, the effective range tracks the actually-engaged clutch so the
@@ -2303,15 +2303,15 @@ IF (SV_MACHINE_PARAMETER_941 > 0.0) &&
 IF !GearShiftStage THEN SpindleRange_W = EngagedRange_W
 
 ; Kick off a shift when the desired gear differs from the engaged gear and we are not
-; already shifting and not in a tool change. Arm the coast dwell here (P943 ms;
+; already shifting and not in a tool change. Arm the coast dwell here (P862 ms;
 ; 0 -> default 1500) - this fires exactly once per shift because SET GearShiftStage
 ; makes the condition false on the next scan, and a timer keeps counting no matter
 ; which stage armed it. GearShiftStage engages the new gear when the dwell expires.
 IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage THEN
   GearCoast_T = 1500
 IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage &&
-   (SV_MACHINE_PARAMETER_943 > 0) THEN
-  GearCoast_T = SV_MACHINE_PARAMETER_943
+   (SV_MACHINE_PARAMETER_862 > 0) THEN
+  GearCoast_T = SV_MACHINE_PARAMETER_862
 IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage THEN
   SET GearCoast_T,
   SET GearShiftStage
@@ -2332,7 +2332,9 @@ IF SpindleRange_W == 3 THEN RST SV_SPINDLE_LOW_RANGE,
 
 IF SpindleRange_W == 4 THEN RST SV_SPINDLE_LOW_RANGE,
                             RST SV_SPINDLE_MID_RANGE,
-                            SpinRangeAdjust_FW = 1.0
+                            SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_33 ; Acroloc high ratio (2.0); low uses P65 (0.5)
+; Acroloc: if P33 is unset (<=0) fall back to the stock 1.0 so high gear cannot run away to max RPM.
+IF (SpindleRange_W == 4) && (SV_MACHINE_PARAMETER_33 <= 0.0) THEN SpinRangeAdjust_FW = 1.0
 
 ; If the speed ratio parameter is negative, reverse the motor.
 ; Always use the absolute value of the parameter as the real ratio.
@@ -2403,12 +2405,16 @@ IF True_M THEN WTB TwelveBitSpeed_W SpinAnalogOutBit0_O 12
 ;Display calculated RPM value on PC
 IF True_M THEN SV_PLC_SPINDLE_SPEED = SpinSpeedCommand_FW
 
-; Acroloc: clutches are mutually exclusive -- never allow both engaged.
-; EngagedRange_W = 0 marks the gear state unknown (we forced neutral), so the
-; next valid demand re-triggers a full shift instead of trusting a stale value.
-IF Spindle_Low_gear_O && Spindle_High_gear_O THEN
-  RST Spindle_Low_gear_O,
-  RST Spindle_High_gear_O,
+; Acroloc: clutch truth table (low=OUT19, high=OUT20): exactly one on = that
+; gear; both on = NEUTRAL (freewheel); BOTH OFF = mechanical LOCKUP (belts fight)
+; -- forbidden, never command it. Backstop: if both are ever read off, STOP the
+; spindle immediately (drop enable; the DAC is forced to 0 by the rung above) and
+; command neutral (both on) to release the lockup. EngagedRange_W = 0 marks the
+; gear unknown so the next demand re-triggers a full shift, not a stale value.
+IF !Spindle_Low_gear_O && !Spindle_High_gear_O THEN
+  RST SpindleEnableOut_O,
+  SET Spindle_Low_gear_O,
+  SET Spindle_High_gear_O,
   EngagedRange_W = 0,
   FaultMsg_W = SPINDLE_FAULT_MSG_C,
   SET ShowFaultStage,
@@ -2995,20 +3001,22 @@ IF CarouselToolID_W == ChangeToTool_W THEN
    GearShiftStage ; Acroloc
 ;=============================================================================
 ; Open-loop two-clutch gear shift driven by DesiredRange_W (1=low, 4=high).
-; Sequence: release BOTH clutches (neutral) -> coast for a fixed dwell -> engage
-; the target clutch.  No exact rev-match is required: during the coast the DAC
-; already commands the motor through the NEW gear's ratio (Step A retargets
-; SpindleRange_W), so the motor side arrives near the right speed passively while
-; the spindle side coasts.  The two clutches are never engaged together.  There
-; is no gear-position or speed feedback in this sequence (open loop); the coast
-; dwell is the only assurance.  There is no fault path -- a dwell always elapses,
-; so a shift always completes.  The coast timer GearCoast_T is loaded and armed
-; by the kickoff rung in MainStage, in the same scan this stage is SET.
+; Clutch truth table (low=OUT19, high=OUT20): exactly one on = that gear; BOTH ON
+; = neutral (freewheel); BOTH OFF = mechanical LOCKUP (forbidden).
+; Sequence: engage BOTH clutches (neutral) -> coast for a fixed dwell -> release
+; the non-target clutch (leaving the target engaged).  No exact rev-match: during
+; the coast the DAC already commands the motor through the NEW gear's ratio (Step
+; A retargets SpindleRange_W), so the motor side arrives near the right speed
+; passively while the spindle side freewheels.  At least one clutch is energized
+; at every step -- both-off is never commanded.  No gear-position or speed
+; feedback (open loop); the coast dwell is the only assurance.  A dwell always
+; elapses, so a shift always completes.  The coast timer GearCoast_T is loaded and
+; armed by the kickoff rung in MainStage, the same scan this stage is SET.
 
-; --- Step A: neutral + retarget the motor (every scan while shifting) ---
+; --- Step A: neutral = BOTH clutches ON + retarget the motor (every scan) ---
 IF GearShiftStage THEN
-  RST Spindle_Low_gear_O,
-  RST Spindle_High_gear_O,
+  SET Spindle_Low_gear_O,
+  SET Spindle_High_gear_O,
   SpindleRange_W = DesiredRange_W
 
 ; --- Step B: coast elapsed -> engage exactly one clutch, then finish the shift ---

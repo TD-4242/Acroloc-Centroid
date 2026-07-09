@@ -252,11 +252,11 @@ why it is documented here.
   src:2250-2251). `GearBaseSpeed_FW = SV_PC_COMMANDED_SPINDLE_SPEED * 100.0 /
   SV_PLC_SPINDLE_KNOB` backs the knob back out, so sweeping the override across the
   low/high crossover speed mid-cut cannot itself trigger a gear shift.
-- **Hysteresis deadband** (src:2283-2289): if `SV_MACHINE_PARAMETER_941 <= 0.0`,
+- **Hysteresis deadband** (src:2283-2289): if `SV_MACHINE_PARAMETER_860 <= 0.0`,
   auto-select is disabled and `DesiredRange_W` just tracks `EngagedRange_W` (no-op, stays
   put). Otherwise, `DesiredRange_W = 4` once `GearBaseSpeed_FW` rises to or above
-  `P941 + P942`, and `DesiredRange_W = 1` once it falls to or below `P941 - P942` — `P941` is
-  the crossover center, `P942` the hysteresis half-width, so the deadband between the two
+  `P860 + P861`, and `DesiredRange_W = 1` once it falls to or below `P860 - P861` — `P860` is
+  the crossover center, `P861` the hysteresis half-width, so the deadband between the two
   thresholds prevents chatter right at the crossover speed.
 - **Effective range tracking** (src:2293): `IF !GearShiftStage THEN SpindleRange_W =
   EngagedRange_W` — while not mid-shift, the ratio/DAC math further down always uses the
@@ -264,7 +264,7 @@ why it is documented here.
 - **Kickoff rung arming `GearCoast_T`** (src:2300-2307): once
   `DesiredRange_W != EngagedRange_W` and neither `GearShiftStage` nor `ATCStage` is already
   running, load `GearCoast_T` with a default of 1500 ms (src:2300-2301),
-  override it from `SV_MACHINE_PARAMETER_943` if that parameter is positive
+  override it from `SV_MACHINE_PARAMETER_862` if that parameter is positive
   (src:2302-2304), then arm the timer and `SET GearShiftStage`
   (src:2305-2307). Per `scan-model.md`'s worked example, because
   `GearShiftStage` (STG17) is swept after this point in the same pass, its Step A rung runs
@@ -272,17 +272,20 @@ why it is documented here.
 - **Range flags and speed ratio** (src:2311-2333): `SpindleRange_W` (1/2/3/4)
   sets `SV_SPINDLE_LOW_RANGE`/`SV_SPINDLE_MID_RANGE` per the truth table in the source
   comment (src:2266-2268) and loads `SpinRangeAdjust_FW` from
-  `SV_MACHINE_PARAMETER_65`/`66`/`67`/`1.0` respectively. A negative ratio parameter flips
+  `SV_MACHINE_PARAMETER_65`/`66`/`67`/`33` respectively (range 4/high reads P33, falling back
+  to `1.0` if P33 `<= 0`). A negative ratio parameter flips
   `SpinRangeReversed_M` and is negated back to a positive ratio
   (src:2329-2330); the ratio is floored at `0.001` (src:2333) since it is
   later used as a divisor.
-- **Mutual-exclusion clutch interlock** (src:2396-2405, tagged "Acroloc: clutches
-  are mutually exclusive"): if `Spindle_Low_gear_O && Spindle_High_gear_O` are ever both true
-  simultaneously, force both `RST`, set `EngagedRange_W = 0` (an out-of-band sentinel meaning
-  "gear state unknown"), post `SPINDLE_FAULT_MSG_C`, and set `OtherFault_M` — which folds back
-  into the fault-aggregation OR-gate above (src:2841) and asserts `SV_STOP`. Per the
-  source comment, zeroing `EngagedRange_W` guarantees the next valid speed demand forces a
-  full re-shift rather than trusting a value that was live when the double-engagement was
+- **Both-off lockup backstop** (src:2408-2421, tagged "Acroloc: clutch truth table"):
+  the clutch outputs encode gear by a truth table — one on = that gear, **both on = neutral**,
+  **both OFF = mechanical LOCKUP** (forbidden). If `!Spindle_Low_gear_O && !Spindle_High_gear_O`
+  is ever true, the rung **stops the spindle** (`RST SpindleEnableOut_O`, which zeros the DAC
+  via src:2363), commands neutral (`SET` both clutches to release the lockup), sets
+  `EngagedRange_W = 0` (out-of-band "gear state unknown"), posts `SPINDLE_FAULT_MSG_C`, and
+  sets `OtherFault_M` — which folds into the fault-aggregation OR-gate above (src:2841) and
+  asserts `SV_STOP`. Zeroing `EngagedRange_W` guarantees the next valid speed demand forces a
+  full re-shift rather than trusting a value that was live when the lockup was
   detected.
 
 Spindle-speed-to-DAC conversion math (src:2335-2394 — min/max clamping,

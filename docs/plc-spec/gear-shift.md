@@ -44,15 +44,15 @@ spindle into neutral under load) — only a change in the underlying programmed 
 
 ### Hysteresis deadband (src:2283-2289)
 
-- (src:2283): `IF SV_MACHINE_PARAMETER_941 <= 0.0 THEN DesiredRange_W = EngagedRange_W` —
+- (src:2283): `IF SV_MACHINE_PARAMETER_860 <= 0.0 THEN DesiredRange_W = EngagedRange_W` —
   auto-select is disabled outright; `DesiredRange_W` is simply pinned to whatever is currently
   engaged, so nothing downstream ever sees a range mismatch and no shift is ever kicked off.
-- (src:2284-2286): otherwise, once `GearBaseSpeed_FW >= P941 + P942`, `DesiredRange_W = 4`
+- (src:2284-2286): otherwise, once `GearBaseSpeed_FW >= P860 + P861`, `DesiredRange_W = 4`
   (high).
-- (src:2287-2289): once `GearBaseSpeed_FW <= P941 - P942`, `DesiredRange_W = 1` (low).
-- Between `P941 - P942` and `P941 + P942`, neither condition fires and `DesiredRange_W`
+- (src:2287-2289): once `GearBaseSpeed_FW <= P860 - P861`, `DesiredRange_W = 1` (low).
+- Between `P860 - P861` and `P860 + P861`, neither condition fires and `DesiredRange_W`
   simply holds its last value — this is the deadband that prevents chatter right at the
-  crossover speed. `P941` is the crossover center, `P942` the hysteresis half-width.
+  crossover speed. `P860` is the crossover center, `P861` the hysteresis half-width.
 
 ### Effective range tracking (src:2293)
 
@@ -68,8 +68,8 @@ a shift (Step A, below).
 IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage THEN
   GearCoast_T = 1500
 IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage &&
-   (SV_MACHINE_PARAMETER_943 > 0) THEN
-  GearCoast_T = SV_MACHINE_PARAMETER_943
+   (SV_MACHINE_PARAMETER_862 > 0) THEN
+  GearCoast_T = SV_MACHINE_PARAMETER_862
 IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage THEN
   SET GearCoast_T,
   SET GearShiftStage
@@ -81,9 +81,9 @@ gear shift from starting mid tool-change.
 
 - **Timer load, default then override** (src:2300-2304): `GearCoast_T` is
   unconditionally loaded with `1500` (ms) first, then immediately overwritten with
-  `SV_MACHINE_PARAMETER_943` if that parameter is `> 0`. Net effect: `P943 <= 0` (including the
-  factory-zero state) uses the 1500 ms default; a positive `P943` overrides it. This is the
-  same "0 disables / positive overrides" idiom used for `P941`, just with a different sentinel
+  `SV_MACHINE_PARAMETER_862` if that parameter is `> 0`. Net effect: `P862 <= 0` (including the
+  factory-zero state) uses the 1500 ms default; a positive `P862` overrides it. This is the
+  same "0 disables / positive overrides" idiom used for `P860`, just with a different sentinel
   meaning (here `<= 0` means "use default," not "disable").
 - **One-shot by construction** (src:2305-2307, and the source comment at
   src:2296-2299): `SET GearCoast_T` arms the timer and `SET GearShiftStage` arms the
@@ -95,57 +95,60 @@ gear shift from starting mid tool-change.
   kickoff rung in file order (per [scan-model.md](scan-model.md)'s SET/RST-takes-effect-
   same-scan-if-later rule), so Step A below runs in the very scan the shift is kicked off.
 
-## Mutual-exclusion clutch interlock (src:2396-2405)
+## Both-off lockup backstop (src:2408-2421)
+
+**Clutch truth table (corrected 2026-07-08, owner):** `Spindle_Low_gear_O` (OUT19) and
+`Spindle_High_gear_O` (OUT20) do **not** encode "one gear each, mutually exclusive." Exactly
+one on = that gear; **both on = neutral** (freewheel); **both OFF = mechanical LOCKUP** — the
+belts fight and jam. The forbidden state is *both off*, and the `GearShiftStage` sequence
+below is written so that at least one clutch is always energized (both-off is never
+commanded). This rung is the backstop for any other path that could produce it:
 
 ```
-; Acroloc: clutches are mutually exclusive — never allow both engaged.
-IF Spindle_Low_gear_O && Spindle_High_gear_O THEN
-  RST Spindle_Low_gear_O,
-  RST Spindle_High_gear_O,
+IF !Spindle_Low_gear_O && !Spindle_High_gear_O THEN
+  RST SpindleEnableOut_O,
+  SET Spindle_Low_gear_O,
+  SET Spindle_High_gear_O,
   EngagedRange_W = 0,
   FaultMsg_W = SPINDLE_FAULT_MSG_C,
   SET ShowFaultStage,
   SET OtherFault_M
 ```
 
-(src:2399-2405). If both clutch outputs (`Spindle_Low_gear_O` OUT19,
-`Spindle_High_gear_O` OUT20) are ever simultaneously true — which the `GearShiftStage`
-sequence below is designed never to produce, so this is a belt-and-suspenders check against
-some other fault path or a stuck output — this rung forces both `RST`, sets
-`EngagedRange_W = 0` as an out-of-band "gear state unknown" sentinel, posts
-`SPINDLE_FAULT_MSG_C`, and sets `OtherFault_M`. `OtherFault_M` folds into the fault-aggregation
-OR-gate (src:2841, see [main-stage.md](main-stage.md)) and asserts `SV_STOP`.
-
-Per the source comment (src:2397-2398): zeroing `EngagedRange_W` guarantees the next
-valid speed demand forces a full re-shift (`DesiredRange_W != EngagedRange_W` becomes true for
-any `DesiredRange_W` of 1 or 4) rather than trusting a value that was live when the
-double-engagement was detected.
+If both clutch outputs are ever read off, the rung **stops the spindle immediately** —
+`RST SpindleEnableOut_O` drops spindle enable, and the earlier `IF !SpindleEnableOut_O THEN
+SpinSpeedCommand_FW = 0.0` rung (src:2363) forces the DAC to zero — and **commands neutral**
+(`SET` both clutches) to release the lockup. It sets `EngagedRange_W = 0` (out-of-band "gear
+state unknown"), posts `SPINDLE_FAULT_MSG_C`, and sets `OtherFault_M`, which folds into the
+fault-aggregation OR-gate (src:2841, see [main-stage.md](main-stage.md)) and asserts
+`SV_STOP`. Zeroing `EngagedRange_W` guarantees the next valid speed demand forces a full
+re-shift rather than trusting a stale value.
 
 ## `GearShiftStage` (STG17, src:2985-3016)
 
 Banner comment (src:2987-3000) states the design directly: an **open-loop**
-two-clutch shift driven by `DesiredRange_W` (1=low, 4=high). Sequence: release BOTH clutches
-(neutral) -> coast for a fixed dwell -> engage the target clutch. No exact rev-match is
-required — during the coast, the DAC already commands the motor through the *new* gear's
-ratio (Step A retargets `SpindleRange_W`), so the motor side drifts toward the right speed
-passively while the spindle side coasts down/up. The two clutches are never engaged together.
-There is no gear-position or speed feedback anywhere in this sequence, and **no fault path** —
-a dwell always elapses, so a shift always completes (contrast with the ATC carousel's
-documented no-timeout-if-tool-not-found gap in [atc.md](atc.md): here there's no failure mode
-to time out on, since neutral-then-engage cannot get physically stuck). The coast timer
+two-clutch shift driven by `DesiredRange_W` (1=low, 4=high). Sequence: engage BOTH clutches
+(**neutral = both on**) -> coast for a fixed dwell -> release the non-target clutch (leaving
+the target engaged). No exact rev-match is required — during the coast, the DAC already
+commands the motor through the *new* gear's ratio (Step A retargets `SpindleRange_W`), so the
+motor side drifts toward the right speed passively while the spindle side freewheels. **At
+least one clutch is energized at every step — both-off (lockup) is never commanded.** There
+is no gear-position or speed feedback anywhere in this sequence, and no in-sequence fault path
+— a dwell always elapses, so a shift always completes (the separate both-off backstop above
+catches the forbidden lockup state). The coast timer
 `GearCoast_T` is loaded and armed by the kickoff rung above, in the same scan this stage is SET.
 
-### Step A: neutral + retarget (src:2999-3002, every scan while shifting)
+### Step A: neutral (both clutches ON) + retarget (src:3011-3015, every scan while shifting)
 
 ```
 IF GearShiftStage THEN
-  RST Spindle_Low_gear_O,
-  RST Spindle_High_gear_O,
+  SET Spindle_Low_gear_O,
+  SET Spindle_High_gear_O,
   SpindleRange_W = DesiredRange_W
 ```
 
 Runs every scan for the entire duration of the shift (not just once on entry): both clutches
-held released (neutral), and `SpindleRange_W` is retargeted to the *desired* range so the DAC
+held **energized** (neutral = both on), and `SpindleRange_W` is retargeted to the *desired* range so the DAC
 ratio math downstream (src:2311-2394) immediately starts commanding the motor through
 the new gear's ratio — this is what lets the motor speed drift toward the post-shift target
 during the coast, per the banner comment.
@@ -193,31 +196,32 @@ shift request is blocked while the carousel is moving.
 
 | Parameter | Meaning | Disable/default sentinel | Intended value |
 |---|---|---|---|
-| `SV_MACHINE_PARAMETER_941` (P941) | Low/high crossover speed (center of the hysteresis band), compared against `GearBaseSpeed_FW` | `<= 0.0` disables auto-shift entirely (`DesiredRange_W` just tracks `EngagedRange_W`) | 1100 (RPM) |
-| `SV_MACHINE_PARAMETER_942` (P942) | Hysteresis half-width around `P941` | no disable sentinel — always added/subtracted from `P941` | 100 (RPM) |
-| `SV_MACHINE_PARAMETER_943` (P943) | Coast dwell override, ms | `<= 0` (including factory-zero) falls back to the hard-coded 1500 ms default | 1500, tuned down on the actual machine |
+| `SV_MACHINE_PARAMETER_860` (P860) | Low/high crossover speed (center of the hysteresis band), compared against `GearBaseSpeed_FW` | `<= 0.0` disables auto-shift entirely (`DesiredRange_W` just tracks `EngagedRange_W`) | 800 (RPM) |
+| `SV_MACHINE_PARAMETER_861` (P861) | Hysteresis half-width around `P860` | no disable sentinel — always added/subtracted from `P860` | 100 (RPM) |
+| `SV_MACHINE_PARAMETER_862` (P862) | Coast dwell override, ms | `<= 0` (including factory-zero) falls back to the hard-coded 1500 ms default | 1500, tuned down on the actual machine |
 
 Sources for intended values: the design spec
 ([2026-06-27-rpm-gear-shift-design.md](../superpowers/specs/2026-06-27-rpm-gear-shift-design.md),
-"P941 = 1100, P942 = 100," "Coast dwell ... default 1500; tune down on the machine") — these
+"P860 = 800, P861 = 100," "Coast dwell ... default 1500; tune down on the machine") — these
 are the owner's stated tuning targets, not something the `.src` itself encodes (the `.src` only
-encodes the *default-if-unset* value for `P943`, and no default at all for `P941`/`P942` since
-`P941 <= 0` disables rather than defaulting).
+encodes the *default-if-unset* value for `P862`, and no default at all for `P860`/`P861` since
+`P860 <= 0` disables rather than defaulting).
 
 ## Open-loop caveats
 
 - **No rev-match, no feedback.** The entire sequence is time-based: neutral for a fixed dwell,
   then engage. There is no encoder/tach check that the motor and spindle sides are actually
   near-synchronized before `Spindle_Low_gear_O`/`Spindle_High_gear_O` is SET. Shift quality
-  depends entirely on `P943` being tuned so the dwell is long enough for the motor to coast to
+  depends entirely on `P862` being tuned so the dwell is long enough for the motor to coast to
   roughly the new range's speed, given the machine's own inertia/friction — too short an
   interval engages the clutch far off-speed; the design/test-plan documents linked above are
   where that tuning guidance lives, not this file.
 - **No failure detection.** Per the banner comment, there's deliberately no fault path in
   `GearShiftStage` — a shift always "completes" once the dwell elapses, whether or not the
-  clutch actually engaged mechanically (e.g., a stuck or failed clutch solenoid). The mutual-
-  exclusion interlock (src:2399-2405) only catches the specific case of *both* clutches
-  reporting engaged simultaneously; it does not catch *neither* clutch actually engaging.
+  clutch actually engaged mechanically (e.g., a stuck or failed clutch solenoid). The both-off
+  lockup backstop (src:2414-2421) catches the forbidden *both-outputs-off* (lockup) state and
+  stops the spindle; it does not verify that a commanded clutch physically engaged when at
+  least one output is on.
 - **Concurrent-with-ATC risk window.** As noted under ATC inhibit above, a shift already in
   progress is not aborted or paused when `ATCStage` starts — only new shifts are blocked. If the
   coast dwell is still running when the carousel begins moving, the spindle sits in neutral

@@ -23,11 +23,12 @@ Line numbers as of commit 41f3fd6
 |---|---|---|---|---|
 | P1 | Jog-key configuration bitmask (`JogKeyCfg_W`); bit 1 = invert axis-2 jog keys, bit 2 = swap axes | `JogKeyCfg_W = SV_MACHINE_PARAMETER_1` (src:1364) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Bitmask; consumed by `JogKeysNormalStage`/etc. in [jog-and-mpg.md](jog-and-mpg.md#jogkeysnormalstage--jogkeysinvert2stage--jogkeysswappedstage--jogkeysswapandinvert2stage) |
 | P19 | MPG mode value (`PValue_W`); bit 1 = lock out x100 on an axis per P820 | `PValue_W = SV_MACHINE_PARAMETER_19` (src:1305) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Bitmask; `MpgX100LockOut_M` consumed in [jog-and-mpg.md](jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085) |
+| P33 (Acroloc) | High-range gear ratio adjustment (2.0) | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_33` when `SpindleRange_W == 4` (src:2325) | [gear-shift.md](gear-shift.md) | Ratio multiplier for range 4 (high); falls back to `1.0` if left `<= 0`. Mirror of P65 (low). Assumes CNC12 max spindle speed = motor base (~1750). **Intended value 2.0** |
 | P39 | Feedrate override percentage limit (ceiling on jog-panel knob, keyboard override, and final override) | `FeedrateKnob_W` clamp (src:1907-1908); `KbOverride_W` clamp (src:1980-1981); `FinalFeedOverride_W` clamp (src:1994-1995) | [jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085](jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085) | Percent (0-200 scale); each of the three override values is clamped to this ceiling independently |
 | P57 | Enable/disable load-meter display | `IF SV_MACHINE_PARAMETER_57 != 0 THEN SET LoadMeterStage` / `== 0 THEN RST` (src:1357-1358) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | 0 = load meters off, nonzero = on (`LoadMeterStage`, STG6) |
 | P65 | Low-range gear ratio adjustment | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_65` when `SpindleRange_W == 1` (src:2313) | [gear-shift.md](gear-shift.md) (main-stage.md `SpindleRange_W` decode block, src:2308-2325) | Ratio multiplier applied to the spindle-speed/DAC math for range 1 (low); **the PLC does read this one** — it is not CNC12-side only. See note below. |
 | P66 | Medium-low range gear ratio adjustment | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_66` when `SpindleRange_W == 2` (src:2317) | [gear-shift.md](gear-shift.md) | Ratio multiplier for range 2 |
-| P67 | Medium-high range gear ratio adjustment | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_67` when `SpindleRange_W == 3` (src:2321) | [gear-shift.md](gear-shift.md) | Ratio multiplier for range 3 (range 4/high uses a hard-coded `1.0`, src:2325, no parameter) |
+| P67 | Medium-high range gear ratio adjustment | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_67` when `SpindleRange_W == 3` (src:2321) | [gear-shift.md](gear-shift.md) | Ratio multiplier for range 3 (range 4/high reads P33, src:2325, falling back to `1.0` if P33 `<= 0`) |
 | P146 | Feed-hold threshold (`P146Value_W`) | `P146Value_W = SV_MACHINE_PARAMETER_146` (src:1312) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Threshold compared against `FinalFeedOverride_W` in [jog-and-mpg.md](jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085) (src:1850-1854) to trigger a feed-hold prompt |
 | P148 | Misc jogging options bitmask (`P148Value_W`); bit 1 = disable keyboard jogging (CNC10 back-compat) | `P148Value_W = SV_MACHINE_PARAMETER_148` (src:1313); `BITTST P148Value_W 1 DisableKbInput_M` (src:1348) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Bitmask; bit 1 set forces `RST AllowKbInput_M` regardless of P170 |
 | P153 | Probe-protection enable | `IF SV_MACHINE_PARAMETER_153 == 0 THEN RST ProbeProtectionEnable_M` / `> 0 THEN SET` (src:1374-1375) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | 0 = disabled, >0 = enabled; consumed in [main-stage.md](main-stage.md#probe-protection-while-jogging-src2670-2756) |
@@ -73,9 +74,9 @@ Line numbers as of commit 41f3fd6
 | P938 | Force MEM bits 33-48 OFF | src:1344 | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | -> `SV_FORCE_OFF_MEM33_48_BITS` |
 | P939 | Force MEM bits 49-64 OFF | src:1345 | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | -> `SV_FORCE_OFF_MEM49_64_BITS` |
 | P940 | Force MEM bits 65-80 OFF | src:1346 | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | -> `SV_FORCE_OFF_MEM65_80_BITS` |
-| P941 (Acroloc) | Low/high gear crossover speed (center of hysteresis band) | src:2283-2288 | [gear-shift.md#parameters](gear-shift.md#parameters) | `<= 0.0` disables auto-shift entirely. **Intended value 1100 (RPM)** — per [2026-06-27-rpm-gear-shift-design.md](../superpowers/specs/2026-06-27-rpm-gear-shift-design.md); the `.src` itself encodes no default/intended value, only the disable behavior |
-| P942 (Acroloc) | Hysteresis half-width around P941 | src:2284-2288 | [gear-shift.md#parameters](gear-shift.md#parameters) | No disable sentinel — always added/subtracted from P941. **Intended value 100 (RPM)** — per the design spec, not the `.src` |
-| P943 (Acroloc) | Coast-dwell override, milliseconds | src:2303-2304 | [gear-shift.md#parameters](gear-shift.md#parameters) | `<= 0` (including factory-default 0) falls back to the hard-coded 1500 ms default (src:2296-2298). **Intended: 1500 out of the box, tuned down on the real machine** — per the design spec; the `.src` only encodes the *default-if-unset* value, not a tuning target |
+| P860 (Acroloc) | Low/high gear crossover speed (center of hysteresis band) | src:2283-2288 | [gear-shift.md#parameters](gear-shift.md#parameters) | `<= 0.0` disables auto-shift entirely. **Intended starting value 800 (RPM)** — per [2026-06-27-rpm-gear-shift-design.md](../superpowers/specs/2026-06-27-rpm-gear-shift-design.md); the `.src` itself encodes no default/intended value, only the disable behavior. **P860–P862 use the free 860–870 "Not Used" block — do NOT use 941–943: on this control the 900-block is reserved (P911–940 force MEM bits off; P941 is the PLC limit-defeat button, and setting it would break limit override).** |
+| P861 (Acroloc) | Hysteresis half-width around P860 | src:2284-2288 | [gear-shift.md#parameters](gear-shift.md#parameters) | No disable sentinel — always added/subtracted from P860. **Intended value 100 (RPM)** — per the design spec, not the `.src` |
+| P862 (Acroloc) | Coast-dwell override, milliseconds | src:2303-2304 | [gear-shift.md#parameters](gear-shift.md#parameters) | `<= 0` (including factory-default 0) falls back to the hard-coded 1500 ms default (src:2296-2298). **Intended: 1500 out of the box, tuned down on the real machine** — per the design spec; the `.src` only encodes the *default-if-unset* value, not a tuning target |
 | P999 | Not a real parameter — the upper bound cited in the general system-variables comment ("Parameter values: SV_MACHINE_PARAMETER_1 - SV_MACHINE_PARAMETER_999") | src:753 (comment only) | n/a | Documentation of the valid parameter-number range, not a value read anywhere |
 
 ## Comment-only mentions (not executable reads)
@@ -84,13 +85,12 @@ Two blocks in the source mention parameter numbers in prose/comments without a c
 `SV_MACHINE_PARAMETER_n` read at that location. They are captured here so the grep-hit count
 reconciles, but they are not separate table rows for parameters already covered above:
 
-- **src:38, 47-78** — a header comment block enumerating parameters the PLC cares about,
-  including one, `SV_MACHINE_PARAMETER_33` ("Spindle Motor Gear Ratio 2x", src:53, flagged
-  `??` by the original author), that **this grep and a full-file search find no executable
-  read for.** P33 is not consumed anywhere in the `.src`; if it does anything, it is on the
-  CNC12/PC side only, or the comment is stale. Likewise P219 (src:66, "start VCP on boot") is
-  named only in this comment block — no rung reads it, so CNC12 must consult it directly
-  rather than through the PLC.
+- **src:38, 47-78** — a header comment block enumerating parameters the PLC cares about.
+  `SV_MACHINE_PARAMETER_33` ("High Range Gear Ratio 2x", src:53) is now **read** by the
+  Acroloc gear code for high range (`SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_33` when
+  `SpindleRange_W == 4`), with a fallback to `1.0` if it is left `<= 0` — see the P33 row in
+  the table above. P219 (src:66, "start VCP on boot") is named only in this comment block —
+  no rung reads it, so CNC12 must consult it directly rather than through the PLC.
 - **src:753** — the general system-variables overview comment (P999 upper bound), addressed
   in the table above.
 
@@ -102,15 +102,17 @@ CNC12-side only. It **is** read by the PLC: `SpinRangeAdjust_FW = SV_MACHINE_PAR
 low-range branch of the `SpindleRange_W` decode block (src:2308-2325, documented in
 [gear-shift.md](gear-shift.md) via [main-stage.md#gear-decision](main-stage.md#gear-decision))
 uses in the spindle-speed/DAC ratio math alongside P66 (range 2) and P67 (range 3); range 4
-(high) uses a hard-coded `1.0` with no parameter.
+(high) reads **P33** (High Range Gear Ratio, intended 2.0), falling back to `1.0` if P33 is
+left `<= 0`. This assumes CNC12's max spindle speed is set to the **motor base** (~1750), so
+the physical ratios drop straight in (low P65 = 0.5, high P33 = 2.0).
 
 ## Verification
 
 Every distinct `SV_MACHINE_PARAMETER_n` surfaced by
 `grep -n "SV_MACHINE_PARAMETER" Centroid-Acroloc-ALLIN1DC.src` (103 hits, 60 distinct
 parameter numbers: 1, 19, 33, 39, 57, 65, 66, 67, 146, 148, 153, 170, 179, 218, 219, 348, 351,
-354, 441, 442, 443, 820, 900, 911-940, 941, 942, 943, 999) appears in the table above or in the
-comment-only-mentions section — P33, P219, and P999 have no executable read and are called out
+354, 441, 442, 443, 820, 860, 861, 862, 900, 911-940, 999) appears in the table above or in the
+comment-only-mentions section — P219 and P999 have no executable read and are called out
 explicitly rather than given a fabricated one. Every `(src:NNNN)` citation was checked against
 `Centroid-Acroloc-ALLIN1DC.src` with `sed -n` at the cited line(s) and confirmed to reference
 the stated `SV_MACHINE_PARAMETER_n`. `Centroid-Acroloc-ALLIN1DC.src` has had no commits touching
