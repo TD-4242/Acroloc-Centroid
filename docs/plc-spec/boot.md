@@ -98,8 +98,8 @@ Rung-by-rung (src:1257-1281), grouped by effect:
   is the Acroloc ATC spindle-stopped-before-carousel-motion timer described in the
   repo-level ATC flow — see [atc.md](atc.md) for where it is armed and read.
 - **Acroloc power-up gear defaults** (src:1276-1280), all tagged `; Acroloc`:
-  `SET Spindle_Low_gear_O`, `RST Spindle_High_gear_O`, `EngagedRange_W = 1`,
-  `DesiredRange_W = 1`, `SpindleRange_W = 1`. See
+  `SET Spindle_Low_gear_O`, `SET Spindle_High_gear_O` (both on = **neutral**),
+  `EngagedRange_W = 0` (gear unknown), `DesiredRange_W = 0`, `SpindleRange_W = 1`. See
   [Power-up defaults](#power-up-defaults) below.
 - `RST InitialStage` (src:1281) — the last clause of the rung; ends the stage so it does not
   run again next scan (`True_M` being set is what stops `WatchDogStage` from re-arming it,
@@ -108,32 +108,27 @@ Rung-by-rung (src:1257-1281), grouped by effect:
 
 ## Power-up defaults
 
-Acroloc gear-shift state is force-initialized to **low gear** on every power-up, inside
-`InitialStage`'s single rung (src:1276-1280):
+Acroloc gear-shift state is force-initialized to **neutral** (both clutches on) with the gear
+**unknown** on every power-up, inside `InitialStage`'s single rung (src:1276-1280):
 
 ```
-SET Spindle_Low_gear_O,   ; Acroloc power-up gear = LOW  (src:1276)
-RST Spindle_High_gear_O,  ; Acroloc                       (src:1277)
-EngagedRange_W = 1,       ; Acroloc                       (src:1278)
-DesiredRange_W = 1,       ; Acroloc                       (src:1279)
-SpindleRange_W = 1,       ; Acroloc                       (src:1280)
+SET Spindle_Low_gear_O,   ; Acroloc power-up = NEUTRAL (both clutches on)  (src:1276)
+SET Spindle_High_gear_O,  ; Acroloc                                         (src:1277)
+EngagedRange_W = 0,       ; Acroloc gear unknown -> first spin-up engages   (src:1278)
+DesiredRange_W = 0,       ; Acroloc                                         (src:1279)
+SpindleRange_W = 1,       ; Acroloc safe default ratio until first engage   (src:1280)
 ```
 
-This runs unconditionally, once, on the same scan `WatchDogStage` first detects `!True_M`
-(i.e. the first scan after MPU11 boot or PLC (re)load — see
-[InitialStage](#initialstage-src1255-1281) above). The effect: the low-gear clutch output
-(`Spindle_Low_gear_O`) is physically driven on and the high-gear output is driven off before
-any other stage (including `MainStage` and `GearShiftStage`) has run a single scan, and the
-three gear-tracking words (`EngagedRange_W`, `DesiredRange_W`, `SpindleRange_W`) all read `1`
-(low) from the very first scan onward — there is no scan where they hold a stale or
-uninitialized value. Anything that reads these words or outputs before this rung has run
-(there is nothing before it in the sweep on the power-up scan, per file order STG1 then STG2)
-will not observe a pre-init state.
-
-Purpose inferred: forcing low gear at boot — rather than trusting whatever the physical
-clutch happened to be in, or leaving the tracking words at their zeroed/uninitialized default
-— guarantees the gear-shift state machine (`GearShiftStage`, STG17) starts from a known,
-consistent engaged/desired/commanded state that matches the output actually being driven.
+This runs unconditionally, once, on the first scan after MPU11 boot or PLC (re)load (see
+[InitialStage](#initialstage-src1255-1281) above). The effect: both clutch outputs are driven
+on (**neutral / freewheel** — the safe startup state, since both-off is a mechanical lockup
+and committing a single gear before the spindle even runs is undesirable), and `EngagedRange_W
+= 0` marks the gear **unknown**. Because the shift kickoff (in `MainStage`) is gated on the
+spindle being enabled and on `DesiredRange_W != EngagedRange_W`, the machine **holds neutral
+while the spindle is stopped** and engages the correct gear on the first spin-up: the RPM
+decision sets `DesiredRange_W` to 1 or 4, which differs from the unknown `0`, so a shift
+fires. `SpindleRange_W = 1` is only a safe default for the ratio/DAC math while neutral (the
+spindle is off then); `GearShiftStage` retargets it during the shift.
 
 ## LoadParametersStage (src:1284-1376)
 

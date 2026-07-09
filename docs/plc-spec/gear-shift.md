@@ -65,19 +65,21 @@ a shift (Step A, below).
 ### Kickoff rung (src:2296-2307)
 
 ```
-IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage THEN
+IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && SpindleEnableOut_O THEN
   GearCoast_T = 1500
-IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage &&
+IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && SpindleEnableOut_O &&
    (SV_MACHINE_PARAMETER_862 > 0) THEN
   GearCoast_T = SV_MACHINE_PARAMETER_862
-IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage THEN
+IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && SpindleEnableOut_O THEN
   SET GearCoast_T,
   SET GearShiftStage
 ```
 
-(src:2300-2307). Guard: fires only when the desired gear differs from the engaged
-gear, no shift is already running, and `ATCStage` is not active — the last guard prevents a
-gear shift from starting mid tool-change.
+Guard: fires only when the desired gear differs from the engaged gear, **the spindle is
+enabled** (`SpindleEnableOut_O` — so the machine holds **neutral** while the spindle is
+stopped, e.g. at power-up, and engages a gear only on spin-up), no shift is already running,
+and `ATCStage` is not active (the last guard prevents a gear shift from starting mid
+tool-change).
 
 - **Timer load, default then override** (src:2300-2304): `GearCoast_T` is
   unconditionally loaded with `1500` (ms) first, then immediately overwritten with

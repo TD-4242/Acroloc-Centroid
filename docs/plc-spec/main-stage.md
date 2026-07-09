@@ -262,8 +262,9 @@ why it is documented here.
   EngagedRange_W` — while not mid-shift, the ratio/DAC math further down always uses the
   actually-engaged clutch's range, not the desired one.
 - **Kickoff rung arming `GearCoast_T`** (src:2300-2307): once
-  `DesiredRange_W != EngagedRange_W` and neither `GearShiftStage` nor `ATCStage` is already
-  running, load `GearCoast_T` with a default of 1500 ms (src:2300-2301),
+  `DesiredRange_W != EngagedRange_W`, **the spindle is enabled** (`SpindleEnableOut_O` — so the
+  machine holds neutral while stopped and engages a gear only on spin-up), and neither
+  `GearShiftStage` nor `ATCStage` is already running, load `GearCoast_T` with a default of 1500 ms (src:2300-2301),
   override it from `SV_MACHINE_PARAMETER_862` if that parameter is positive
   (src:2302-2304), then arm the timer and `SET GearShiftStage`
   (src:2305-2307). Per `scan-model.md`'s worked example, because

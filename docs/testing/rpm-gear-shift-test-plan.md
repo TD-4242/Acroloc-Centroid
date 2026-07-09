@@ -41,26 +41,32 @@ up-shift at S ≥ 900, down-shift at S ≤ 700, hold the current gear in between
 - [ ] No tool in the spindle for §1–§4; doors/guards per normal practice.
 - [ ] **Over-speed check:** confirm P33 is set before running high gear — an unset P33 (0) uses the 1.0 fallback, not 2.0, so high-gear RPM will read low, not high.
 
-## 1. Power-up default
+## 1. Power-up default (neutral)
 
-- [ ] Power-cycle the control. After boot: OUT19 **on**, OUT20 **off**,
-      `EngagedRange_W` = 1, `SpindleRange_W` = 1. Result: ______
+- [ ] Power-cycle the control. After boot: **both OUT19 and OUT20 ON** (neutral),
+      `EngagedRange_W` = 0 (gear unknown), spindle stopped. The machine holds neutral —
+      no gear engages — until the spindle is run. Result: ______
 
-## 2. First shifts, spindle stopped
+## 2. Engage on spin-up (from neutral)
 
-The sequence still runs with the spindle off — it coasts the dwell at zero speed and
-engages. Watch the outputs, not the noise.
+Shifts only fire while the **spindle is enabled** (`SpindleEnableOut_O`); with the spindle
+stopped the machine holds neutral and does **not** shift. The gear engages on spin-up, going
+through neutral.
 
-- [ ] MDI `S1300` (no M3). Expect: both outputs go **ON** (neutral), ~1.5 s pause, then
-      OUT20 **on** / OUT19 **off**, `EngagedRange_W` = 4. Result: ______
-- [ ] MDI `S500`. Expect the mirror shift back to low (OUT19 on, OUT20 off). Result: ______
-- [ ] During each shift confirm **at least one clutch output is ON at all times** — both ON
-      together during the neutral coast; **both OFF (lockup) must NEVER occur**. Result: ______
+- [ ] Spindle stopped, MDI `S1300` (no M3). Expect: **no shift** — stays neutral (both
+      outputs ON), `EngagedRange_W` = 0. Result: ______
+- [ ] `M3 S600` (low range). Expect: shift fires — hold neutral (both ON) ~1.5 s while the
+      motor spins up, then **OUT19 on / OUT20 off** (low engaged), `EngagedRange_W` = 1,
+      spindle settles at 600. Result: ______
+- [ ] `M5`, then `M3 S2000` (high range). Expect: neutral (both ON) while the motor spins
+      up, then **OUT20 on / OUT19 off** (high engaged), `EngagedRange_W` = 4. Result: ______
+- [ ] During every shift confirm **at least one clutch output is ON at all times** — both ON
+      during the neutral coast; **both OFF (lockup) must NEVER occur**. Result: ______
 
 ## 3. Shift boundaries (spindle running, no load)
 
-Start in low gear, `M3 S500`, then command each S in order and record the gear
-(`EngagedRange_W`) after any shift completes:
+From neutral, `M3 S500` (first run engages **low**), then command each S in order and record
+the gear (`EngagedRange_W`) after any shift completes:
 
 | Step | Command | Expected gear | Why | Pass? |
 | --- | --- | --- | --- | --- |

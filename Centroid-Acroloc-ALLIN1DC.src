@@ -1283,11 +1283,11 @@ IF 1==1 THEN SET True_M,
              ErrorFlag_T = 1000,
              MsgClear_T = 1000,
              StopSpinBeforATC_T = 1000,
-             SET Spindle_Low_gear_O,   ; Acroloc power-up gear = LOW
-             RST Spindle_High_gear_O,  ; Acroloc
-             EngagedRange_W = 1,       ; Acroloc
-             DesiredRange_W = 1,       ; Acroloc
-             SpindleRange_W = 1,       ; Acroloc
+             SET Spindle_Low_gear_O,   ; Acroloc power-up = NEUTRAL (both clutches on)
+             SET Spindle_High_gear_O,  ; Acroloc
+             EngagedRange_W = 0,       ; Acroloc gear unknown -> first spin-up engages a gear
+             DesiredRange_W = 0,       ; Acroloc
+             SpindleRange_W = 1,       ; Acroloc safe default ratio until first engage
              RST InitialStage
 
 ;=============================================================================
@@ -2298,21 +2298,24 @@ IF (SV_MACHINE_PARAMETER_860 > 0.0) &&
    (GearBaseSpeed_FW <= (SV_MACHINE_PARAMETER_860 - SV_MACHINE_PARAMETER_861))
   THEN DesiredRange_W = 1
 
-; While not shifting, the effective range tracks the actually-engaged clutch so the
-; ratio/DAC math below always reflects reality.
-IF !GearShiftStage THEN SpindleRange_W = EngagedRange_W
+; While not shifting AND a gear is actually engaged, the effective range tracks the
+; engaged clutch so the ratio/DAC math below reflects reality. In neutral
+; (EngagedRange_W = 0, e.g. at power-up) SpindleRange_W keeps its default (spindle off).
+IF !GearShiftStage && (EngagedRange_W != 0) THEN SpindleRange_W = EngagedRange_W
 
-; Kick off a shift when the desired gear differs from the engaged gear and we are not
-; already shifting and not in a tool change. Arm the coast dwell here (P862 ms;
-; 0 -> default 1500) - this fires exactly once per shift because SET GearShiftStage
-; makes the condition false on the next scan, and a timer keeps counting no matter
-; which stage armed it. GearShiftStage engages the new gear when the dwell expires.
-IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage THEN
+; Kick off a shift when the desired gear differs from the engaged gear, the spindle is
+; enabled (SpindleEnableOut_O -- so the machine stays in NEUTRAL while stopped, e.g. at
+; power-up, and engages a gear only on spin-up), and we are not already shifting or in a
+; tool change. Arm the coast dwell here (P862 ms; 0 -> default 1500) - this fires exactly
+; once per shift because SET GearShiftStage makes the condition false on the next scan,
+; and a timer keeps counting no matter which stage armed it. GearShiftStage engages the
+; new gear when the dwell expires.
+IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && SpindleEnableOut_O THEN
   GearCoast_T = 1500
-IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage &&
+IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && SpindleEnableOut_O &&
    (SV_MACHINE_PARAMETER_862 > 0) THEN
   GearCoast_T = SV_MACHINE_PARAMETER_862
-IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage THEN
+IF (DesiredRange_W != EngagedRange_W) && !GearShiftStage && !ATCStage && SpindleEnableOut_O THEN
   SET GearCoast_T,
   SET GearShiftStage
 
