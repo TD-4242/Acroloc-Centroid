@@ -137,10 +137,10 @@ actual RPM across the boundary without causing a shift.
 - [ ] **Tool change inhibit:** while in high gear (`S1300`), run an `M6` to a nearby
       tool, and immediately command `S500` while the carousel indexes. Expect: no shift
       until the tool change completes, then a normal shift to low. Result: ______
-- [ ] **Auto-shift disable:** set P860 = 0. Command `S500` / `S1300` — expect **no**
-      shifts; the machine holds the current gear (this is the documented behavior:
-      with auto-shift disabled there is no other gear-selection path). Restore
-      P860 = 800 afterwards. Result: ______
+- [ ] **Auto-shift disable:** set P860 = 0. Command `S500` / `S1300` — expect **no gear
+      changes**; it holds the engaged gear, and from neutral (power-up) engages **low** on
+      spin-up so the spindle still drives (no manual high-gear selection with auto-shift off).
+      Restore P860 = 800 afterwards. Result: ______
 
 ## 8. Sign-off
 

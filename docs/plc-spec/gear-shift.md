@@ -198,7 +198,7 @@ shift request is blocked while the carousel is moving.
 
 | Parameter | Meaning | Disable/default sentinel | Intended value |
 |---|---|---|---|
-| `SV_MACHINE_PARAMETER_860` (P860) | Low/high crossover speed (center of the hysteresis band), compared against `GearBaseSpeed_FW` | `<= 0.0` disables auto-shift entirely (`DesiredRange_W` just tracks `EngagedRange_W`) | 800 (RPM) |
+| `SV_MACHINE_PARAMETER_860` (P860) | Low/high crossover speed (center of the hysteresis band), compared against `GearBaseSpeed_FW` | `<= 0.0` disables auto-shift; holds the engaged gear, and defaults to **low** from neutral so the spindle still drives on spin-up | 800 (RPM) |
 | `SV_MACHINE_PARAMETER_861` (P861) | Hysteresis half-width around `P860` | no disable sentinel — always added/subtracted from `P860` | 100 (RPM) |
 | `SV_MACHINE_PARAMETER_862` (P862) | Coast dwell override, ms | `<= 0` (including factory-zero) falls back to the hard-coded 1500 ms default | 1500, tuned down on the actual machine |
 
@@ -206,8 +206,9 @@ Sources for intended values: the design spec
 ([2026-06-27-rpm-gear-shift-design.md](../superpowers/specs/2026-06-27-rpm-gear-shift-design.md),
 "P860 = 800, P861 = 100," "Coast dwell ... default 1500; tune down on the machine") — these
 are the owner's stated tuning targets, not something the `.src` itself encodes (the `.src` only
-encodes the *default-if-unset* value for `P862`, and no default at all for `P860`/`P861` since
-`P860 <= 0` disables rather than defaulting).
+encodes the *default-if-unset* value for `P862`, and no crossover default for `P860`/`P861` —
+`P860 <= 0` disables auto-shift and falls back to low gear, rather than defaulting to a
+crossover value).
 
 ## Open-loop caveats
 
