@@ -11,3 +11,8 @@ mpu.dbg
 mpu.sym
 xplc.sym
 mpu-stats.txt
+
+# Compiled PLC binary for this machine's live controller - build output, not
+# source. Anchored to repo root so it doesn't affect the docs/official/
+# reference example projects, which intentionally check theirs in.
+/mpu.plc
