@@ -112,8 +112,9 @@ spindle has entered the tool changer (zero rpm)") is false, the spindle enable o
 `InitialStage` at `src:1275` — see [boot.md](boot.md)) is armed. This rung is
 **unconditional on `M6_SV`** — it fires any time `ATC_Z_ClearedToolChanger_I` reads false,
 not only during a tool change, forcibly killing spindle enable whenever the Z-in-tool-changer
-input isn't asserted. The commented-out `SavedCurrentFeedrate` line (`src:2928`) and the
-commented `IF StopSpinBeforeATC_T` block (`src:2930-2931`, feedrate-to-zero idea) are dead
+input isn't asserted. The commented-out `SavedCurrentFeedrate` line (`src:2961`) and the
+commented `;IF StopSpinBeforeATC_T` block (`src:2963-2964`, feedrate-to-zero idea — note the
+dead comment misspells the live symbol, which is `StopSpinBeforATC_T` without the "e") are dead
 code — no live rung reads `StopSpinBeforATC_T` anywhere in the file to gate a fault/timeout;
 its only consumer is decorative. This is the same gap main-stage.md's ATC-kickoff section
 flags and leaves to this file to confirm: **confirmed here — `StopSpinBeforATC_T` has no

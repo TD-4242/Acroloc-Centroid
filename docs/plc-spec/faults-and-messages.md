@@ -127,10 +127,10 @@ main-stage.md's blanket recovery rung, src:2872-2875).
 |---|---|---|---|
 | `PLCFault_M` | MEM50, definitions.md src:499 | PLC bus fiber in/out faults (src:2540-2545) | Dedicated clear rung, src:2548-2549 |
 | `AxisFault_M` | MEM51, definitions.md src:500 | `DriveComFltIn_M`/`DriveComFltOut_M` (src:2532) | Dedicated clear rung, `AxesEnableStage` src:2609-2610 |
-| `SpindleFault_M` | (see definitions.md) | Spindle-inverter-not-ok at boot-armed `Initialize_T` (main-stage.md, src:2858-2860); ATC clutch double-engagement (main-stage.md, src:2396-2405) | Aggregate only |
+| `SpindleFault_M` | (see definitions.md) | Spindle-inverter-not-ok, gated on `Initialize_T` (main-stage.md, src:2891-2892) | Aggregate only |
 | `LubeFault_M` | (see definitions.md) | Lube-not-ok while not running, gated on `Initialize_T` (main-stage.md, src:2853-2854) | Aggregate only |
 | `ProbeFault_M` | (see definitions.md) | Probe-tripped-while-jogging (main-stage.md, src:2711-2718) | Aggregate only (message-sent guard `ProbeMsgSent_M` per main-stage.md's own noted gotcha, src:2881-2882) |
-| `OtherFault_M` | MEM57, definitions.md src:506 | JogBoard link/online (src:2553-2558), MiniPLC board mismatch (src:2573-2588), ATC clutch interlock (main-stage.md, src:2396-2405) | Aggregate only |
+| `OtherFault_M` | MEM57, definitions.md src:506 | JogBoard link/online (src:2587-2591), MiniPLC board mismatch (src:2607-2621), spindle transmission clutch both-off lockup backstop (OUT19/OUT20; also posts `SPINDLE_FAULT_MSG_C`, main-stage.md, src:2431-2438) | Aggregate only |
 | `SV_STALL_ERROR` | CNC12 system variable, not a PLC-defined bit | Set by CNC12's own servo-stall detection, outside this file | Aggregate only |
 | `SoftwareNotReady_M` / `PLCExecutorFault_M` | (see definitions.md) | Set during `WatchDogStage`/`InitialStage` boot sequencing (boot.md) | Checked only in the aggregate recovery rung (main-stage.md, src:2872-2875); not part of the `SET SV_STOP` OR itself |
 
