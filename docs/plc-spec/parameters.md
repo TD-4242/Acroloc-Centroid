@@ -113,6 +113,29 @@ not writable from the param screen.)  These ratios are calibration constants (th
 CfgMax, the F510 max-frequency scaling, and the mechanical gear), tuned on the machine:
 low P65 ~= 0.52, high P863 ~= 2.0.
 
+## Parameter-screen labels (`language.msg`)
+
+CNC12 shows P860-863 as **"Not Used"** on the Machine Parameters screen because those indices
+have no factory assignment. The screen labels are **not** compiled into the binary and are
+**not** in `cncm.prm.xml` (values only) or the PLC message files (`plcmsg.txt`/`cncxmsg.txt`,
+which are I/O/fault messages). They live in **`language.msg`** in the CNC12 install, keyed by
+`@P<nnn>_LABEL` / `@P<nnn>_LABEL_L` (zero-padded 3-digit number; e.g. `@P033_LABEL = "Spindle
+Motor Gear Ratio"`). A copy of `language.msg` is tracked at the repo root; the `eng:` values for
+the four gear-shift params are set there:
+
+| Key (`_LABEL` and `_LABEL_L`) | `eng:` value |
+|---|---|
+| `@P860_LABEL` | `Gear Crossover RPM` |
+| `@P861_LABEL` | `Gear Crossover Hysteresis` |
+| `@P862_LABEL` | `Gear Shift Coast Dwell ms` |
+| `@P863_LABEL` | `High Gear Ratio` |
+
+Editing notes: the file is UTF-8 **with BOM** and contains CJK/Greek translations — edit only
+the `eng:` lines, preserve the encoding, and keep labels within ~27 chars (the widest stock
+labels). CNC12 loads `language.msg` at startup, so **restart** to see changes. **Caveat:** a
+CNC12 software update will overwrite `language.msg` and revert these to "Not Used" — reapply
+from the tracked copy after any upgrade.
+
 ## Verification
 
 Every distinct `SV_MACHINE_PARAMETER_n` surfaced by

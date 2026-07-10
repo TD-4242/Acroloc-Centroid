@@ -42827,7 +42827,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P860_LABEL = "Not Used"
+ eng: @P860_LABEL = "Gear Crossover RPM"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -42840,7 +42840,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P860_LABEL_L = "Not Used"
+ eng: @P860_LABEL_L = "Gear Crossover RPM"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -42853,7 +42853,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P861_LABEL = "Not Used"
+ eng: @P861_LABEL = "Gear Crossover Hysteresis"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -42866,7 +42866,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P861_LABEL_L = "Not Used"
+ eng: @P861_LABEL_L = "Gear Crossover Hysteresis"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -42879,7 +42879,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P862_LABEL = "Not Used"
+ eng: @P862_LABEL = "Gear Shift Coast Dwell ms"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -42892,7 +42892,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P862_LABEL_L = "Not Used"
+ eng: @P862_LABEL_L = "Gear Shift Coast Dwell ms"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -42905,7 +42905,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P863_LABEL = "Not Used"
+ eng: @P863_LABEL = "High Gear Ratio"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -42918,7 +42918,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P863_LABEL_L = "Not Used"
+ eng: @P863_LABEL_L = "High Gear Ratio"
  spa: ""
  frc: ""
  roc: "未能使用"
