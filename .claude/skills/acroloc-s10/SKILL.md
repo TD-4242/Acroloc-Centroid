@@ -59,7 +59,7 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 |--------|----------|------|
 | `ATCManualUnlock_I` | INP24 | Front-panel button — unlocks carousel by hand (only when Z is clear and `ATCStage` is not running) |
 | `ATCLocked_I` | INP25 | Piston sensor confirming carousel is locked |
-| `ATC_Z_ClearedToolChanger_I` | INP26 | Spindle has entered the tool changer (at zero RPM zone) |
+| `ATC_Z_ClearedToolChanger_I` | INP26 | **TRUE = Z clear of the tool changer** (spindle may run); **FALSE = spindle in changer** (danger zone). Drives the feed-hold interlock's zone-kill |
 | `ATC_Z_Zero_Release_I` | INP27 | Z axis has cleared the tool ring (Z parked high) |
 | `ATC_Pos5_I` | INP28 | Carousel position switch — contributes **+10** to `CarouselToolID_W` (not +16; see encoding note) |
 | `ATC_Pos4_I` | INP29 | Carousel position switch — contributes +8 |
@@ -104,7 +104,7 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 The M6 flow spans three cooperating places — read all three before changing anything:
 
 1. **`mfunc6.mac`** — G-code orchestrator: stops spindle/coolant, parks Z, asserts `M6_SV`, waits for `ATCStage` to reset, then deasserts `M6_SV`. It drives no ATC hardware directly.
-2. **`MainStage`** (STG4) — latches `ChangeToTool_W = SV_TOOL_NUMBER` and `SET ATCStage` when `M6_SV` fires; enforces spindle-stop safety via `StopSpinBeforeATC_T` (T23) and `ZeroSpeed_I` (INP12) before the carousel may move.
+2. **`MainStage`** (STG4) — latches `ChangeToTool_W = SV_TOOL_NUMBER` and `SET ATCStage` when `M6_SV` fires. Separately, the **spindle-in-changer feed-hold interlock** (not gated on `M6_SV`) keeps the spindle off whenever Z is in the changer zone, and for any program/MDI move entering with the spindle turning it holds feed until `ZeroSpeed_I` (INP12) confirms a stop — `ChangerStopTimer_T` (T23) faults at a 5 s timeout.
 3. **`ATCStage`** (STG16) — unlocks carousel (`ATCUnlocked_O`), starts motor (`ATCMotor_O`), accumulates `CarouselToolID_W` from position switches, and stops/relocks when the ID matches `ChangeToTool_W`.
 
 Full state-machine details, timing, and exact PLC snippets: **[reference/atc-flow.md](reference/atc-flow.md)**.
