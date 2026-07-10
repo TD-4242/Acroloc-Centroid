@@ -25,17 +25,17 @@ values. Keep the **spindle override at 100%** the whole time unless a step says 
 
 | Item | Where to read it | Value |
 | --- | --- | --- |
-| CNC12 **max** spindle RPM (`CfgMax`) | Control Config → spindle | ______ |
-| CNC12 **min** spindle RPM (`CfgMin`) | Control Config → spindle | ______ |
-| `P860` crossover | machine parameters | ______ |
-| `P861` hysteresis | machine parameters | ______ |
-| `P65` low-gear ratio | machine parameters | ______ |
-| `P33` high-gear ratio | machine parameters | ______ |
+| CNC12 **max** spindle RPM (`CfgMax`) | Control Config → spindle | 3500 ______ |
+| CNC12 **min** spindle RPM (`CfgMin`) | Control Config → spindle | 1000 ______ |
+| `P860` crossover | machine parameters | 800 ______ |
+| `P861` hysteresis | machine parameters | 100 ______ |
+| `P65` low-gear ratio | machine parameters | .5 ______ |
+| `P33` high-gear ratio | machine parameters | 2.0 ______ |
 | Spindle override % during test | operator panel | 100 |
-| F510 **max output frequency** (`01-02`) | VFD keypad | ______ Hz |
-| F510 **base frequency** (`01-12`) | VFD keypad | ______ Hz |
-| Motor nameplate **base RPM** and **rated Hz** | motor plate | ______ rpm / ______ Hz |
-| Spindle RPM when the **motor is at its max** (10 V / full command), if known | — | ______ |
+| F510 **max output frequency** (`01-02`) | VFD keypad | 90hz ______ Hz |
+| F510 **base frequency** (`01-12`) | VFD keypad | 60hz ______ Hz |
+| Motor nameplate **base RPM** and **rated Hz** | motor plate | 1755 ______ rpm / 60 ______ Hz |
+| Spindle RPM when the **motor is at its max** (10 V / full command), if known | — | ~2200 ______ |
 
 ---
 
@@ -46,20 +46,20 @@ for every S below). `M3`, then command each S, let it settle, and record.
 
 | Command | RPM gauge | `FW7` GearBase | `FW6` SpinCmd | DAC (12-bit) | `W74` Engaged | "min speed" msg? |
 | --- | --- | --- | --- | --- | --- | --- |
-| `S50`  | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S100` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S200` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S300` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S400` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S600` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S800` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S1000`| ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S1200`| ____ | ____ | ____ | ____ | ____ | Y / N |
+| `S50`  | 390 ____ | ____ | ____ | ____ | ____ |  N |
+| `S100` | 390 ____ | ____ | ____ | ____ | ____ |  N |
+| `S200` | 390 ____ | ____ | ____ | ____ | ____ |  N |
+| `S300` | 470 ____ | ____ | ____ | ____ | ____ |  N |
+| `S400` | 625 ____ | ____ | ____ | ____ | ____ |  N |
+| `S600` | 938 ____ | ____ | ____ | ____ | ____ |  N |
+| `S800` | 1250 ____ | ____ | ____ | ____ | ____ |  N |
+| `S1000`| 1367 ____ | ____ | ____ | ____ | ____ |  N |
+| `S1200`| 1367 ____ | ____ | ____ | ____ | ____ |  N |
 
 - [ ] Note the S at which the RPM gauge **stops being flat** and starts climbing (the low-gear
-      floor / min-speed release): S ≈ ______ , RPM at the floor ≈ ______
+      floor / min-speed release): S ≈ s50 ______ , RPM at the floor ≈ 390 ______
 - [ ] Note the **highest** RPM low gear reaches before it stops climbing (motor maxed): S ≈
-      ______ , RPM ≈ ______  ← this is the top of low gear.
+      s1000 _____ , RPM ≈ 1367 ______  ← this is the top of low gear.
 
 `M5` when done.
 
@@ -75,20 +75,20 @@ then command each S and record.
 
 | Command | RPM gauge | `FW7` GearBase | `FW6` SpinCmd | DAC (12-bit) | `W74` Engaged | "min speed" msg? |
 | --- | --- | --- | --- | --- | --- | --- |
-| `S100` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S300` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S500` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S700` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S900` | ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S1000`| ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S1100`| ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S1200`| ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S1500`| ____ | ____ | ____ | ____ | ____ | Y / N |
-| `S2000`| ____ | ____ | ____ | ____ | ____ | Y / N (watch max RPM) |
+| `S100` | 1514 ____ | ____ | ____ | ____ | ____ |  N |
+| `S300` | 1514 ____ | ____ | ____ | ____ | ____ |  N |
+| `S500` | 1514 ____ | ____ | ____ | ____ | ____ |  N |
+| `S700` | 1514 ____ | ____ | ____ | ____ | ____ |  N |
+| `S900` | 1514 ____ | ____ | ____ | ____ | ____ |  N |
+| `S1000`| 1514 ____ | ____ | ____ | ____ | ____ |  N |
+| `S1100`| 1667 ____ | ____ | ____ | ____ | ____ |  N |
+| `S1200`| 1818 ____ | ____ | ____ | ____ | ____ |  N |
+| `S1500`| 2275 ____ | ____ | ____ | ____ | ____ |  N |
+| `S2000`| 3029 ____ | ____ | ____ | ____ | ____ |  N (watch max RPM) |
 
 - [ ] Note the S at which high gear **stops being flat** and starts climbing (the high-gear
-      floor / min-speed release): S ≈ ______ , RPM at the floor ≈ ______
-- [ ] Note the **highest** safe RPM reached and at what S: S ≈ ______ , RPM ≈ ______
+      floor / min-speed release): S ≈ s100 ______ , RPM at the floor ≈ 1514 ______
+- [ ] Note the **highest** safe RPM reached and at what S: S ≈ 2200 _____ , RPM ≈ 3500 _____
 
 `M5` when done.
 
@@ -101,21 +101,21 @@ ______ . `M3`, then sweep S **upward** in small steps and note exactly where it 
 then sweep **down** and note where it shifts back to low. Record `FW7` (GearBase) right at each
 shift.
 
-| | S at shift | `FW7` GearBase at the shift | RPM just before shift | RPM just after |
+|                         | S at shift | `FW7` GearBase at the shift | RPM just before shift | RPM just after |
 | --- | --- | --- | --- | --- |
-| **Up-shift** (low→high) | ____ | ____ | ____ | ____ |
-| **Down-shift** (high→low) | ____ | ____ | ____ | ____ |
+| **Up-shift** (low→high) | s450 ____ | ____ | ____ | ____ |
+| **Down-shift** (high→low) | s350 ____ | ____ | ____ | ____ |
 
 - [ ] Key question: at the up-shift, does **`FW7` equal the commanded S**, or is it larger?
       (If `FW7` ≈ commanded S but it still shifts too early, `P860` is set lower than we think.
       If `FW7` ≫ commanded S, the crossover input is being mis-scaled.)
-
+ I can't seem to see FW7 easily 
 ---
 
 ## 4. Restore
 
-- [ ] Set `P860` back to the intended crossover value (record it): ______
-- [ ] Confirm normal power-up: both clutches on (neutral), `EngagedRange_W` = 0.
+- [x ] Set `P860` back to the intended crossover value (record it): ______
+- [x ] Confirm normal power-up: both clutches on (neutral), `EngagedRange_W` = 0.
 
 ---
 
