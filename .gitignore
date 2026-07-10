@@ -11,6 +11,7 @@
 !/.gitattributes
 !/.gitignore
 !/CLAUDE.md
+!/LICENSE.md
 !/README.md
 !/Centroid-Acroloc-ALLIN1DC.src
 !/compile.sh
