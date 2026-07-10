@@ -38,7 +38,7 @@ of truth — no specifications are guessed).
 
 | Subsystem | Reference | Covers |
 |-----------|-----------|--------|
-| Axes & travel | [reference/axes-and-travel.md](reference/axes-and-travel.md) | X/Y/Z travel, usable Z envelope, rapids/feeds, ways, accuracy, home |
+| Axes & travel | [reference/axes-and-travel.md](reference/axes-and-travel.md) | X/Y/Z travel, usable Z envelope, rapids/feeds, ways, accuracy, home, limit-switch wiring & direction-reversal (Error 411 current-inhibit trap) |
 | Spindle & transmission | [reference/spindle-transmission.md](reference/spindle-transmission.md) | Two-speed gear ranges, max RPM, shift mechanism, taper, drawbar, motor |
 | ATC & tooling | [reference/atc.md](reference/atc.md) | Carousel capacity (12), tool numbering, tool size/weight limits, retention, air |
 | Work envelope & table | [reference/work-envelope-and-table.md](reference/work-envelope-and-table.md) | Table size, T-slots, max workpiece weight, footprint, machine weight |
@@ -73,8 +73,8 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 |--------|----------|------|
 | `ATCMotor_O` | OUT17 | Spin the tool carousel |
 | `ATCUnlocked_O` | OUT18 | Unlock carousel piston (SET=unlock, RST=lock) |
-| `Spindle_Low_gear_O` | OUT19 | Spindle low-gear shift (defined but **not yet driven** by any stage) |
-| `Spindle_High_gear_O` | OUT20 | Spindle high-gear shift (defined but **not yet driven** by any stage) |
+| `Spindle_Low_gear_O` | OUT19 | Clutch output, driven by power-up + `GearShiftStage`. Truth table: one on = that gear, both on = neutral, **both OFF = LOCKUP** (forbidden) |
+| `Spindle_High_gear_O` | OUT20 | Clutch output (see OUT19); **at least one clutch must be ON at all times** |
 
 ### Memory bit
 
@@ -115,9 +115,9 @@ Full state-machine details, timing, and exact PLC snippets: **[reference/atc-flo
 
 ### 2. Edit spindle range/shift logic
 
-`Spindle_Low_gear_O` (OUT19) and `Spindle_High_gear_O` (OUT20) are defined with `; Acroloc` markers but appear only in the definitions section — they are never SET, RST, or referenced in any stage or macro. The Acroloc's two-speed transmission shift is not yet automated.
+`Spindle_Low_gear_O` (OUT19) and `Spindle_High_gear_O` (OUT20) are the two-speed transmission's clutch outputs, now driven by RPM-based automatic shifting (`GearShiftStage`/STG17 + the MainStage decision block). See [reference/spindle-transmission.md](reference/spindle-transmission.md) and [../../docs/plc-spec/gear-shift.md](../../docs/plc-spec/gear-shift.md).
 
-For background on spindle speed and range, see the "Spindle speed & range" section in [README.md](../../README.md). Any implementation must also add interlock logic (each gear output must release the other before engaging).
+**Clutch truth table (owner, 2026-07-08) — get this right, it's a safety interlock:** exactly one output on = that gear; **both on = neutral** (freewheel); **both OFF = mechanical LOCKUP** (belts jam). At least one output must be energized at all times; both-off is never commanded, and a both-off backstop rung stops the spindle and forces neutral if it ever occurs. The old "each gear output must release the other" / "never both energized" model was **wrong** (both-on is the safe neutral, both-off is the hazard).
 
 ### 3. Add or change an M-code macro
 
