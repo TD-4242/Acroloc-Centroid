@@ -201,6 +201,29 @@ shift request is blocked while the carousel is moving.
 | `SV_MACHINE_PARAMETER_860` (P860) | Low/high crossover speed (center of the hysteresis band), compared against `GearBaseSpeed_FW` | `<= 0.0` disables auto-shift; holds the engaged gear, and defaults to **low** from neutral so the spindle still drives on spin-up | 800 (RPM) |
 | `SV_MACHINE_PARAMETER_861` (P861) | Hysteresis half-width around `P860` | no disable sentinel — always added/subtracted from `P860` | 100 (RPM) |
 | `SV_MACHINE_PARAMETER_862` (P862) | Coast dwell override, ms | `<= 0` (including factory-zero) falls back to the hard-coded 1500 ms default | 1500, tuned down on the actual machine |
+| `SV_MACHINE_PARAMETER_65` (P65) | Low-gear ratio, applied as `SpinRangeAdjust_FW` when `SpindleRange_W == 1` | stock range-gain param (range 1); always applied | ~0.52 (tuned on-machine to commanded = actual RPM) |
+| `SV_MACHINE_PARAMETER_863` (P863) | High-gear ratio, applied as `SpinRangeAdjust_FW` when `SpindleRange_W == 4` | `<= 0` falls back to `2.0` (this machine's measured high ratio — NOT 1.0, which would overspeed ~2x) | ~2.0 (tuned on-machine) |
+
+### Ratio scaling: why the high ratio lives in P863, not the canonical spot
+
+In Centroid's model (mill operator manual sec. 15.4.14 / 15.4.46) **high range is the
+reference range**: its ceiling is the "Maximum Spindle Speed (High Range)" config field
+(CfgMax) and its motor:chuck ratio is Parameter 33 — the lower ranges (P65-67) are ratios
+*relative to* high. So the canonical way to scale high gear is CfgMax, not a range-gain param.
+We deliberately do **not** use that scheme here for two reasons found on the machine:
+
+- **P33 is unusable.** It belongs to the spindle-encoder / rigid-tapping path (default 1.0,
+  "do not change unless you consult your dealer"), it does not scale the open-loop analog
+  output, and the ATC Spindle Test actively *resets it to 1.0*. P66/P67 (medium ranges) are
+  forced to 1.0 because this two-speed machine declares no medium ranges. Only P65 (low) is a
+  live stock range-gain param.
+- **The spindle is speed-limited below high gear's full-motor potential.** Running high gear
+  as the reference would need CfgMax ~= G_high x motor_base (~7000 RPM) to keep commanded =
+  actual, but the spindle is only safe to ~3500 (and that only for short runs). Because CfgMax
+  is also the operator's hard ceiling, it must stay at the safe max (3500). With CfgMax pinned
+  low, a PLC-side multiplier is the correct tool to rescale high gear to 1:1 — that multiplier
+  is P863. Do **not** "simplify" this back to the reference/CfgMax scheme without first raising
+  the spindle's safe max.
 
 Sources for intended values: the design spec
 ([2026-06-27-rpm-gear-shift-design.md](../superpowers/specs/2026-06-27-rpm-gear-shift-design.md),

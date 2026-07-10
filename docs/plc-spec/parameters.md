@@ -23,12 +23,13 @@ Line numbers as of commit 41f3fd6
 |---|---|---|---|---|
 | P1 | Jog-key configuration bitmask (`JogKeyCfg_W`); bit 1 = invert axis-2 jog keys, bit 2 = swap axes | `JogKeyCfg_W = SV_MACHINE_PARAMETER_1` (src:1364) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Bitmask; consumed by `JogKeysNormalStage`/etc. in [jog-and-mpg.md](jog-and-mpg.md#jogkeysnormalstage--jogkeysinvert2stage--jogkeysswappedstage--jogkeysswapandinvert2stage) |
 | P19 | MPG mode value (`PValue_W`); bit 1 = lock out x100 on an axis per P820 | `PValue_W = SV_MACHINE_PARAMETER_19` (src:1305) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Bitmask; `MpgX100LockOut_M` consumed in [jog-and-mpg.md](jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085) |
-| P33 (Acroloc) | High-range gear ratio adjustment (2.0) | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_33` when `SpindleRange_W == 4` (src:2325) | [gear-shift.md](gear-shift.md) | Ratio multiplier for range 4 (high); falls back to `1.0` if left `<= 0`. Mirror of P65 (low). Assumes CNC12 max spindle speed = motor base (~1750). **Intended value 2.0** |
+| P33 | **Not used by the gear code (tried, abandoned).** Wired as the high-range ratio but is not writable from the CNC12 param screen on this control (reads a fixed ~2.0), so it could not be tuned. High ratio moved to **P863**. | (formerly read at src:2342) | [gear-shift.md](gear-shift.md) | Do not use for tuning; see P863 |
 | P39 | Feedrate override percentage limit (ceiling on jog-panel knob, keyboard override, and final override) | `FeedrateKnob_W` clamp (src:1907-1908); `KbOverride_W` clamp (src:1980-1981); `FinalFeedOverride_W` clamp (src:1994-1995) | [jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085](jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085) | Percent (0-200 scale); each of the three override values is clamped to this ceiling independently |
 | P57 | Enable/disable load-meter display | `IF SV_MACHINE_PARAMETER_57 != 0 THEN SET LoadMeterStage` / `== 0 THEN RST` (src:1357-1358) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | 0 = load meters off, nonzero = on (`LoadMeterStage`, STG6) |
 | P65 | Low-range gear ratio adjustment | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_65` when `SpindleRange_W == 1` (src:2313) | [gear-shift.md](gear-shift.md) (main-stage.md `SpindleRange_W` decode block, src:2308-2325) | Ratio multiplier applied to the spindle-speed/DAC math for range 1 (low); **the PLC does read this one** — it is not CNC12-side only. See note below. |
 | P66 | Medium-low range gear ratio adjustment | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_66` when `SpindleRange_W == 2` (src:2317) | [gear-shift.md](gear-shift.md) | Ratio multiplier for range 2 |
-| P67 | Medium-high range gear ratio adjustment | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_67` when `SpindleRange_W == 3` (src:2321) | [gear-shift.md](gear-shift.md) | Ratio multiplier for range 3 (range 4/high reads P33, src:2325, falling back to `1.0` if P33 `<= 0`) |
+| P67 | Medium-high range gear ratio (range 3) — **cannot serve as the high-gear ratio: CNC12 locks the medium-range gains** on this machine (declared range count too low to expose them for editing) | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_67` when `SpindleRange_W == 3` (src:2343, dead path) | [gear-shift.md](gear-shift.md) | Ratio multiplier for range 3; range 3 never engages here |
+| P863 (Acroloc) | High-range (range 4) gear ratio adjustment | `SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_863` when `SpindleRange_W == 4` (src:2347) | [gear-shift.md](gear-shift.md) | Writable ratio multiplier for high gear, tuned on-machine to ~2.0. Falls back to `2.0` if left `<= 0` (NOT 1.0 — that would overspeed the spindle ~2x). In the 860-870 "Not Used" block; these general params stay editable regardless of spindle range config (unlike P66/P67). |
 | P146 | Feed-hold threshold (`P146Value_W`) | `P146Value_W = SV_MACHINE_PARAMETER_146` (src:1312) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Threshold compared against `FinalFeedOverride_W` in [jog-and-mpg.md](jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085) (src:1850-1854) to trigger a feed-hold prompt |
 | P148 | Misc jogging options bitmask (`P148Value_W`); bit 1 = disable keyboard jogging (CNC10 back-compat) | `P148Value_W = SV_MACHINE_PARAMETER_148` (src:1313); `BITTST P148Value_W 1 DisableKbInput_M` (src:1348) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Bitmask; bit 1 set forces `RST AllowKbInput_M` regardless of P170 |
 | P153 | Probe-protection enable | `IF SV_MACHINE_PARAMETER_153 == 0 THEN RST ProbeProtectionEnable_M` / `> 0 THEN SET` (src:1374-1375) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | 0 = disabled, >0 = enabled; consumed in [main-stage.md](main-stage.md#probe-protection-while-jogging-src2670-2756) |
@@ -86,10 +87,13 @@ Two blocks in the source mention parameter numbers in prose/comments without a c
 reconciles, but they are not separate table rows for parameters already covered above:
 
 - **src:38, 47-78** — a header comment block enumerating parameters the PLC cares about.
-  `SV_MACHINE_PARAMETER_33` ("High Range Gear Ratio 2x", src:53) is now **read** by the
-  Acroloc gear code for high range (`SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_33` when
-  `SpindleRange_W == 4`), with a fallback to `1.0` if it is left `<= 0` — see the P33 row in
-  the table above. P219 (src:66, "start VCP on boot") is named only in this comment block —
+  The high-range gear ratio is read from `SV_MACHINE_PARAMETER_863` (src:2347) when
+  `SpindleRange_W == 4`, with a fallback to `2.0` if it is left `<= 0` — see the P863 row in
+  the table above. P863 is a general param in the 860-870 "Not Used" block, which stays
+  editable regardless of spindle range config. P33 was tried first (not writable — reads a
+  fixed ~2.0) and P66/P67 next (CNC12 locks the medium-range gains on this machine), so both
+  were abandoned.
+  P219 (src:66, "start VCP on boot") is named only in this comment block —
   no rung reads it, so CNC12 must consult it directly rather than through the PLC.
 - **src:753** — the general system-variables overview comment (P999 upper bound), addressed
   in the table above.
@@ -102,9 +106,12 @@ CNC12-side only. It **is** read by the PLC: `SpinRangeAdjust_FW = SV_MACHINE_PAR
 low-range branch of the `SpindleRange_W` decode block (src:2308-2325, documented in
 [gear-shift.md](gear-shift.md) via [main-stage.md#gear-decision](main-stage.md#gear-decision))
 uses in the spindle-speed/DAC ratio math alongside P66 (range 2) and P67 (range 3); range 4
-(high) reads **P33** (High Range Gear Ratio, intended 2.0), falling back to `1.0` if P33 is
-left `<= 0`. This assumes CNC12's max spindle speed is set to the **motor base** (~1750), so
-the physical ratios drop straight in (low P65 = 0.5, high P33 = 2.0).
+(high) reads **P863**, a general param in the 860-870 "Not Used" block — it stays editable
+regardless of spindle range config, unlike P66/P67 which CNC12 locks on this machine —
+falling back to `2.0` if P863 is left `<= 0`. (P33 was tried first but is a reserved param,
+not writable from the param screen.)  These ratios are calibration constants (they fold in
+CfgMax, the F510 max-frequency scaling, and the mechanical gear), tuned on the machine:
+low P65 ~= 0.52, high P863 ~= 2.0.
 
 ## Verification
 
