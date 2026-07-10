@@ -50,11 +50,18 @@
 ;                            Add 1 = MPG Ignore Encoder Error
 ;                            Add 2 = Lock Out Z Axis X100 with WMPG
 ;                            Add 4 = Enable Independent Z-Axis MPG Jogging 
-; SV_MACHINE_PARAMETER_33  : High Range Gear Ratio 2x (Acroloc: read for SpindleRange_W==4)
+; SV_MACHINE_PARAMETER_33  : (Acroloc) tried as the high ratio, but P33 is NOT writable from the
+;                            CNC12 param screen on this control (reads a fixed ~2.0), so it could
+;                            not be tuned.  High ratio moved to P863 (below).  P66/P67 could not
+;                            be used either -- CNC12 locks the medium-range gains on this machine.
+; SV_MACHINE_PARAMETER_863 : (Acroloc) high-range (range 4) gear ratio, tunable ~2.0; the writable
+;                            mirror of P65 (low, .52x).  In the 860-870 "Not Used" block -- these
+;                            general params stay editable regardless of spindle range config.
 ; SV_MACHINE_PARAMETER_39  : Feedrate Override Percentage Limit
 ; SV_MACHINE_PARAMETER_65  : Low Range Gear Ratio .5x
 ; SV_MACHINE_PARAMETER_66  : Medium-Low Range Gear Ratio
-; SV_MACHINE_PARAMETER_67  : Medium-High Range Gear Ratio
+; SV_MACHINE_PARAMETER_67  : Medium-High Range Gear Ratio (unused on this 2-speed machine; CNC12
+;                            locks it as a non-applicable range, so it cannot serve as the high ratio)
 ; SV_MACHINE_PARAMETER_146 : FeedHold Threshold, Sets FeedHold Under Value
 ; SV_MACHINE_PARAMETER_148 : 0 = Keyboard Jogging Allowed, 2 = Prohibit Keyboard Jogging
 ; SV_MACHINE_PARAMETER_153 : 0 = Disable Probe Protection, 1 = Enable Probe Protection
@@ -2339,9 +2346,12 @@ IF SpindleRange_W == 3 THEN RST SV_SPINDLE_LOW_RANGE,
 
 IF SpindleRange_W == 4 THEN RST SV_SPINDLE_LOW_RANGE,
                             RST SV_SPINDLE_MID_RANGE,
-                            SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_33 ; Acroloc high ratio (2.0); low uses P65 (0.5)
-; Acroloc: if P33 is unset (<=0) fall back to the stock 1.0 so high gear cannot run away to max RPM.
-IF (SpindleRange_W == 4) && (SV_MACHINE_PARAMETER_33 <= 0.0) THEN SpinRangeAdjust_FW = 1.0
+                            SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_863 ; Acroloc high-gear ratio (~2.0 tuned); low uses P65 (0.52)
+; Acroloc: high (range 4) reads P863, a general param in the 860-870 "Not Used" block, because it
+; stays editable regardless of spindle range config.  P33 was tried first (reserved, not settable)
+; and P66/P67 next (CNC12 locks the medium-range gains on this machine).  If P863 is unset (<=0)
+; fall back to 2.0 (this machine's measured high ratio) -- NOT 1.0, which would overspeed ~2x.
+IF (SpindleRange_W == 4) && (SV_MACHINE_PARAMETER_863 <= 0.0) THEN SpinRangeAdjust_FW = 2.0
 
 ; If the speed ratio parameter is negative, reverse the motor.
 ; Always use the absolute value of the parameter as the real ratio.
