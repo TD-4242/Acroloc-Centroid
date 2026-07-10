@@ -22,159 +22,59 @@ repository.
 Custom logic added for this machine is tagged with the comment marker `; Acroloc` throughout
 the `.src`.
 
+## PLC subsystems
+
+A full line-referenced specification of the PLC program lives in `docs/plc-spec/`, split into
+one file per subsystem. Start with the scan model and the definitions atlas — every other file
+cites them instead of repeating naming/timing rules.
+
+- [`docs/plc-spec/scan-model.md`](docs/plc-spec/scan-model.md) — how the `.src` actually
+  executes each scan: stage sweep order, same-scan-vs-next-scan `SET`/`RST` timing, timer
+  semantics, and write-conflict resolution. Read this first.
+- [`docs/plc-spec/definitions.md`](docs/plc-spec/definitions.md) — the resource atlas: every
+  symbol in the definitions block (`_I`/`_O`/`_M`/`_W`/`_T`/`_SV`/`_C`/stage) mapped to its
+  source line, plus the message-constant encoding rule.
+- [`docs/plc-spec/boot.md`](docs/plc-spec/boot.md) — what happens before the machine is ready
+  to run: `WatchDogStage`, `InitialStage`'s one-scan power-up latch (including the Acroloc
+  power-up gear defaults), and the `LoadParametersStage` parameter-load handshake.
+- [`docs/plc-spec/main-stage.md`](docs/plc-spec/main-stage.md) — `MainStage` (STG4): E-stop/
+  reset, probe protection, fault aggregation, M-code housekeeping, the ATC kickoff/safety
+  rungs, and the spindle/coolant/gear-decision logic structurally nested under it.
+- [`docs/plc-spec/atc.md`](docs/plc-spec/atc.md) — the custom Acroloc automatic tool changer:
+  `mfunc6.mac`'s macro orchestration, the `MainStage` kickoff/safety rungs, and the `ATCStage`
+  (STG16) carousel-indexing state machine, including the base-16-as-decimal position-switch
+  encoding and the known no-carousel-timeout gap.
+- [`docs/plc-spec/gear-shift.md`](docs/plc-spec/gear-shift.md) — the custom RPM-based automatic
+  two-speed clutch selection: the `DesiredRange_W` decision logic, the mutual-exclusion clutch
+  interlock, and the `GearShiftStage` (STG17) open-loop neutral-coast-engage sequence.
+- [`docs/plc-spec/jog-and-mpg.md`](docs/plc-spec/jog-and-mpg.md) — the operator jog/MPG path:
+  hardwired MPG, wireless/USB MPG, jog-panel key decode/override math, and the four
+  configuration-selected axis-mapping stages.
+- [`docs/plc-spec/faults-and-messages.md`](docs/plc-spec/faults-and-messages.md) — drive/
+  fiber/PLC-bus/MiniPLC communication-health checks and the fault-bit -> message-word ->
+  on-screen operator message pipeline.
+- [`docs/plc-spec/parameters.md`](docs/plc-spec/parameters.md) — every
+  `SV_MACHINE_PARAMETER_n` the `.src` reads, in one table, each row citing the reading rung and
+  the subsystem file that documents it.
+
 ## Spindle speed & range (transmission) shifting
 
-The Acroloc spindle has a **two-speed transmission** (low / high range). The PLC reads which
-range the gearbox is in, reports it to the CNC, and scales the analog speed command so the
-displayed/commanded RPM matches the gear that is actually engaged.
-
-### Range selection input
-
-The current gear is determined by a single feedback input:
-
-```
-SpinLowRange_I   IS INP13        ; transmission-in-low-gear sense switch
-```
-
-In the spindle-range logic inside `MainStage`:
-
-```
-IF True_M         THEN SpindleRange_W = 4     ; default to HIGH range (fail-safe)
-IF SpinLowRange_I THEN SpindleRange_W = 1     ; INP13 active  -> LOW range
-```
-
-- **INP13 active → low range** (`SpindleRange_W = 1`)
-- **INP13 inactive → high range** (`SpindleRange_W = 4`, the default)
-
-> The stock PLC also defines `SpinMedRange_I (INP14)` and `SpinHighRange_I (INP15)` for
-> 4-range gearboxes, but neither is referenced — consistent with this two-speed head.
-
-### Range → speed-scaling ratio
-
-`SpindleRange_W` selects a ratio (`SpinRangeAdjust_FW`) and reports the range to CNC12 via the
-`SV_SPINDLE_LOW_RANGE` / `SV_SPINDLE_MID_RANGE` flags:
-
-| `SpindleRange_W` | Range | Ratio source (`SpinRangeAdjust_FW`) |
-| --- | --- | --- |
-| 1 | Low | `SV_MACHINE_PARAMETER_65` |
-| 2 | Med-low | `SV_MACHINE_PARAMETER_66` |
-| 3 | Med-high | `SV_MACHINE_PARAMETER_67` |
-| 4 | High | `1.0` |
-
-A **negative** ratio parameter reverses the motor (sets `SpinRangeReversed_M`) and the
-absolute value is used as the real ratio; the ratio is also floored at `0.001` since the code
-later divides by it.
-
-### Speed command → DAC output
-
-Each scan the PLC builds the analog spindle command (`MainStage`):
-
-1. Read configured min/max RPM (`SV_PC_CONFIG_MIN/MAX_SPINDLE_SPEED`) and compute
-   `RPMPerBit_FW = MaxSpeed / 4095`.
-2. Pick the commanded speed:
-   - **Auto mode:** `SpinSpeedCommand_FW = SV_PC_COMMANDED_SPINDLE_SPEED` (override already
-     factored in by CNC12).
-   - **Manual mode:** `MaxSpeed × (SV_PLC_SPINDLE_KNOB / 200) × SpinRangeAdjust_FW`.
-   - Spindle disabled (`!SpindleEnableOut_O`) forces `0`.
-3. Clamp to `[MinSpeed × ratio, MaxSpeed × ratio]` (low-clamp posts the "min speed" message).
-4. Convert to a 12-bit value: `TwelveBitSpeed_FW = SpinSpeedCommand / RPMPerBit`, then
-   **divide by `SpinRangeAdjust_FW` to factor in the gear range**.
-5. Bound to `0–4095` and write to the analog output (`WTB TwelveBitSpeed_W SpinAnalogOutBit0_O 12`).
-
-The relevant gear-ratio parameters are set in CNC12's machine parameters (Parameter 65 for the
-low range on this machine).
-
-### ⚠️ Not yet implemented: commanding the shift
-
-`INP13` only *senses* the current gear. The two custom outputs intended to actuate the
-transmission solenoids are **defined but not driven anywhere** in the PLC:
-
-```
-Spindle_Low_gear_O    IS OUT19    ; Acroloc  (high gear must be released)
-Spindle_High_gear_O   IS OUT20    ; Acroloc  (low gear must be released)
-```
-
-So the PLC currently reacts to the gear position but does not command the shift. Wiring these
-outputs into range logic is outstanding work.
+The Acroloc spindle has a **two-speed transmission** (low / high range). The current gear is
+tracked from the clutch outputs the PLC itself commands (not a sense switch), and the PLC
+automatically shifts range based on the commanded spindle RPM — an open-loop, timed
+neutral-coast-then-engage clutch swap with no rev-match or position feedback. Power-up engages
+low range. Full line-referenced detail (decision logic, DAC-ratio math, clutch interlock, the
+`GearShiftStage` state machine, and the P860/P861/P862 parameter table) is in
+[`docs/plc-spec/gear-shift.md`](docs/plc-spec/gear-shift.md); on-machine verification steps
+(shift boundaries, coast-dwell tuning, RPM accuracy) are in
+[`docs/testing/rpm-gear-shift-test-plan.md`](docs/testing/rpm-gear-shift-test-plan.md).
 
 ## Automatic tool changer (ATC)
 
 The Acroloc uses a **rotary carousel** tool changer. A tool change spans three places:
-`mfunc6.mac` (the M6 macro), the ATC kickoff/safety logic in `MainStage`, and the
-`ATCStage` (STG16) state machine that actually indexes the carousel. All of this is custom
-work tagged `; Acroloc`.
-
-### I/O and variables
-
-| Symbol | Resource | Role |
-| --- | --- | --- |
-| `M6_SV` | `SV_M94_M95_8` | Tool-change request flag (set by `M94 /8`) |
-| `ChangeToTool_W` | `W72` | Target tool number for this change |
-| `CarouselToolID_W` | `W71` | Tool currently passing the spindle (decoded live) |
-| `ATCMotor_O` | `OUT17` | Spins the tool carousel |
-| `ATCUnlocked_O` | `OUT18` | Releases the carousel lock |
-| `ATC_Pos1_I`..`ATC_Pos5_I` | `INP32`..`INP28` | 5 carousel position switches |
-| `ATC_Z_ClearedToolChanger_I` | `INP26` | Spindle/Z has entered the tool changer |
-| `ATC_Z_Zero_Release_I` | `INP27` | Z axis has cleared the tool ring (parked) |
-| `ATCManualUnlock_I` | `INP24` | Manual unlock button on the front of the machine |
-| `ZeroSpeed_I` | `INP12` | Spindle at zero RPM |
-| `StopSpinBeforeATC_T` | timer | Spindle-stop timeout guard |
-
-### Tool change flow
-
-1. **`mfunc6.mac` (M6):** stops the spindle (`S0 M5`) and coolant (`M9`), moves Z to the
-   tool-change position with `G53 Z0`, sends the requested tool number with `M107`, then
-   sets `M6_SV` via `M94 /8` to start the change and resets it with `M95 /8` once `ATCStage`
-   clears. Like every macro here it skips in graph/search mode
-   (`IF #4201 || #4202 THEN GOTO 1000`) and ends at `N1000`.
-
-2. **`MainStage` kickoff & safety:** on `M6_SV` it latches the target
-   (`ChangeToTool_W = SV_TOOL_NUMBER`) and `SET ATCStage`. Before the carousel may move it
-   enforces:
-   - **Spindle stopped** — if the spindle isn't at `ZeroSpeed_I` it drops
-     `SpindleEnableOut_O` and starts `StopSpinBeforeATC_T`; if the timer expires before zero
-     speed it raises `SPINDLE_FAULT_MSG_C` and aborts (`RST ATCStage`).
-   - **Z parked** — `ATCStage` also checks `ATC_Z_Zero_Release_I`; if Z hasn't cleared the
-     tool ring it raises `ATC_Spindle_Not_Parked_C` and aborts.
-
-3. **`ATCStage` indexing:** once safe and `ChangeToTool_W > 0`, it unlocks and spins the
-   carousel (`SET ATCUnlocked_O, SET ATCMotor_O`) and decodes the position switches as each
-   tool passes.
-
-### Carousel position encoding
-
-Tool IDs are encoded across the 5 position switches as **base-16 written in decimal**. While
-the carousel turns, the PLC accumulates `CarouselToolID_W` from whichever switches are active,
-then resets to look for the next tool when all switches read 0:
-
-```
-ATC_Pos1_I -> +1
-ATC_Pos2_I -> +2
-ATC_Pos3_I -> +4
-ATC_Pos4_I -> +8
-ATC_Pos5_I -> +10   ; note: 10, NOT 16 — base-16 encoded as decimal
-```
-
-| Tool | Switches (1-2-3-4-5) | Tool | Switches | Tool | Switches |
-| --- | --- | --- | --- | --- | --- |
-| T1 | `* . . . .` | T5 | `* . * . .` | T9  | `* . . * .` |
-| T2 | `. * . . .` | T6 | `. * * . .` | T10 | `. . . . *` |
-| T3 | `* * . . .` | T7 | `* * * . .` | T11 | `* . . . *` |
-| T4 | `. . * . .` | T8 | `. . . * .` | T12 | `. * . . *` |
-
-When `CarouselToolID_W == ChangeToTool_W`, the PLC stops and relocks the carousel
-(`RST ATCMotor_O, RST ATCUnlocked_O`), clears the request (`RST M6_SV`), and ends the change
-(`RST ATCStage`).
-
-### Manual unlock
-
-Outside of a tool change, the front-panel `ATCManualUnlock_I` button releases the carousel
-lock (`SET ATCUnlocked_O`) provided Z is parked (`ATC_Z_Zero_Release_I`), and posts
-`ATC_Lock_Released_C` / `ATC_Lock_Not_Released_C` status messages.
-
-### ⚠️ No carousel timeout
-
-`ATCStage` has no timeout protecting the carousel itself (see the `;TODO` in the source). If
-the requested tool is never matched — e.g. an off-by-one in the position decode or a failed
-switch — `ATCMotor_O` keeps spinning indefinitely. Take care when editing the match/exit
-conditions.
+`mfunc6.mac` (the M6 macro), the ATC kickoff/safety logic in `MainStage`, and the `ATCStage`
+(STG16) state machine that decodes the 5 carousel position switches (base-16 encoded as
+decimal) and indexes to the requested tool. All of this is custom work tagged `; Acroloc`.
+Full line-referenced detail — the three-piece flow, the I/O table, the carousel position
+encoding, manual unlock, and the known no-carousel-timeout gap — is in
+[`docs/plc-spec/atc.md`](docs/plc-spec/atc.md).

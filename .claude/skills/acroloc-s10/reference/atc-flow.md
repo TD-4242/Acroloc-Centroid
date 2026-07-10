@@ -8,6 +8,8 @@
 > For machine overview and build/deploy instructions see `README.md` and
 > `CLAUDE.md`. This document focuses on the flow and gotchas, not the
 > background prose.
+>
+> For the fully line-referenced specification see ../../../../docs/plc-spec/atc.md.
 
 ---
 
@@ -217,11 +219,13 @@ stays asserted and the carousel spins indefinitely.
 the `InToolSelect_M` gating must be tested extremely carefully. A value of
 `+16` for Pos5 instead of `+10` would cause tools 10–15 to never match.
 
-### 2. Transmission shift outputs defined but never driven
+### 2. Transmission shift is automated open-loop (no gear-position feedback)
 
-`Spindle_Low_gear_O` (OUT19) and `Spindle_High_gear_O` (OUT20) are declared
-with the `; Acroloc` marker and have meaningful comments ("High gear must be
-released" / "Low gear must be released"), but they appear **only** in the
-definitions section and are never SET, RST, or otherwise referenced in any
-stage logic or macro. The Acroloc's transmission shift is not currently
-automated.
+`Spindle_Low_gear_O` (OUT19) and `Spindle_High_gear_O` (OUT20) are driven by
+the RPM-based auto-shift logic: a decision block in `MainStage` picks the gear
+from the un-overridden commanded S (crossover P941 ± hysteresis P942) and
+`GearShiftStage` (STG17) swaps clutches with a neutral coast dwell (P943).
+There is **no gear-position or speed feedback** — the engaged gear is tracked
+only from the commanded clutch outputs (`EngagedRange_W`), and a shift is
+inhibited during `ATCStage`. See the "Automatic RPM-based gear shifting"
+section of `README.md` and `reference/spindle-transmission.md`.
