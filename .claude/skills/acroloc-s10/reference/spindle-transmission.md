@@ -34,3 +34,8 @@ repo's PLC, the two ranges correspond to the `; Acroloc` outputs `Spindle_Low_ge
 - **Spindle taper (e.g. NMTB/CAT/BT 30/40/50):** TBD — confirm with owner
 - **Drawbar (power vs. manual) and retention-knob / pull-stud style:** TBD — confirm with owner
 - **Spindle motor horsepower and type (DC / AC / vector):** TBD — confirm with owner
+- **Spindle-motor VFD:** the motor is driven by a **TECO-Westinghouse F510** inverter. For
+  VFD configuration, RS-485 Modbus config backup/restore, parameters, motor auto-tuning,
+  braking, and fault codes, see the [teco-f510](../../teco-f510/SKILL.md) skill (a generic
+  F510 reference). Keep **this-machine** settings — motor base RPM, decel time, gear ratios —
+  here, not in that skill.
