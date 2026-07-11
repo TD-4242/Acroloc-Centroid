@@ -237,10 +237,13 @@ hand-off rungs inside `MainStage` that arm `ATCStage`.
      spindle can never run — or be manually started — while Z is in the changer.
   3. `IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN` clear all three latches — clean bail-out if
      the program stops mid-hold, so the next run re-confirms zero from scratch.
-  4. **Arm** when a program/MDI move enters the zone with the spindle *not* already stopped
-     (`!ZeroSpeed_I`): `SET ChangerHoldActive_M, SET ActivateFeedHold_M`, load and start
-     `ChangerStopTimer_T = 5000`. If `ZeroSpeed_I` already reads stopped at entry (normal M6 —
-     mfunc6 runs `M5` before the park move) this never arms and motion proceeds.
+  4. **Arm** when a **direct** program/MDI move enters the zone with the spindle *not* already
+     stopped (`!ZeroSpeed_I`): `SET ChangerHoldActive_M, SET ActivateFeedHold_M`, load and start
+     `ChangerStopTimer_T = 5000`. Confirmed on-machine (2026-07-09): a **macro's** `G53` move
+     (e.g. the M6 park) does **not** assert `SV_PROGRAM_RUNNING`/`SV_MDI_MODE`, so this rung
+     never sees it — the M6 path is protected by `mfunc6`'s own `M101 /50012` ZeroSpeed wait, not
+     by this interlock. This rung catches errant *direct* moves (a hand-typed `G53 Z0`, a program
+     bug).
   5. **Resume** the instant zero is confirmed: `IF ChangerHoldActive_M && ZeroSpeed_I THEN`
      `SET DoCycleStart_SV` (a pulse, not a coil — a coil would clobber the stock operator
      cycle-start).

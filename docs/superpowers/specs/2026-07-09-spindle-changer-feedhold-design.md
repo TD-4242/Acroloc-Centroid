@@ -22,6 +22,28 @@ running-machine baseline (PR #10) and the gear-shift work (PR #2) merged, and wh
 The problem statement, the danger signal, and the overall shape carry over from the 2026-06-29
 draft; the resume strategy and the target baseline are what change.
 
+## Post-implementation finding (2026-07-09, on-machine)
+
+Validated on the machine, with one correction to the design intent below:
+
+- **The MainStage interlock does NOT arm for the M6 macro's own park move.** A macro's `G53`
+  move does not assert `SV_PROGRAM_RUNNING`/`SV_MDI_MODE`, so the arm rung never sees it
+  (confirmed: spindle spinning, Z drove straight to `Z0` with no feed hold). The interlock's
+  **confirmed scope is direct programmed/MDI `G53` moves** into the zone (a hand-typed
+  `G53 Z0`, a program bug), which it does catch -- feed-hold + wait + resume verified.
+- **The M6 path is protected in the macro instead.** `mfunc6.mac` now waits on `ZeroSpeed_I`
+  before parking: `M5` (stop) -> `M101 /50012` (block until INP12 confirms zero) -> `G53 Z0`.
+  The spindle is confirmed stopped before Z moves toward the changer, independent of the PLC
+  interlock.
+- **Fail-safe verified:** a disconnected/dead ZeroSpeed sensor reads "not stopped" (INP12 = 0),
+  so the macro holds (Z never enters) and the `ATCStage` guard aborts. Software-forcing INP12
+  does **not** reach the macro's `M101` wait, so it is not a valid way to test the macro layer --
+  use a physical disconnect. See `docs/testing/spindle-changer-safety-test.md`.
+
+Net protection layering: **L1** macro `M101` wait (M6 path), **L2** MainStage interlock (direct
+moves), **L3** unconditional zone-kill (all modes), **L4** `ATCStage` zero-speed carousel guard.
+The sections below describe L2-L4 (this spec's original scope); L1 lives in `mfunc6.mac`.
+
 ## Problem
 
 On the Acroloc S10 the spindle nose enters the automatic tool changer at roughly **Z -1.75 in**.
@@ -56,8 +78,10 @@ because it is trusted, resume is immediate on assert rather than after a fixed d
 ## Requirements
 
 1. **Single unified rule.** One block replaces the stock stop block, keeping its unconditional
-   zone spindle-kill and adding the hold / confirm-zero / auto-resume machinery. It fires during
-   M6's `G53 Z0` park move and any other move.
+   zone spindle-kill and adding the hold / confirm-zero / auto-resume machinery. (Original intent
+   was for this to fire during M6's `G53 Z0` park too; on-machine it does not -- macro moves are
+   handled by the `mfunc6` `M101` wait, see the post-implementation finding above. This rule
+   catches **direct** programmed/MDI moves.)
 2. **General protection.** Any programmed or MDI move that drives Z into the changer -- a tool
    change *or any other axis move* -- triggers it. Manual jogging motion is out of scope (feed
    hold / cycle start act only on program/MDI motion); the spindle side is still covered in
@@ -255,7 +279,7 @@ energized and `M6_SV` set -- the carousel keeps spinning unlocked and MainStage 
 
 | Requirement | Mechanism |
 |-------------|-----------|
-| Single unified rule | One MainStage block replacing the stock stop block; fires on the M6 park move and any other move |
+| Single unified rule | One MainStage block replacing the stock stop block; fires on direct programmed/MDI moves (NOT the M6 macro park -- that is the `mfunc6` `M101` wait, per the post-implementation finding) |
 | General protection | Arm gated on `(SV_PROGRAM_RUNNING \|\| SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I && !ZeroSpeed_I` |
 | Hold all motion | `SET ActivateFeedHold_M` -> `DoFeedHold_SV` (halts feed **and** rapid) |
 | Stop spindle | `RST SpindleEnableOut_O`, re-applied every scan while in the zone -- unconditional, every mode |
