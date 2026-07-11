@@ -141,14 +141,28 @@ above, simulate the sensor instead:
 
 What happens when the spindle never reports zero — the case that must **never** proceed.
 
-- [ ] With Z clear and the spindle stopped, force INP12 = 0 (disconnect / force off), then
+> **Do NOT software-force INP12 to test the macro (L1).** A software input force reaches the PLC
+> scan but does **not** reach a macro's `M100`/`M101` wait — they read different paths — so
+> forcing INP12 off makes the diagnostic screen show 0 while the macro's `M101 /50012` sails
+> right through. That is a **test artifact**, not the machine's real behavior (with a genuinely
+> spinning spindle the raw input reads 0 and the wait holds every time — see §1). The only valid
+> way to test a dead sensor for the macro is to change the **actual input**: physically
+> disconnect the ZeroSpeed lead.
+
+- [ ] **Fail-safe direction (do this first).** With the spindle **stopped**, physically
+      disconnect the ZeroSpeed sensor lead and read INP12. It **must** read **0** ("not
+      stopped"). If a disconnected/dead sensor reads **1** ("stopped"), STOP — a broken wire will
+      let a spinning spindle into the changer; this is a wiring / F510-output fix (the "at zero"
+      condition must be energize-to-permit), not a code fix. Result: ______
+- [ ] **Macro hang (L1), sensor physically disconnected.** With the lead still disconnected,
       `M3 S1000`, `M6 T5`. Expected: the M6 macro **holds indefinitely** on "waiting for input
-      #12" and Z **never** moves to the change position. (Safe hang — operator recovers with
-      feed-hold/cancel/E-stop; the spindle never enters the changer.) Result: ______
-- [ ] For a direct move under the same forced condition (`G53 Z0` in MDI, INP12 forced 0): the
+      #12" and Z **never** moves to the change position. (Safe hang — recover with
+      feed-hold/cancel/E-stop.) Result: ______
+- [ ] **Interlock timeout (L2), PLC-side.** L2/L3/L4 are PLC-side and *do* honor a software force,
+      so a forced INP12 = 0 is valid here: hand-type `G53 Z0` in MDI with INP12 forced 0 — the
       interlock holds and, at 5 s, faults (`ChangerStopTimer_T` expiry -> `SPINDLE_FAULT_MSG_C`),
       motion stays held. Result: ______
-- [ ] Restore INP12.
+- [ ] Reconnect the sensor / clear the force. Confirm a normal `M6` works again. Result: ______
 
 ---
 
