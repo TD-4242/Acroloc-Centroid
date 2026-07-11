@@ -13,6 +13,13 @@ This file covers the definitions block, `Centroid-Acroloc-ALLIN1DC.src` lines 1-
 the last stage definition, `BadMsgStage IS STG94` at src:1221); `Program Start` begins at
 src:1223.
 
+> **Note (2026-07-10, oil-pump auto-control):** the stock lube-metering symbols
+> `LubeAccumTime_W`, `Lube_W`, `LubeM_W`, `LubeS_W`, `LubeM_T`, `LubeS_T`,
+> `StopRunningPD_PD`, `LubeUsePumpTimersStage`, and `LubeUsePLCTimersStage` were removed
+> from the source (Parameter 179 retired; the oil pump is now driven by a `MainStage` coil),
+> so their rows are dropped below. Line numbers here remain as of the pinned commit above and
+> are not re-baselined for this removal.
+
 ## Message-constant encoding
 
 Message constants (`_C`) pack a message-file/message-number pair into one integer:
@@ -113,7 +120,7 @@ in the source.
 | Name | Resource | src line | Acroloc? | Meaning / used by |
 |---|---|---|---|---|
 | `NoFaultOut_O` | OUT1 | 368 | | "No fault" indicator, SPST. [main-stage.md](main-stage.md) |
-| `Lube_O` | OUT2 | 369 | | Lube pump, SPST. [main-stage.md](main-stage.md) |
+| `Lube_O` | OUT2 | 369 | | Oil pump, SPST — driven by the `MainStage` oil-pump coil. [main-stage.md](main-stage.md) |
 | `Flood_O` | OUT3 | 370 | | Flood coolant, SPST. [main-stage.md](main-stage.md) |
 | `Mist_O` | OUT4 | 371 | | Mist coolant, SPST. [main-stage.md](main-stage.md) |
 | `InverterResetOut_O` | OUT5 | 372 | | Spindle inverter reset, SPST. [main-stage.md](main-stage.md) |
@@ -229,7 +236,6 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 
 | Name | Resource | src line | Acroloc? | Meaning / used by |
 |---|---|---|---|---|
-| `LubeAccumTime_W` | W1 | 1046 | | Lube accumulated time. [main-stage.md](main-stage.md) |
 | `KbOverride_W` | W2 | 1047 | | Keyboard feed override value. [jog-and-mpg.md](jog-and-mpg.md) |
 | `FeedrateKnob_W` | W3 | 1048 | | Feedrate override knob value. [jog-and-mpg.md](jog-and-mpg.md) |
 | `FinalFeedOverride_W` | W4 | 1049 | | Final feed override sent to CNC. [jog-and-mpg.md](jog-and-mpg.md) |
@@ -254,9 +260,6 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `PLC_Fault_W` | W54 | 1071 | | Raw `SV_PLC_FAULT_STATUS` snapshot. [faults-and-messages.md](faults-and-messages.md) |
 | `PLCFaultAddr_W` | W55 | 1072 | | Raw `SV_PLC_FAULT_ADDRESS` snapshot. [faults-and-messages.md](faults-and-messages.md) |
 | `SpindleMeter_W` | W59 | 1074 | | Spindle load meter value. [main-stage.md](main-stage.md) |
-| `Lube_W` | W61 | 1076 | | Lube word. [main-stage.md](main-stage.md) |
-| `LubeM_W` | W62 | 1077 | | Lube minutes. [main-stage.md](main-stage.md) |
-| `LubeS_W` | W63 | 1078 | | Lube seconds. [main-stage.md](main-stage.md) |
 | `SpindleRange_W` | W64 | 1079 | | 1 = low ... 4 = high, range reported to CNC. [gear-shift.md](gear-shift.md) |
 | `DesiredRange_W` | W73 | 1080 | Acroloc | Gear wanted by RPM logic (1 = low, 4 = high). [gear-shift.md](gear-shift.md) |
 | `EngagedRange_W` | W74 | 1081 | Acroloc | Gear currently engaged (open-loop, tracks clutch outputs; 0 = unknown/forced-neutral, see src:2397-2402). [gear-shift.md](gear-shift.md) |
@@ -301,8 +304,6 @@ significance beyond "one-shot edge of the same-named key/event".
 | `Initialize_T` | T4 | 1176 | | Initialization timer. [boot.md](boot.md) |
 | `ErrorFlag_T` | T5 | 1177 | | Error-flag timer. [faults-and-messages.md](faults-and-messages.md) |
 | `TriggerPause_T` | T6 | 1178 | | Trigger-pause timer. [main-stage.md](main-stage.md) |
-| `LubeM_T` | T13 | 1180 | | Lube minutes timer. [main-stage.md](main-stage.md) |
-| `LubeS_T` | T14 | 1181 | | Lube seconds timer. [main-stage.md](main-stage.md) |
 | `SkinFeedOverTimer_T` | T15 | 1182 | | Skin feed-override timer. [jog-and-mpg.md](jog-and-mpg.md) |
 | `OverrideMsgTimer_T` | T16 | 1183 | | Override message timer. [faults-and-messages.md](faults-and-messages.md) |
 | `MessageTimer_T` | T17 | 1184 | | Message display timer. [faults-and-messages.md](faults-and-messages.md) |
@@ -385,8 +386,6 @@ identifier bound — no name to cite.
 | `MiniPLCErrorStage` | STG9 | 1201 | | [faults-and-messages.md](faults-and-messages.md) |
 | `LoadParametersStage` | STG10 | 1202 | | [boot.md](boot.md) |
 | `KeyboardEventsStage` | STG11 | 1203 | | [main-stage.md](main-stage.md) |
-| `LubeUsePumpTimersStage` | STG13 | 1204 | | [boot.md](boot.md) |
-| `LubeUsePLCTimersStage` | STG14 | 1205 | | [boot.md](boot.md) |
 | `ATCStage` | STG16 | 1207 | Acroloc | [atc.md](atc.md) |
 | `GearShiftStage` | STG17 | 1208 | Acroloc | [gear-shift.md](gear-shift.md) |
 | `JogKeysNormalStage` | STG26 | 1210 | | [jog-and-mpg.md](jog-and-mpg.md) |

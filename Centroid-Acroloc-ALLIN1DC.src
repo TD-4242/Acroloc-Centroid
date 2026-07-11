@@ -68,7 +68,8 @@
 ; SV_MACHINE_PARAMETER_170 : Add 1 = Keyboard Jogging Enable,
 ;							 Add 2 = Feedrate Override Jog Panel Only,
 ;							 Add 4 = Feedrate Override Keyboard Only
-; SV_MACHINE_PARAMETER_179 : LubePump Settings, MMMSS (Minutes, Seconds)
+; SV_MACHINE_PARAMETER_179 : LubePump Settings (RETIRED - no longer read; the oil pump on
+;                            OUT2 is driven by the MainStage oil-pump coil)
 ; SV_MACHINE_PARAMETER_218 : 0 = Wired MPG, > 0 = Wireless MPG 
 ; SV_MACHINE_PARAMETER_219 : 0 = No VCP, 1 = Start VCP on boot
 ; SV_MACHINE_PARAMETER_348 : MPG 1 Encoder
@@ -1065,7 +1066,6 @@ M7_SV                            IS SV_M94_M95_5 ;(Mist_O)
 ;------------------------------------------------------------------------------
 ;                     Word Definitions (int32)
 ;------------------------------------------------------------------------------
-LubeAccumTime_W                 IS W1
 KbOverride_W                    IS W2
 FeedrateKnob_W                  IS W3
 FinalFeedOverride_W             IS W4
@@ -1095,9 +1095,6 @@ PLCFaultAddr_W                  IS W55
 
 SpindleMeter_W                  IS W59
 
-Lube_W                          IS W61
-LubeM_W                         IS W62
-LubeS_W                         IS W63
 SpindleRange_W                  IS W64  ; 1 = low ... 4 = high
 DesiredRange_W                  IS W73  ; Acroloc gear wanted by RPM logic (0=none, 1=low, 4=high)
 EngagedRange_W                  IS W74  ; Acroloc commanded engaged gear (open-loop; 0=neutral/unknown, 1=low, 4=high)
@@ -1162,7 +1159,6 @@ EStopOkPD_PD                     IS PD31
 
 MPGOff_PD                        IS PD33
 
-StopRunningPD_PD                 IS PD35
 SoftwareReadyPD_PD               IS PD36
 BrakeOneShot_PD                  IS PD37
 
@@ -1199,8 +1195,6 @@ Initialize_T                    IS T4
 ErrorFlag_T                     IS T5
 TriggerPause_T                  IS T6
 
-LubeM_T                         IS T13
-LubeS_T                         IS T14
 SkinFeedOverTimer_T             IS T15
 OverrideMsgTimer_T              IS T16
 MessageTimer_T                  IS T17
@@ -1223,8 +1217,6 @@ CheckCycloneStatusStage         IS STG8
 MiniPLCErrorStage               IS STG9
 LoadParametersStage             IS STG10
 KeyboardEventsStage             IS STG11
-LubeUsePumpTimersStage          IS STG13
-LubeUsePLCTimersStage           IS STG14
 
 ATCStage                        IS STG16 ; Acroloc ATC Stage
 GearShiftStage                  IS STG17 ; Acroloc RPM gear-shift state machine
@@ -1304,17 +1296,6 @@ IF 1==1 THEN SET True_M,
 ;=============================================================================
                             LoadParametersStage
 ;=============================================================================
-; There are two methods of control for the lube pump and they are set by CNC11
-; Machine Parameter 179, where the value is between 0 - 65535 and is formatted
-; as MMMSS where MMM is a time in minutes and SS is a time in seconds.
-;
-; METHOD 1 (SS == 0) For lube pumps with internal timers.
-; METHOD 2 (SS != 0) For lube pumps with no timers (controlled solely by PLC).
-;
-; Load lube pump times from P179 and convert to milliseconds.
-IF True_M THEN Lube_W = SV_MACHINE_PARAMETER_179,
-             LubeM_W = (Lube_W / 100) * 60000,
-             LubeS_W = (Lube_W % 100) * 1000
 
 ;Set MPG Settings
 IF SV_MACHINE_PARAMETER_218 == 0 THEN SET MPGStage, RST WirelessMpgStage
@@ -1325,10 +1306,6 @@ IF (SV_MACHINE_PARAMETER_348 != 15 && SV_MACHINE_PARAMETER_348 > 0) ||
   THEN (HandWheel_M)
 IF True_M THEN PValue_W = SV_MACHINE_PARAMETER_19
 IF True_M THEN BITTST PValue_W 1 MpgX100LockOut_M
-
-; Set the appropriate stage according to method of control
-IF LubeS_W == 0 THEN SET LubeUsePumpTimersStage, RST LubeUsePLCTimersStage
-IF LubeS_W != 0 THEN SET LubeUsePLCTimersStage, RST LubeUsePumpTimersStage
 
 IF True_M THEN P146Value_W = SV_MACHINE_PARAMETER_146,  ; Feed hold threshold
              P148Value_W = SV_MACHINE_PARAMETER_148,  ; Misc Jogging Options
@@ -1394,84 +1371,6 @@ IF InvertXJogKeys_M && SwapAxes_M THEN SET JogKeysSwapAndInvert2Stage, RST JogKe
 ;Probe Protection
 IF SV_MACHINE_PARAMETER_153 == 0 THEN  RST ProbeProtectionEnable_M
 IF SV_MACHINE_PARAMETER_153 > 0 THEN  SET ProbeProtectionEnable_M
-
-;=============================================================================
-                        LubeUsePumpTimersStage
-;=============================================================================
-; METHOD 1 (SS == 0) For lube pumps with internal timers.
-;
-; When using this method, P179 should be set such that MMM is a
-; value that is greater than the cycle time set on the internal timers and
-; SS should be set to zero. How much greater MMM needs to be depends on the
-; accuracy of the lube pump timers, but it is better to be on the long side
-; to ensure proper operation.
-;
-; Example 1. The internal lube cycle interval is set to 60 minutes.
-;            Set P179 = 7500. In this example, as long as the accuracy
-;            of the lube timer interval causes the lube to turn on
-;            within 75 minutes, it will work. Note that the amount of time
-;            that lube is output is usually set with another timer control
-;            on the lube pump and it does not factor into the setting of P179.
-;
-; It should be noted that lube pumps with internal timers may differ on how
-; they operate.
-;
-; (a) For pumps that lube immediately when power is applied and then start timing
-; until the next cycle, it is possible to run out of lube quickly on short job
-; runs if, after the program has been run, lube power is removed.
-;
-; (b) For pumps that do not lube until it has been turned on for the interval time,
-; it is possible that lube never gets applied if, after the short program has been run,
-; lube power is removed.
-;
-; A short program or job run is defined as a job that finishes before
-; the interval setting (60 minutes in the above example).
-;
-; For the above mentioned reasons, we want the power to be applied for at least
-; the amount of time set by the interval timer, noting that if the user decides
-; to engage the E-stop to remove power after short jobs, then they risk the
-; above mentioned problems according to the type of pump.
-;
-; On the start of SV_PROGRAM_RUNNING, the lube pump turns on.
-; The lube pump is turned off when a program has NOT been
-; running continuously for MMM minutes or E-stop is engaged.
-; The reason the lube pump is turned off after a program has NOT been
-; running for MMM minutes is to prevent lubing when the user leaves for the
-; weekend, leaving the machine on and E-stop disengaged.
-
-IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN SET Lube_O, RST LubeM_T
-IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN LubeM_T = LubeM_W, SET LubeM_T
-IF LubeM_T || !EStopOk_M THEN RST Lube_O
-
-;=============================================================================
-                        LubeUsePLCTimersStage
-;=============================================================================
-; METHOD 2 (SS != 0) For lube pumps that do not have internal timers.
-;
-;  When using this method P179 should be set so the lube turns on
-;  every MMM minutes for SS seconds.
-;
-;  Example 1.
-;    To set the lube pump power to come on for 5 seconds
-;    every 10 minutes, set P179 =  1005.
-;                                 MMMSS
-;  Example 2.
-;    To set the lube pump power to come on for 30 seconds
-;    every 2 hours, set P179 = 12030
-;                              MMMSS
-;
-; This method will accumulate time while a program is running until
-; it reaches MMM minutes, at which time it will apply power
-; for SS seconds (unless E-stop is engaged) and then start over. It is
-; possible with frequent use of E-stop that a lube cycle is cut short.
-;
-
-IF (SV_PROGRAM_RUNNING || SV_MDI_MODE)  THEN LubeM_T = LubeM_W, SET LubeM_T
-IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN (StopRunningPD_PD)
-IF StopRunningPD_PD THEN LubeAccumTime_W = LubeAccumTime_W + LubeM_T, RST LubeM_T
-IF LubeM_T || (LubeAccumTime_W + LubeM_T > LubeM_W)
-  THEN SET Lube_O, LubeS_T = LubeS_W, SET LubeS_T, RST LubeM_T, LubeAccumTime_W = 0
-IF LubeS_T || !EStopOk_M THEN RST Lube_O, RST LubeS_T
 
 ;=============================================================================
                         KeyboardEventsStage
@@ -2891,6 +2790,13 @@ IF Initialize_T && !LubeOk_I && !SV_PROGRAM_RUNNING
   THEN SET LubeFault_M, FaultMsg_W = LUBE_FAULT_MSG_C
 
 IF !LubeOk_I && SV_PROGRAM_RUNNING THEN InfoMsg_W = LUBE_WARNING_MSG_C
+
+; Acroloc oil pump: power OUT2 only while a G-code program is actively
+; executing. Off in MDI, at idle, on feed-hold, and on any stop
+; (cycle-cancel/reset, E-stop, program end). Coil form = no latch: OUT2
+; drops the same scan any term clears. EStopOk_M mirrors the stock E-stop
+; cutoff. Replaces the retired Parameter-179 lube-timer stages.
+IF SV_JOB_IN_PROGRESS && !SV_MDI_MODE && !FeedHoldLED_O && EStopOk_M THEN (Lube_O)
 
 IF Initialize_T && !SpindleInverterOk_I
   THEN FaultMsg_W = SPINDLE_FAULT_MSG_C, SET SpindleFault_M

@@ -143,11 +143,11 @@ setup takes effect within one scan without a PLC reload. Nothing in this stage i
 
 Grouped by function:
 
-- **Lube pump timing** (src:1294-1296): `Lube_W = SV_MACHINE_PARAMETER_179`, then decoded
-  per the file's own comment block (src:1286-1291) as `MMMSS` (minutes*100 + seconds) into
-  `LubeM_W` (minutes -> ms) and `LubeS_W` (seconds -> ms). Two lube-control methods are then
-  selected by whether `LubeS_W == 0` (src:1309-1310): `LubeUsePumpTimersStage` for pumps with
-  their own internal timer, `LubeUsePLCTimersStage` for pumps the PLC must time itself.
+- **Oil pump:** no longer timed at boot. Parameter 179 is retired (not read by the PLC),
+  and the two former lube-timer stages (`LubeUsePumpTimersStage`/`LubeUsePLCTimersStage`)
+  are removed. The pump on `Lube_O` (OUT2) is now driven by the oil-pump coil in `MainStage`
+  (`SV_JOB_IN_PROGRESS && !SV_MDI_MODE && !FeedHoldLED_O && EStopOk_M`) — on only while a
+  program actively runs. See [main-stage.md](main-stage.md).
 - **MPG/handwheel setup** (src:1299-1306): parameter 218 selects wired MPG
   (`MPGStage`) vs. wireless MPG (`WirelessMpgStage`) (src:1299-1300). Parameter 348 (or 351/354)
   sets `MPG_M`/`HandWheel_M` presence flags (src:1301-1304). Parameter 19's bit 1 is tested
@@ -175,4 +175,4 @@ Grouped by function:
 
 None of these parameter-driven selections touch the Acroloc gear-shift or ATC state —
 `LoadParametersStage` has no `; Acroloc` markers and its stage-selection rungs only target
-lube, MPG, jog-key, and load-meter stages.
+MPG, jog-key, and load-meter stages.
