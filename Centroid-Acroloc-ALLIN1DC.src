@@ -207,6 +207,9 @@ MINI_PLC_8_WARNING_C            IS 43010;(2+256*168)
 ATC_Spindle_Not_Parked_C        IS 44034;(2+256*172) Spindle not parked.  Z Axis not tool change position.
 ATC_Lock_Not_Released_C         IS 44290;(2+256*173) Tool Carousel not locked.
 ATC_Lock_Released_C             IS 45546;(2+256*174) Tool Carousel locked.
+SPINDLE_IN_CHANGER_DBG_C        IS 44802;(2+256*175) DEBUG spindle in changer zone
+Z_CLEARED_RING_DBG_C            IS 45058;(2+256*176) DEBUG Z cleared tool ring
+CHANGER_HOLD_ARMED_DBG_C        IS 45314;(2+256*177) DEBUG changer feed-hold armed
 
 ;------------------------------------------------------------------------------
 ;                        INPUT DEFINITIONS
@@ -3005,6 +3008,11 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
   RST ChangerHoldActive_M,
   RST ChangerStopTimer_T
   
+
+; ---- DEBUG changer-safety tracing (temporary; remove all with: grep -n DEBUG) ----
+IF !ATC_Z_ClearedToolChanger_I THEN InfoMsg_W = SPINDLE_IN_CHANGER_DBG_C ; DEBUG
+IF ATC_Z_Zero_Release_I THEN InfoMsg_W = Z_CLEARED_RING_DBG_C ; DEBUG
+IF ChangerHoldActive_M THEN InfoMsg_W = CHANGER_HOLD_ARMED_DBG_C ; DEBUG
 
 ;=============================================================================
    ATCStage ; Acroloc
