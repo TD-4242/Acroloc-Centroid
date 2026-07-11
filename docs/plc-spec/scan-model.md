@@ -49,12 +49,11 @@ then `SET T` to arm/start it counting; while counting, the bare timer name (`T` 
 boolean) reads false, and it reads true once the elapsed count reaches the preset; `RST T`
 zeroes the elapsed count and stops it.
 
-Stock example — `LubeM_T IS T13` (src:1180):
-- (src:1422): `IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN
-  LubeM_T = LubeM_W, SET LubeM_T` — loads the preset from `LubeM_W` and arms it.
-- (src:1423): `IF LubeM_T || !EStopOk_M THEN RST Lube_O` — reads
-  the bare timer (true at expiry) to gate an output.
-- (src:1421): `RST LubeM_T` — zeroes it when the program is running.
+Stock example — `TriggerPause_T IS T6`, a short one-shot pause timer in `MainStage`:
+- `IF ActivateFeedHold_M THEN TriggerPause_T=100, SET TriggerPause_T` — assigns the 100 ms
+  preset and arms it.
+- `IF TriggerPause_T THEN RST TriggerPause_T, RST ActivateFeedHold_M` — reads the bare timer
+  (true at expiry) to clear the feed-hold trigger one-shot, and `RST`s to zero the count.
 
 Acroloc example — `GearCoast_T IS T25 ; Acroloc gear-shift coast dwell (neutral) before
 engage` (src:1189):

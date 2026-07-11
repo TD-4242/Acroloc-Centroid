@@ -157,6 +157,15 @@ manage recovery once `EStopOk_M` returns.
   [boot.md](boot.md)) so this doesn't fire during the lube system's own startup window.
 - (src:2856): `!LubeOk_I && SV_PROGRAM_RUNNING` posts a lube *warning* (not a fault) —
   running with low lube is allowed but flagged.
+- **Oil pump drive** (`; Acroloc`, added just after the lube-warning rung):
+  `IF SV_JOB_IN_PROGRESS && !SV_MDI_MODE && !FeedHoldLED_O && EStopOk_M THEN (Lube_O)`.
+  A combinational coil — OUT2 is powered *only* while a G-code program is actively
+  executing, and drops the same scan any term clears: off in MDI, at idle, on feed-hold,
+  and on any stop (cycle-cancel/reset, E-stop, program end). This replaced the stock
+  Parameter-179 lube-timer stages (`LubeUsePumpTimersStage`/`LubeUsePLCTimersStage`),
+  which are removed; P179 is retired. Interaction: the spindle-in-changer interlock's own
+  feed-hold (via `FeedHoldLED_O`) also parks the pump, which is intended. The lube-*fault*
+  rungs above are unchanged.
 - (src:2858-2860): `Initialize_T && !SpindleInverterOk_I` -> `SET SpindleFault_M`, post
   `SPINDLE_FAULT_MSG_C`; separately, `!EStopOk_M && !SpindleInverterOk_I` drives
   `InverterResetOut_O` — purpose inferred: pulses a reset line to the spindle inverter drive
