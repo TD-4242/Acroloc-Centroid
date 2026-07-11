@@ -13,7 +13,6 @@ repository.
 | File | Purpose |
 | --- | --- |
 | `Centroid-Acroloc-ALLIN1DC.src` | The PLC program (definitions + stages). Primary file. |
-| `plc.map` | Generated symbol→source-line map from the PLC compiler. Do not hand-edit. |
 | `mfunc3.mac` / `mfunc4.mac` | Spindle start CW / CCW |
 | `mfunc6.mac` | Tool change (M6) — drives the custom Acroloc ATC |
 | `mfunc7.mac` / `mfunc8.mac` | Coolant: mist / flood |

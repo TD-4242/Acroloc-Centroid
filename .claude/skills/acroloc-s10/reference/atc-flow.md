@@ -57,24 +57,39 @@ IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
 the macro fires `M94 /8`, this line latches the requested tool number into
 `ChangeToTool_W` (W72) and enables `ATCStage` (STG16).
 
-**Spindle-stop safety — `StopSpinBeforeATC_T` and `ZeroSpeed_I`:**
+**Spindle-in-changer feed-hold interlock — `ChangerStopTimer_T` and `ZeroSpeed_I`:**
 
-Search for `; Acroloc Make sure spindle stops before entering tool changer`.
+Search for `; Acroloc -- Spindle-in-changer feed-hold interlock` in `MainStage`. It is
+**not** gated on `M6_SV` — it protects *any* program/MDI move that drives Z into the
+changer, not just a tool change.
 
 ```plc
-IF M6_SV && !ATC_Z_ClearedToolChanger_I && !ZeroSpeed_I THEN
-  RST SpindleEnableOut_O,
-  SET StopSpinBeforeATC_T          ; T23, initialized to 5000 ms
+; unconditional zone-kill: spindle off whenever Z is in the changer, ALL modes
+IF !ATC_Z_ClearedToolChanger_I THEN
+  RST SpindleEnableOut_O
+
+; arm only if the spindle is NOT already confirmed stopped at entry
+IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I
+   && !ZeroSpeed_I && !ChangerHoldDone_M && !ChangerHoldActive_M THEN
+  SET ChangerHoldActive_M, SET ActivateFeedHold_M,
+  ChangerStopTimer_T = 5000, SET ChangerStopTimer_T
+
+; resume the instant zero confirms
+IF ChangerHoldActive_M && ZeroSpeed_I THEN ... SET DoCycleStart_SV
+
+; 5 s timeout, spindle still turning -> fault; motion stays held
+IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN ... SPINDLE_FAULT_MSG_C
 ```
 
-- `StopSpinBeforeATC_T` is a countdown (5 seconds, set in `InitialStage`).
-- Each scan while the timer is counting and `ZeroSpeed_I` is still false:
-  the spindle is still spinning; the PLC waits.
-- If the timer reaches 0 before `ZeroSpeed_I` asserts: fault —
-  `FaultMsg_W = SPINDLE_FAULT_MSG_C`, `SET ShowFaultStage`,
-  `SET OtherFault_M`, `RST ATCStage`. The carousel **never starts**.
-- If `ZeroSpeed_I` asserts before timeout: `RST StopSpinBeforeATC_T` —
-  the coast is clear; `ATCStage` proceeds.
+- `ChangerStopTimer_T` (T23, renamed from the dead `StopSpinBeforATC_T`) is a **5 s timeout
+  backstop** loaded at arm time — not a boot preset, and not a countdown-to-zero. Timer idiom:
+  a bare timer is true **when expired** (`== 0` would mean "just armed").
+- Normal M6 takes **no hold**: mfunc6 runs `M5` before the `G53 Z0` park move, so `ZeroSpeed_I`
+  already reads stopped at zone entry and the arm rung never fires.
+- If the spindle is still coasting at entry: feed hold engages and motion auto-resumes
+  (`SET DoCycleStart_SV`) the instant `ZeroSpeed_I` asserts. If it never stops within 5 s:
+  `SPINDLE_FAULT_MSG_C`, motion stays held, no auto-resume.
+- `ZeroSpeed_I` (INP12) is the F510 VFD zero-speed output — wired and tested.
 
 **Manual unlock (outside M6):**
 ```plc
@@ -90,19 +105,24 @@ INP27) and `ATCStage` is not running.
 Find this stage with `; Acroloc` or the comment `; Acroloc ATC Stage`
 (`ATCStage IS STG16`).
 
-**Entry safety re-check:**
+**Entry safety re-check:** two aborts, both with **full cleanup**:
 ```plc
 IF ATCStage && !ZeroSpeed_I THEN
-  FaultMsg_W = SPINDLE_FAULT_MSG_C, SET ShowFaultStage,
-  SET OtherFault_M, RST ATCStage
+  FaultMsg_W = SPINDLE_FAULT_MSG_C, SET ShowFaultStage, SET OtherFault_M,
+  RST ATCMotor_O, RST ATCUnlocked_O, RST M6_SV, ChangeToTool_W = 0, RST ATCStage
 
 IF !ATC_Z_Zero_Release_I THEN
-  FaultMsg_W = ATC_Spindle_Not_Parked_C, SET ShowFaultStage,
-  SET OtherFault_M, RST ATCStage
+  FaultMsg_W = ATC_Spindle_Not_Parked_C, SET ShowFaultStage, SET OtherFault_M,
+  RST ATCMotor_O, RST ATCUnlocked_O, RST M6_SV, ChangeToTool_W = 0, RST ATCStage
 ```
 Two defensive checks at stage entry: spindle must be stopped (`ZeroSpeed_I`,
 INP12) and Z must be clear of the carousel ring (`ATC_Z_Zero_Release_I`,
 INP27). Either failure aborts with a fault message.
+
+**Gotcha:** both aborts must clean up fully — stop the motor, relock, drop `M6_SV`, clear
+`ChangeToTool_W`. `RST ATCStage` alone (which is what the Z-parked abort used to do) leaves
+`ATCMotor_O`/`ATCUnlocked_O` energized and `M6_SV` set, so the carousel keeps spinning unlocked
+while `MainStage` re-arms the stage every scan. Any new abort path needs the same cleanup.
 
 **Start the carousel:**
 ```plc

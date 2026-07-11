@@ -92,11 +92,12 @@ Rung-by-rung (src:1257-1281), grouped by effect:
   message system in the "no fault" state.
 - Timer preset loads: `Initialize_T = 1000, SET Initialize_T` (src:1272 — this one is both
   loaded *and* explicitly armed, unlike the others here), `ErrorFlag_T = 1000` (src:1273),
-  `MsgClear_T = 1000` (src:1274), `StopSpinBeforATC_T = 1000` (src:1275) — four timers preset
-  to 1000 ms; only `Initialize_T` is armed (`SET`) in this same rung, so it is the one
-  timer guaranteed to actually be running immediately after power-up. `StopSpinBeforATC_T`
-  is the Acroloc ATC spindle-stopped-before-carousel-motion timer described in the
-  repo-level ATC flow — see [atc.md](atc.md) for where it is armed and read.
+  `MsgClear_T = 1000` (src:1274) — three timers preset to 1000 ms; only `Initialize_T` is
+  armed (`SET`) in this same rung, so it is the one timer guaranteed to actually be running
+  immediately after power-up. A fourth preset, `StopSpinBeforATC_T = 1000`, was **removed**
+  2026-07-09: that timer is now `ChangerStopTimer_T` (T23) and its set point is assigned at
+  arm time by the spindle-in-changer feed-hold interlock, so a boot preset would be dead code
+  and a second source of truth — see [atc.md](atc.md).
 - **Acroloc power-up gear defaults** (src:1276-1280), all tagged `; Acroloc`:
   `SET Spindle_Low_gear_O`, `SET Spindle_High_gear_O` (both on = **neutral**),
   `EngagedRange_W = 0` (gear unknown), `DesiredRange_W = 0`, `SpindleRange_W = 1`. See

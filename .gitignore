@@ -3,7 +3,9 @@
 # exes/dlls, etc.). Only a curated set of PLC source/config/doc files should
 # ever be tracked, so ignore everything by default and explicitly un-ignore
 # what belongs in git. This also covers compiler scratch output (mpu.plc,
-# plc.out, mpu.dbg, mpu.sym, xplc.sym, mpu-stats.txt) without listing each one.
+# plc.map, plc.out, mpu.dbg, mpu.sym, xplc.sym, mpu-stats.txt) without listing
+# each one -- these are regenerated whenever the .src is compiled (locally or on
+# the control PC), so there is no value in committing them.
 /*
 
 !/.claude/
@@ -17,6 +19,5 @@
 !/compile.sh
 !/mfunc*.mac
 !/mpucomp.exe
-!/plc.map
 !/plcmsg.txt
 !/language.msg
