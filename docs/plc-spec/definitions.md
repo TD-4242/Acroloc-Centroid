@@ -118,8 +118,8 @@ in the source.
 |---|---|---|---|---|
 | `NoFaultOut_O` | OUT1 | 368 | | "No fault" indicator, SPST. [main-stage.md](main-stage.md) |
 | `Lube_O` | OUT2 | 369 | | Oil pump, SPST — driven by the `MainStage` oil-pump coil. [main-stage.md](main-stage.md) |
-| `Flood_O` | OUT3 | 370 | | Flood coolant, SPST. [main-stage.md](main-stage.md) |
-| `Mist_O` | OUT4 | 371 | | Mist coolant, SPST. [main-stage.md](main-stage.md) |
+| `FloodValve_O` | OUT3 | 370 | Acroloc | Flood valve — opens the coolant pump to the workspace nozzles; SPST. [main-stage.md](main-stage.md) |
+| `CoolantPump_O` | OUT4 | 371 | Acroloc | Coolant pump — pressurizes coolant (+valve = flood nozzles, no valve = cleaning hose); SPST. [main-stage.md](main-stage.md) |
 | `InverterResetOut_O` | OUT5 | 372 | | Spindle inverter reset, SPST. [main-stage.md](main-stage.md) |
 | `WorkLightOut_O` | OUT6 | 373 | | Work light, SPST. [main-stage.md](main-stage.md) |
 | `SpindleEnableOut_O` | OUT7 | 374 | | Spindle enable, SPST. [main-stage.md](main-stage.md) |

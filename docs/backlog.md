@@ -8,6 +8,12 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done.
 
 ## Robustness / safety
 
+- [x] **Coolant pump / flood-valve plumbing fix.** OUT4 is the coolant pump (`Mist_O` ->
+  `CoolantPump_O`) and OUT3 is the flood valve (`Flood_O` -> `FloodValve_O`). The stock
+  mutually-exclusive logic left flood opening the valve with the pump **off** — no nozzle
+  flow. Now derived from the selected mode: flood = pump + valve, wash/"mist" = pump only;
+  panel flood/wash made mutually exclusive. *Shipped on `post-release-fixes`.*
+
 - [x] **ATC carousel search timeout.** Bound the carousel search so a jam, broken position
   switch, or invalid tool number can't spin the carousel forever. Arm `ATCSpin_T` (T24) at M6
   kickoff; fault (`CAROUSEL MOVE TIME OUT`, msg 63) + stop + relock after 20 s.

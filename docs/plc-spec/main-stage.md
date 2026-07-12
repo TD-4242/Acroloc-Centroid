@@ -330,13 +330,18 @@ its downstream consumer.
 
 - (src:2089-2099): `CoolantAutoManualPD_PD` toggles `CoolAutoModeLED_O` (forced on at
   power-up, src:2091), which is mirrored to CNC12 via `SelectCoolAutoMan_SV`.
-- (src:2117-2120) Flood: `Flood_O` is a coil combining a manual-mode toggle
-  (`Flood_O XOR (!CoolAutoModeLED_O && CoolantFloodPD_PD)`, i.e. flip on a manual key press)
-  with an auto-mode drive (`CoolAutoModeLED_O && M8_SV`, i.e. follow the M8 code exactly),
-  ANDed against a kill condition (`!(SV_STOP || CoolantAutoManualPD_PD ||
-  (CoolAutoModeLED_O && !M8_SV) || ErrorFlag_M || DoToolCheck_SV)`) — flood is forced off on
-  stop/fault/tool-check or the instant the mode is toggled or auto mode has no M8 asserted.
-- (src:2124-2127) Mist: identical shape, `Mist_O` against `M7_SV`.
+- Coolant **mode selection**: the two coolant rungs are coils that toggle the *mode LEDs*
+  `CoolFloodLED_O` / `CoolMistLED_O` (each `LED XOR (!CoolAutoModeLED_O && CoolantXxxPD_PD)`
+  for a manual key press, OR `CoolAutoModeLED_O && M8_SV`/`M7_SV` for auto), ANDed against a
+  kill condition (`!(SV_STOP || CoolantAutoManualPD_PD || (CoolAutoModeLED_O && !MxSV) ||
+  ErrorFlag_M || DoToolCheck_SV)`) and report `SelectCoolantFlood_SV`/`SelectCoolantMist_SV`
+  to CNC12. They no longer drive the physical outputs directly. The panel modes are made
+  mutually exclusive (a flood press RSTs `CoolMistLED_O` and vice versa, manual mode only).
+- Coolant **outputs are derived** from the mode LEDs to match this machine's plumbing
+  (OUT4 = coolant pump, OUT3 = flood valve): `IF CoolFloodLED_O THEN (FloodValve_O)` and
+  `IF CoolFloodLED_O || CoolMistLED_O THEN (CoolantPump_O)` — flood runs the pump **and**
+  opens the valve; wash/"mist" runs the pump only. The derived outputs inherit the LEDs'
+  stop/fault/tool-check gating.
 - Both mist and flood are reset as part of the M-code housekeeping rung inside the
   `MainStage` banner (`RST M8_SV, RST M7_SV`, src:2889-2890) when leaving
   `SV_PROGRAM_RUNNING`/`SV_MDI_MODE`, and both drive an `AutoCoolantPD_PD` feed-hold prompt
