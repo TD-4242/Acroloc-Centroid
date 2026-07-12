@@ -50,9 +50,6 @@ in the source.
 | `SpindleInverterOk_I` | INP10 | 217 | | Spindle inverter ok when closed. [main-stage.md](main-stage.md) |
 | `EStopOk_I` | INP11 | 218 | | E-stop circuit ok. [main-stage.md](main-stage.md) |
 | `ZeroSpeed_I` | INP12 | 236 | | Spindle confirmed stopped (F510 VFD zero-speed output; wired and tested). Read by the changer feed-hold interlock and the `ATCStage` carousel guard. [main-stage.md](main-stage.md), [atc.md](atc.md) |
-| `SpinLowRange_I` | INP13 | 220 | | Spindle in low range (defined but unused — see below). |
-| `SpinMedRange_I` | INP14 | 221 | | Spindle in medium range (defined but unused — see below). |
-| `SpinHighRange_I` | INP15 | 222 | | Spindle in high range (defined but unused — see below). |
 | `ATCManualUnlock_I` | INP24 | 226 | Acroloc | Front-panel manual unlock button. [atc.md](atc.md) |
 | `ATCLocked_I` | INP25 | 227 | Acroloc | Piston sensor confirming carousel locked. [atc.md](atc.md) |
 | `ATC_Z_ClearedToolChanger_I` | INP26 | 228 | Acroloc | Spindle has entered the tool changer (zero rpm). [atc.md](atc.md) |
@@ -404,12 +401,9 @@ identifier bound — no name to cite.
 
 ## Defined but unused
 
-Verified via `grep -n '<name>' Centroid-Acroloc-ALLIN1DC.src` showing only the definition
-line (no reads or writes elsewhere in the file):
-
-- `SpinLowRange_I` (`INP13`, src:220)
-- `SpinMedRange_I` (`INP14`, src:221)
-- `SpinHighRange_I` (`INP15`, src:222)
-
-(`ATCSpin_T` (`T24`) is no longer here — it is now armed at M6 kickoff and read as the
-carousel search watchdog; see [atc.md](atc.md#search-timeout).)
+None currently. The former stock gear-sense inputs `SpinLowRange_I` / `SpinMedRange_I` /
+`SpinHighRange_I` (INP13-15) were **removed** — the two-speed shift is intentionally
+open-loop and closed-loop gear confirmation is not planned; a source comment at the old
+definition site records that INP13-15 are the (unwired) gear-sense inputs. `ATCSpin_T`
+(`T24`) is now armed at M6 kickoff and read as the carousel search watchdog; see
+[atc.md](atc.md#search-timeout).

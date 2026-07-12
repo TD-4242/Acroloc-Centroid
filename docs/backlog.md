@@ -46,18 +46,17 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done.
 
 ## Enhancements (code)
 
-- [ ] **Closed-loop gear-position confirmation.** The two-speed shift (`GearShiftStage`,
-  OUT19/OUT20) is currently open-loop — it commands a clutch and assumes it engaged. The stock
-  gear-sense inputs `SpinLowRange_I`/`SpinMedRange_I`/`SpinHighRange_I` (INP13-15) are defined but
-  unused (reserved for exactly this). Wire them in to confirm the commanded gear actually
-  engaged and fault/retry if not. Needs the inputs physically wired + owner confirmation of the
-  sense scheme.
+- [x] **Closed-loop gear-position confirmation — WON'T DO.** Not feasible on this machine (the
+  gear-sense inputs aren't wired and won't be). The shift stays intentionally open-loop. Cleaned
+  up the remnants: removed the unused `SpinLowRange_I`/`SpinMedRange_I`/`SpinHighRange_I`
+  (INP13-15) symbols (a source comment records the hardware fact), cleared 3 unused-input
+  warnings (193 -> 190), and updated the docs to frame open-loop as by-design. *`post-release-fixes`.*
 
 ## Tuning (on-machine, mostly parameters)
 
-- [ ] **Spindle RPM accuracy + gear-shift smoothness.** Validate/tune commanded-vs-actual RPM per
-  range, the high-gear ratio (P863, ~2.0), CfgMin, and shift coast/dwell behavior. More
-  on-machine validation than code; may surface small logic tweaks.
+- [x] **Spindle RPM accuracy + gear-shift smoothness — working as-is.** Owner confirms
+  commanded-vs-actual RPM and gear-shift behavior are working great in the current tune
+  (P863 ~2.0, CfgMin, shift coast/dwell). No changes needed; closed. *2026-07-12.*
 
 ## Documentation (machine facts — confirm with owner)
 

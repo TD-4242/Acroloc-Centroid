@@ -237,9 +237,9 @@ LubeOk_I                        IS INP9  ;Lube_O is "OK" when input is closed
 SpindleInverterOk_I             IS INP10 ;Inverter is "OK" when input is closed
 EStopOk_I                       IS INP11
 ZeroSpeed_I                     IS INP12
-SpinLowRange_I                  IS INP13 ; Acroloc: stock gear-sense input, now unused (reserved for future gear-position confirmation)
-SpinMedRange_I                  IS INP14
-SpinHighRange_I                 IS INP15
+; INP13-15 are stock gear-sense inputs (low/med/high range). Left unwired/unused:
+; the two-speed shift is intentionally open-loop; closed-loop gear confirmation is
+; not planned (would need the sense switches wired). Symbols removed to avoid dead code.
 
 ;If a PLC expansion board (PLCADD1616) is used, the additional inputs will
 ;begin at input 17.

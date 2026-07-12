@@ -238,13 +238,15 @@ the `InToolSelect_M` gating must still be tested carefully. A value of
 `+16` for Pos5 instead of `+10` would cause tools 10–15 to never match (now a
 20 s fault rather than an infinite spin).
 
-### 2. Transmission shift is automated open-loop (no gear-position feedback)
+### 2. Transmission shift is open-loop by design
 
 `Spindle_Low_gear_O` (OUT19) and `Spindle_High_gear_O` (OUT20) are driven by
 the RPM-based auto-shift logic: a decision block in `MainStage` picks the gear
 from the un-overridden commanded S (crossover P941 ± hysteresis P942) and
 `GearShiftStage` (STG17) swaps clutches with a neutral coast dwell (P943).
-There is **no gear-position or speed feedback** — the engaged gear is tracked
-only from the commanded clutch outputs (`EngagedRange_W`), and a shift is
-inhibited during `ATCStage`. See the "Automatic RPM-based gear shifting"
-section of `README.md` and `reference/spindle-transmission.md`.
+This is **intentionally open-loop** — the engaged gear is tracked only from the
+commanded clutch outputs (`EngagedRange_W`), and a shift is inhibited during
+`ATCStage`. Closed-loop gear confirmation is **not planned**: the stock
+gear-sense inputs (INP13-15) are unwired and their PLC symbols were removed. See
+the "Automatic RPM-based gear shifting" section of `README.md` and
+`reference/spindle-transmission.md`.
