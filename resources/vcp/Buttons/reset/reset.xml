@@ -1,0 +1,8 @@
+<vcp_button>
+	<skin_event_num>56</skin_event_num>
+	<plc_output>
+		<number>1107</number>
+		<image_on>reset_tripped.svg</image_on>
+ 		<image_off>reset.svg</image_off>
+	</plc_output>
+</vcp_button>

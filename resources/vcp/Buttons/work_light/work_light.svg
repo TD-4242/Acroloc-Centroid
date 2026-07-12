@@ -1,0 +1,21 @@
+<svg id="work_light" data-name="work light" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="99.95" height="99.94" viewBox="0 0 99.95 99.94">
+  <defs>
+    <linearGradient id="linear-gradient" x1="38.13" y1="63.88" x2="99.95" y2="63.88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="0.95" stop-color="#f6e92d"/>
+      <stop offset="0.99" stop-color="#f6e92d"/>
+      <stop offset="1" stop-color="#f6e92d"/>
+    </linearGradient>
+  </defs>
+  <title>work_light</title>
+  <rect width="99.95" height="99.94" rx="6" style="fill: #262c6b"/>
+  <g>
+    <path d="M7.08,91.6c-2.69-31,7.06-50,30.7-59.83L39.13,35C17.09,44.17,8,62.06,10.55,91.29Z" style="fill: #a7a9ac"/>
+    <path d="M6.17,92.68l-.08-1C3.35,60.22,13.3,40.89,37.4,30.85l.92-.39,2.11,5.06-.92.39c-21.58,9-30.46,26.56-28,55.3l.09,1Zm31.08-59.6C15,42.74,5.67,61,8,90.51l1.48-.13C7.21,61.65,16.24,43.83,37.82,34.45Z" style="fill: #231f20"/>
+  </g>
+  <g>
+    <polygon points="38.12 51.1 60.71 27.75 48.94 27.16 37.58 15.89 25.58 27.34 37.08 38.88 38.12 51.1" style="fill: #a8a9ac"/>
+    <path d="M37.31,53.38,36.12,39.33l-12-12L37.59,14.49,49.37,26.18,63,26.86ZM27,27.36l11,11.07.88,10.4L58.46,28.64l-10-.5L37.57,17.28Z" style="fill: #231f20"/>
+  </g>
+  <polygon points="99.95 99.94 99.95 30.42 60.72 27.82 38.13 51.17 41.99 99.94 99.95 99.94" style="fill: url(#linear-gradient)"/>
+</svg>

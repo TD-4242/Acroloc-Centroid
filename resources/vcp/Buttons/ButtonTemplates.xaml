@@ -1,0 +1,128 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:VirtualControlPanel.Buttons">
+
+  <!-- -->
+  <SolidColorBrush x:Key="ButtonBlue" Color="#FF001B72" />
+  <SolidColorBrush x:Key="ButtonYellow" Color="#FFFFC602" />
+  <SolidColorBrush x:Key="ButtonWhite" Color="#BFFFFFFF" />
+  <SolidColorBrush x:Key="ButtonRed" Color="#FFED1C24" />
+
+  <SolidColorBrush x:Key="RedLedOutline" Color="#FFED1C24" />
+
+  <RadialGradientBrush x:Key="LedOff">
+    <GradientStop Color="White" Offset="2.5" />
+    <GradientStop Color="Black" />
+  </RadialGradientBrush>
+
+  <Style TargetType="TextBlock">
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="FontFamily" Value="Verdana" />
+  </Style>
+
+  <Style x:Key="FocusVisual">
+    <Setter Property="Control.Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Rectangle Margin="2" SnapsToDevicePixels="true" Stroke="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" StrokeThickness="1" StrokeDashArray="1 2" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="pentagonal" TargetType="{x:Type Button}">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
+    <Setter Property="Background" Value="{DynamicResource ButtonYellow}" />
+    <Setter Property="BorderBrush" Value="{x:Null}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Padding" Value="1" />
+    <Setter Property="FontFamily" Value="Arial" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type Button}">
+          <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Viewbox Stretch="Fill">
+              <Path x:Name="pentagon" Stroke="{TemplateBinding BorderBrush}" StrokeThickness="1" Fill="{TemplateBinding Background}" StrokeLineJoin="Miter" Margin="1">
+                <Path.Data>
+                  <PathGeometry>
+                    <PathGeometry.Figures>
+                      <PathFigure StartPoint="0,40" IsClosed="true">
+                        <LineSegment Point="0,15" />
+                        <LineSegment Point="20,0" />
+                        <LineSegment Point="40,15" />
+                        <LineSegment Point="40,40" />
+                      </PathFigure>
+                    </PathGeometry.Figures>
+                  </PathGeometry>
+                </Path.Data>
+              </Path>
+            </Viewbox>
+            <ContentPresenter />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsDefaulted" Value="true">
+              <Setter Property="Stroke" TargetName="pentagon" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="true">
+              <Setter Property="Opacity"  TargetName="pentagon" Value=".9" />
+              <Setter Property="Stroke" TargetName="pentagon" Value="{DynamicResource Button.MouseOver.Border}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="true">
+              <Setter Property="Opacity" TargetName="pentagon" Value="1" />
+              <Setter Property="Stroke" TargetName="pentagon" Value="DarkGray" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="false">
+              <Setter Property="Fill" TargetName="pentagon" Value="{DynamicResource Button.Disabled.Background}" />
+              <Setter Property="Stroke" TargetName="pentagon" Value="{DynamicResource Button.Disabled.Border}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="NormalStyle" TargetType="{x:Type Button}">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
+    <Setter Property="Background" Value="{DynamicResource ButtonBlue}" />
+    <Setter Property="BorderBrush" Value="White" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Padding" Value="1" />
+    <Setter Property="FontFamily" Value="Arial" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type Button}">
+          <Border x:Name="border" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" SnapsToDevicePixels="true" CornerRadius="3">
+            <ContentPresenter />
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsDefaulted" Value="true">
+              <Setter Property="BorderBrush" TargetName="border" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+            </Trigger>
+            <Trigger Property="IsMouseOver" Value="true">
+              <Setter Property="Opacity"  TargetName="border" Value=".8" />
+              <Setter Property="BorderBrush" TargetName="border" Value="{DynamicResource Button.MouseOver.Border}" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="true">
+              <Setter Property="Opacity" TargetName="border" Value="1" />
+              <Setter Property="BorderBrush" TargetName="border" Value="{x:Null}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="false">
+              <Setter Property="Background" TargetName="border" Value="{DynamicResource Button.Disabled.Background}" />
+              <Setter Property="BorderBrush" TargetName="border" Value="{DynamicResource Button.Disabled.Border}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>

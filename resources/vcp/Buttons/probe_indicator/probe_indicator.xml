@@ -1,0 +1,7 @@
+<vcp_button>
+	<plc_input>
+		<number>7</number>
+		<image_on>probe_trip.svg</image_on>
+		<image_off>probe_clear.svg</image_off>
+	</plc_input>
+</vcp_button>

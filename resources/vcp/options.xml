@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArrayOfVcpOption xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <VcpOption>
+    <Name>Skin</Name>
+    <Value>servo_mill_vcp_skin</Value>
+  </VcpOption>
+  <VcpOption>
+    <Name>KeepOnTop</Name>
+    <Value>False</Value>
+  </VcpOption>
+  <VcpOption>
+    <Name>DisableSnap</Name>
+    <Value>False</Value>
+  </VcpOption>
+  <VcpOption>
+    <Name>AdjustTransparency</Name>
+    <Value>False</Value>
+  </VcpOption>
+  <VcpOption>
+    <Name>Transparency</Name>
+    <Value>100</Value>
+  </VcpOption>
+  <VcpOption>
+    <Name>AutoSize</Name>
+    <Value>True</Value>
+  </VcpOption>
+  <VcpOption>
+    <Name>Height</Name>
+    <Value>1050</Value>
+  </VcpOption>
+  <VcpOption>
+    <Name>Width</Name>
+    <Value>522</Value>
+  </VcpOption>
+  <VcpOption>
+    <Name>Left</Name>
+    <Value>1400</Value>
+  </VcpOption>
+  <VcpOption>
+    <Name>Top</Name>
+    <Value>0</Value>
+  </VcpOption>
+</ArrayOfVcpOption>

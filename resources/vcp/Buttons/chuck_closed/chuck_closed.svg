@@ -1,0 +1,28 @@
+<svg id="New_VCP" data-name="New VCP" xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <title>chuck_closed</title>
+  <rect width="100" height="100" rx="6" ry="6" style="fill: #ffc70e"/>
+  <polygon points="91.5 66.82 85.52 66.82 85.52 90.82 82.52 90.82 82.52 66.82 76.55 66.82 84.02 53.86 91.5 66.82" style="fill: #010101"/>
+  <polygon points="91.87 31.49 84.39 44.44 76.91 31.49 82.89 31.49 82.89 6.76 85.89 6.76 85.89 31.49 91.87 31.49" style="fill: #010101"/>
+  <g>
+    <rect x="10.23" y="8.21" width="29.95" height="79.15" style="fill: #fff"/>
+    <path d="M40.68,87.86h-31V7.71h31Zm-30-1h29V8.71h-29Z" style="fill: #010101"/>
+  </g>
+  <g>
+    <polygon points="65.55 43.27 65.55 31.68 53.95 31.68 53.95 20.08 40.91 20.08 40.91 43.27 65.55 43.27" style="fill: #fff"/>
+    <path d="M66,43.77H40.41V19.58h14V31.18H66Zm-24.64-1H65V32.18H53.45V20.58h-12Z" style="fill: #010101"/>
+  </g>
+  <rect x="46.21" y="38.65" width="1" height="4.35" style="fill: #010101"/>
+  <rect x="50.55" y="38.65" width="1" height="4.35" style="fill: #010101"/>
+  <rect x="54.9" y="38.65" width="1" height="4.35" style="fill: #010101"/>
+  <rect x="59.25" y="38.65" width="1" height="4.35" style="fill: #010101"/>
+  <g>
+    <polygon points="65.55 52.41 65.55 64.01 53.95 64.01 53.95 75.6 40.91 75.6 40.91 52.41 65.55 52.41" style="fill: #fff"/>
+    <path d="M54.45,76.1h-14V51.92H66V64.51H54.45Zm-13-1h12V63.51H65V52.92H41.41Z" style="fill: #010101"/>
+  </g>
+  <rect x="46.21" y="52.69" width="1" height="4.35" style="fill: #010101"/>
+  <rect x="50.55" y="52.69" width="1" height="4.35" style="fill: #010101"/>
+  <rect x="54.9" y="52.69" width="1" height="4.35" style="fill: #010101"/>
+  <rect x="59.25" y="52.69" width="1" height="4.35" style="fill: #010101"/>
+  <path d="M22.07,26.83a6.3,6.3,0,1,1,6.3-6.3A6.3,6.3,0,0,1,22.07,26.83Zm0-11.59a5.3,5.3,0,1,0,5.3,5.3A5.3,5.3,0,0,0,22.07,15.23Z" style="fill: #010101"/>
+  <path d="M24,23.93H20.11l-2-3.4,2-3.4H24l2,3.4Zm-3.35-1h2.77l1.38-2.4-1.38-2.4H20.68l-1.38,2.4Z" style="fill: #010101"/>
+</svg>

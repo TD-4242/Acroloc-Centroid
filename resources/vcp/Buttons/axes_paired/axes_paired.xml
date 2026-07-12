@@ -1,0 +1,10 @@
+<vcp_button>
+	<skin_event_num>18</skin_event_num>
+	<plc_output>
+		<number>1106</number>
+		<color_off>#EC1C24</color_off>
+		<color_on>#00FF00</color_on>
+		<image_on>axes_paired.svg</image_on>
+		<image_off>axes_re_pair.svg</image_off>
+	</plc_output>
+</vcp_button>

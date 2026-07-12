@@ -1,0 +1,8 @@
+<vcp_button>
+	<skin_event_num>6</skin_event_num> //number that tells cnc12 what the buttons functionality does
+	<plc_output>
+		<number>1062</number> //output number from plc to tell the vcp if the led should be on or off 
+		<color_on>#EC1C24</color_on> // color of led on
+		<color_off>#81151C</color_off> // color of led off
+	</plc_output>
+</vcp_button>

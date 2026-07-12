@@ -1,0 +1,8 @@
+<vcp_button>
+	<skin_event_num>101</skin_event_num>
+	<plc_output>
+		<number>1135</number>
+		<color_on>#EC1C24</color_on>
+		<color_off>#81151C</color_off>
+	</plc_output>
+</vcp_button>

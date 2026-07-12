@@ -1,0 +1,36 @@
+<svg id="New_VCP" data-name="New VCP" xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <title>chuck_open</title>
+  <rect width="100" height="100" rx="6" ry="6" style="fill: #ffc70e"/>
+  <g>
+    <polygon points="94.17 26.74 85.51 26.74 85.51 44.2 81.16 44.2 81.16 26.74 72.49 26.74 83.33 7.97 94.17 26.74" style="fill: #010101"/>
+    <polygon points="94.17 72.54 83.33 91.3 72.49 72.54 81.16 72.54 81.16 55.07 85.51 55.07 85.51 72.54 94.17 72.54" style="fill: #010101"/>
+    <g>
+      <rect x="10.63" y="10.14" width="29.95" height="79.15" style="fill: #fff"/>
+      <path d="M41.3,90H9.9V9.42H41.3Zm-30-1.45h28.5V10.87H11.35Z" style="fill: #010101"/>
+    </g>
+    <g>
+      <polygon points="65.94 36.96 65.94 25.36 54.35 25.36 54.35 13.77 41.3 13.77 41.3 36.96 65.94 36.96" style="fill: #fff"/>
+      <path d="M66.67,37.68H40.58V13H55.07V24.64H66.67ZM42,36.23H65.22V26.09H53.62V14.49H42Z" style="fill: #010101"/>
+    </g>
+    <g>
+      <rect x="46.38" y="33.33" width="1.45" height="4.35" style="fill: #010101"/>
+      <rect x="50.72" y="33.33" width="1.45" height="4.35" style="fill: #010101"/>
+      <rect x="55.07" y="33.33" width="1.45" height="4.35" style="fill: #010101"/>
+      <rect x="59.42" y="33.33" width="1.45" height="4.35" style="fill: #010101"/>
+    </g>
+    <g>
+      <polygon points="65.94 63.04 65.94 74.64 54.35 74.64 54.35 86.23 41.3 86.23 41.3 63.04 65.94 63.04" style="fill: #fff"/>
+      <path d="M55.07,87H40.58V62.32H66.67v13H55.07ZM42,85.51H53.62V73.91H65.22V63.77H42Z" style="fill: #010101"/>
+    </g>
+    <g>
+      <rect x="46.38" y="62.32" width="1.45" height="4.35" style="fill: #010101"/>
+      <rect x="50.72" y="62.32" width="1.45" height="4.35" style="fill: #010101"/>
+      <rect x="55.07" y="62.32" width="1.45" height="4.35" style="fill: #010101"/>
+      <rect x="59.42" y="62.32" width="1.45" height="4.35" style="fill: #010101"/>
+    </g>
+    <g>
+      <path d="M22.46,29A6.52,6.52,0,1,1,29,22.46,6.53,6.53,0,0,1,22.46,29Zm0-11.59a5.07,5.07,0,1,0,5.07,5.07A5.08,5.08,0,0,0,22.46,17.39Z" style="fill: #010101"/>
+      <path d="M24.56,26.09H20.37l-2.09-3.62,2.09-3.62h4.18l2.09,3.62Zm-3.35-1.45h2.51L25,22.46l-1.26-2.17H21.21L20,22.46Z" style="fill: #010101"/>
+    </g>
+  </g>
+</svg>

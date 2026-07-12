@@ -1,0 +1,27 @@
+<vcp_button>
+	<skin_event_num>118</skin_event_num>
+	<plc_output>
+		<number>1145</number>
+		<color_on>#EC1C24</color_on>
+		<color_off>#81151C</color_off>
+		<image_on>rapid_feed_linked.svg</image_on>
+ 		<image_off>rapid_feed_not_linked.svg</image_off>
+	</plc_output>
+	<switch>
+        <trigger>
+            <plc_output>
+                <number>1145</number>
+            </plc_output>
+        </trigger>
+        <switch_on>
+            <add>linked_group</add>
+            <remove>feed_group</remove>
+        </switch_on>
+        <switch_off>
+            <remove>linked_group</remove>
+            <add>feed_group</add>
+        </switch_off>
+        <add>feed_button_group</add>
+		<remove>rapid_group</remove>
+	</switch>
+</vcp_button>

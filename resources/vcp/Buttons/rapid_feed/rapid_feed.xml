@@ -1,0 +1,18 @@
+<vcp_button>
+    <switch>
+        <switch_on>
+            <remove>feed_group</remove>
+            <remove>feed_button_group</remove>
+            <add>rapid_group</add>
+            <image_on>rapid_feed_lit.svg</image_on>
+        </switch_on>
+        <switch_off>
+            <remove>rapid_group</remove>
+            <add>feed_group</add>
+            <add>feed_button_group</add>
+            <image_off>rapid_feed.svg</image_off>
+        </switch_off>
+        <remove>linked_group</remove>
+        <add>unlinked_group</add>
+    </switch>
+</vcp_button>

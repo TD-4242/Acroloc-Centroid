@@ -1,0 +1,8 @@
+<svg id="New_VCP" data-name="New VCP" xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <title>feedrate_positive</title>
+  <g>
+    <path d="M99.39,48.1,64.09.5H6.51a6,6,0,0,0-6,5.93V93.56a6,6,0,0,0,6,5.94H64.9Z" style="fill: #fff"/>
+    <path d="M65.16,100H6.51A6.48,6.48,0,0,1,0,93.56V6.43A6.48,6.48,0,0,1,6.51,0H64.34l.14.2L100,48.09l-.2.29ZM6.51,1A5.49,5.49,0,0,0,1,6.43V93.56A5.49,5.49,0,0,0,6.51,99H64.63L98.79,48.12,63.84,1Z" style="fill: #231f20"/>
+  </g>
+  <path d="M32,45.3H43.24V34H52.7V45.3H64v9.46H52.7V66H43.24V54.76H32Z" style="fill: #231f20"/>
+</svg>
