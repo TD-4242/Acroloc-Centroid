@@ -731,7 +731,7 @@ KbAux16Key_M                  IS MEM447 ; "ctrl" + "4"
 
 ; Tool changer position state tracking
 InToolSelect_M                IS MEM443 ; Acroloc 0=false, 1=true
-ToolSelected_M                IS MEM444 ; Acroloc 0=false, 1=true
+ToolSelected_M                IS MEM452 ; Acroloc 0=false, 1=true (moved off MEM444; it collided with KbAux13Key_M)
 ChangerHoldActive_M           IS MEM448 ; Acroloc feed-hold active while spindle stops in changer zone
 ChangerHoldDone_M             IS MEM449 ; Acroloc once-per-entry latch, cleared when Z clears changer
 ;------------------------------------------------------------------------------

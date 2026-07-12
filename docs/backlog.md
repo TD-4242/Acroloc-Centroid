@@ -15,10 +15,11 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done.
   *Status: implemented on branch `atc-carousel-timeout` (spec + plan 2026-07-11); pending
   on-machine validation via `docs/testing/atc-timeout-test.md`.*
 
-- [ ] **Fix MEM444 double-binding.** `ToolSelected_M` (src:732) and `KbAux13Key_M` (src:725)
-  are both bound to `MEM444` — two symbols sharing one bit. Latent correctness bug (a keyboard
-  Ctrl+1 could collide with the ATC "tool selected" flag). Move one to a free MEM and verify no
-  behavior change. Small.
+- [x] **Fix MEM444 double-binding.** `ToolSelected_M` and `KbAux13Key_M` both bound `MEM444`.
+  Confirmed active bug: `KbAux13Key_M` is read at src:1996 to fire Aux13, while
+  `ToolSelected_M` is SET on every completed tool change — so a tool change spuriously fired
+  Aux13. Moved `ToolSelected_M` to the free `MEM452`; the compiler's duplicate-binding warning
+  cleared (194 -> 193). *Shipped on `post-release-fixes`.*
 
 - [x] **Fix `ATC_Lock_Released_C` message value.** Was `IS 45546 ;(2+256*174)`, but
   `2+256*174 = 44546` — the old value was off by 1000 and did not decode to a valid file-2
