@@ -222,22 +222,21 @@ must account for this timing sensitivity.
 
 ## ⚠️ Known gaps
 
-### 1. No carousel timeout — motor can spin forever
+### 1. Carousel search timeout — 20 s watchdog
 
-At the top of `ATCStage`, the source contains:
-```plc
-;TODO: add timer to error so carousol doesn't spin for ever if tool not found
-```
-
-`ATCSpin_T` (T24) is **defined** (`ATCSpin_T IS T24 ; used to detect fault
-if unable to find position`) but is **never set or checked** anywhere in the
-current logic. If `ChangeToTool_W` never matches — due to an off-by-one in
-the position decode, a faulty switch, or an invalid tool number — `ATCMotor_O`
-stays asserted and the carousel spins indefinitely.
+`ATCSpin_T` (T24) is armed once at M6 kickoff in `MainStage`
+(`IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T`,
+`ATC_SPIN_TIMEOUT_MS_C = 20000` ms). A fault rung after the match rung
+(`IF ATCStage && ATCSpin_T THEN`) posts `CAROUSEL MOVE TIME OUT` (msg 63),
+stops the motor, relocks, and clears the change. Every `ATCStage` exit RSTs the
+timer so it re-arms cleanly. If `ChangeToTool_W` never matches — an off-by-one
+in the position decode, a faulty switch, or an invalid tool number — the
+carousel faults at 20 s instead of spinning forever.
 
 **Risk:** Any edit to the accumulator lines (`+1 / +2 / +4 / +8 / +10`) or to
-the `InToolSelect_M` gating must be tested extremely carefully. A value of
-`+16` for Pos5 instead of `+10` would cause tools 10–15 to never match.
+the `InToolSelect_M` gating must still be tested carefully. A value of
+`+16` for Pos5 instead of `+10` would cause tools 10–15 to never match (now a
+20 s fault rather than an infinite spin).
 
 ### 2. Transmission shift is automated open-loop (no gear-position feedback)
 

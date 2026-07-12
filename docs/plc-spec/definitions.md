@@ -309,7 +309,7 @@ significance beyond "one-shot edge of the same-named key/event".
 | `MessageTimer_T` | T17 | 1184 | | Message display timer. [faults-and-messages.md](faults-and-messages.md) |
 | `NoMacroKeyPressedTimer_T` | T18 | 1185 | | No-macro-key-pressed timer (WMPG macro key reset delay). [jog-and-mpg.md](jog-and-mpg.md) |
 | `ChangerStopTimer_T` | T23 | 1206 | Acroloc | 5 s timeout backstop for the spindle-in-changer feed-hold interlock; faults if the spindle never reaches zero. Renamed from `StopSpinBeforATC_T` (which was dead — armed, never read). Set point assigned at arm time, not at boot. [main-stage.md](main-stage.md), [atc.md](atc.md) |
-| `ATCSpin_T` | T24 | 1188 | Acroloc | Meant to detect fault if a carousel position is never found; defined but unused — see below (the `;TODO` no-timeout gap noted in the repo's CLAUDE.md). |
+| `ATCSpin_T` | T24 | 1188 | Acroloc | Carousel search watchdog: armed at M6 kickoff (`= ATC_SPIN_TIMEOUT_MS_C`, 20 s); if the tool is never matched, `ATCStage` faults `CAROUSEL MOVE TIME OUT`. [atc.md](atc.md#search-timeout) |
 | `GearCoast_T` | T25 | 1189 | Acroloc | Gear-shift coast dwell (neutral) before engaging the new gear; loaded from `SV_MACHINE_PARAMETER_943` or a 1500ms default. [gear-shift.md](gear-shift.md) |
 
 ## System variables
@@ -370,6 +370,8 @@ identifier bound — no name to cite.
 | `ATC_Spindle_Not_Parked_C` | 44034 (2+256*172) | 200 | Acroloc | "Spindle not parked. Z Axis not tool change position." [atc.md](atc.md) |
 | `ATC_Lock_Not_Released_C` | 44290 (2+256*173) | 201 | Acroloc | "Tool Carousel not locked." [atc.md](atc.md) |
 | `ATC_Lock_Released_C` | 45546 (2+256*174) | 202 | Acroloc | "Tool Carousel locked." — see message-encoding example above. [atc.md](atc.md) |
+| `CAROUSEL_TIMEOUT_MSG_C` | 16130 (2+256*63) | 211 | Acroloc | "CAROUSEL MOVE TIME OUT" — carousel search-timeout fault (reuses stock message 63). [atc.md](atc.md) |
+| `ATC_SPIN_TIMEOUT_MS_C` | 20000 | 212 | Acroloc | Carousel search timeout, ms (armed into `ATCSpin_T`). [atc.md](atc.md) |
 
 ## Stages
 
@@ -408,7 +410,6 @@ line (no reads or writes elsewhere in the file):
 - `SpinLowRange_I` (`INP13`, src:220)
 - `SpinMedRange_I` (`INP14`, src:221)
 - `SpinHighRange_I` (`INP15`, src:222)
-- `ATCSpin_T` (`T24`, src:1188) — its own comment says it's "used to detect fault if unable
-  to find position", but no logic reads or arms this timer anywhere in the file. This lines
-  up with the `;TODO` noted in the repo's `CLAUDE.md`: the carousel has no timeout if a tool
-  is never found.
+
+(`ATCSpin_T` (`T24`) is no longer here — it is now armed at M6 kickoff and read as the
+carousel search watchdog; see [atc.md](atc.md#search-timeout).)

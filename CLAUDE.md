@@ -89,9 +89,11 @@ outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71`/`W72`.
 - Macro PLC variables: a PLC `OUT`/`MEM` is read from a macro as `#(60000 + n)` (e.g.
   `OUT1058` → `#61058`). M-functions are triggered from macros via `M94 /bit` (set) and
   `M95 /bit` (reset).
-- The carousel has **no timeout if a tool is never found** (see `;TODO` in `ATCStage`) — be
-  careful when editing the match/exit conditions; an off-by-one in the position decode means
-  the carousel spins indefinitely.
+- The carousel search is bounded by a **20 s watchdog** (`ATCSpin_T`, T24, armed at M6
+  kickoff): if the target tool is never matched, `ATCStage` faults `CAROUSEL MOVE TIME OUT`
+  and stops/relocks the carousel. Still edit the match/exit conditions carefully — an
+  off-by-one in the position decode (e.g. Pos5 `+16` instead of `+10`) makes tools mismatch,
+  but it now faults at 20 s instead of spinning forever.
 - `plc.map` is gitignored build output; never hand-edit it and don't rely on its line numbers
   staying in sync after you edit the `.src`.
 - When changing the PLC source, update the affected docs/plc-spec/ section(s) and their

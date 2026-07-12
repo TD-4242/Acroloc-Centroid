@@ -114,11 +114,9 @@ spindle. Its dead boot preset and the commented feedrate-to-zero block are gone.
 
 Banner at `src:2934-2936` (`ATCStage` (src:2935), tagged `; Acroloc`).
 
-**Known-timeout gap, stated in source** (`src:2937`):
-```plc
-;TODO: add timer to error so carousol doesn't spin for ever if tool not found
-```
-See [Known gaps](#known-gaps) below.
+**Search watchdog:** `ATCSpin_T` (T24) is armed at M6 kickoff; if the target tool is never
+matched within `ATC_SPIN_TIMEOUT_MS_C` (20 s), `ATCStage` faults `CAROUSEL MOVE TIME OUT`
+(message 63) and stops/relocks the carousel. See [Search timeout](#search-timeout) below.
 
 **Entry safety guards.** `ATCStage` has **two** aborts, and (since 2026-07-09) both perform the
 same full cleanup the match/finish rung does — stop the motor, relock, drop the M6 request:
@@ -255,21 +253,19 @@ blocked on.
 
 ## Known gaps
 
-### No carousel timeout
+### Search timeout
 
-Stated directly in source at `src:2937`:
-```plc
-;TODO: add timer to error so carousol doesn't spin for ever if tool not found
-```
-`ATCSpin_T` (`T24`, `ATCSpin_T` (src:1188), comment "used to detect fault if unable to find
-position") is **defined but never `SET`, armed, or read** anywhere in the current `.src` —
-grep confirms no other occurrence of `ATCSpin_T` in the file. If `ChangeToTool_W` never
-matches `CarouselToolID_W` — a faulty position switch, an out-of-range tool number, a wiring
-fault, or a mismatched accumulator edit — the match rung (`src:2975`) never fires,
-`ATCMotor_O` stays asserted indefinitely, and `mfunc6.mac`'s `M100 /93016` wait
-(`mfunc6.mac:25`) never returns. There is no operator-visible fault path for this condition;
-the carousel simply keeps spinning. `CLAUDE.md` calls this out as a caution for anyone
-touching the match/exit rungs.
+Resolved (was the "no carousel timeout" `;TODO`). `ATCSpin_T` (T24) is armed once at M6
+kickoff in `MainStage` — `IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET
+ATCSpin_T` — with `ATC_SPIN_TIMEOUT_MS_C = 20000` (ms). A fault rung placed after the match
+rung, `IF ATCStage && ATCSpin_T THEN`, posts `CAROUSEL_TIMEOUT_MSG_C` (message 63, "CAROUSEL
+MOVE TIME OUT"), stops the motor, relocks, and clears `M6_SV`/`ChangeToTool_W`/`ATCStage`.
+Every `ATCStage` exit (both aborts and the match) `RST ATCSpin_T` so the timer is clean
+before the next change re-arms. So if `ChangeToTool_W` never matches `CarouselToolID_W` — a
+faulty position switch, an out-of-range tool number, a wiring fault, or a mismatched
+accumulator edit — the carousel now faults at 20 s instead of spinning forever (and
+`mfunc6.mac`'s wait returns once the stage clears). Placing the fault rung after the match
+rung lets a genuine same-scan match win the tie.
 
 ### Message-rung unconditional posting
 
