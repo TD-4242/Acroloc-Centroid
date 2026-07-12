@@ -94,31 +94,21 @@ ring") is true and `ATCStage` is **not** running — this keeps manual unlock fr
 button state, every scan the button state is read, independent of whether a change is in
 progress.
 
-**Spindle-stopped-before-entry safety** (`src:2924-2932`, tagged `; Acroloc Make sure spindle
-stops before entering tool changer`):
-```plc
-IF !ATC_Z_ClearedToolChanger_I THEN
-  RST SpindleEnableOut_O,
-  SET StopSpinBeforATC_T
-  ;SavedCurrentFeedrate = CurrentFeedrate ??
-
-;IF StopSpinBeforeATC_T THEN
-  ; feedrate to zero
-```
-While `ATC_Z_ClearedToolChanger_I` (`INP26`, `ATC_Z_ClearedToolChanger_I` (src:228), "the
-spindle has entered the tool changer (zero rpm)") is false, the spindle enable output
-`SpindleEnableOut_O` (`OUT7`, `SpindleEnableOut_O` (src:374)) is forcibly held reset and
-`StopSpinBeforATC_T` (`T23`, `StopSpinBeforATC_T` (src:1187), preset to 1000 ms once in
-`InitialStage` at `src:1275` — see [boot.md](boot.md)) is armed. This rung is
-**unconditional on `M6_SV`** — it fires any time `ATC_Z_ClearedToolChanger_I` reads false,
-not only during a tool change, forcibly killing spindle enable whenever the Z-in-tool-changer
-input isn't asserted. The commented-out `SavedCurrentFeedrate` line (`src:2961`) and the
-commented `;IF StopSpinBeforeATC_T` block (`src:2963-2964`, feedrate-to-zero idea — note the
-dead comment misspells the live symbol, which is `StopSpinBeforATC_T` without the "e") are dead
-code — no live rung reads `StopSpinBeforATC_T` anywhere in the file to gate a fault/timeout;
-its only consumer is decorative. This is the same gap main-stage.md's ATC-kickoff section
-flags and leaves to this file to confirm: **confirmed here — `StopSpinBeforATC_T` has no
-timeout consumer.**
+**Spindle-in-changer feed-hold interlock** (`MainStage`, banner `src:2959`, tagged
+`; Acroloc -- Spindle-in-changer feed-hold interlock`). The old always-on stop block was
+replaced 2026-07-09 (spec
+[2026-07-09-spindle-changer-feedhold-design.md](../superpowers/specs/2026-07-09-spindle-changer-feedhold-design.md)).
+It **keeps** the unconditional zone spindle-kill -- `IF !ATC_Z_ClearedToolChanger_I THEN
+RST SpindleEnableOut_O`, every scan, all modes, so the spindle can never run while Z is in the
+changer -- and **adds**, for any program/MDI move driving Z into the changer with the spindle
+still turning: feed hold (`SET ActivateFeedHold_M`) + spindle off, then resume the instant
+`ZeroSpeed_I` (INP12) confirms a stop (`SET DoCycleStart_SV`), with a **5 s timeout ->
+`SPINDLE_FAULT_MSG_C`** if the spindle never stops. If the spindle is already stopped at entry
+(normal M6 -- mfunc6 runs `M5` before the park move) the hold never arms and motion proceeds.
+The dead `StopSpinBeforATC_T` timer was renamed **`ChangerStopTimer_T`** (`T23`, src:1206) and
+given that real timeout role -- so unlike the old block, this one **does** fault on a stuck
+spindle. Its dead boot preset and the commented feedrate-to-zero block are gone. INP26 polarity:
+**TRUE = Z clear (spindle may run); FALSE = spindle in changer (danger).**
 
 ### 3. `ATCStage` (STG16) — carousel indexing and match
 
@@ -130,25 +120,38 @@ Banner at `src:2934-2936` (`ATCStage` (src:2935), tagged `; Acroloc`).
 ```
 See [Known gaps](#known-gaps) below.
 
-**Entry safety re-check** (`src:2939-2943`):
+**Entry safety guards.** `ATCStage` has **two** aborts, and (since 2026-07-09) both perform the
+same full cleanup the match/finish rung does — stop the motor, relock, drop the M6 request:
+
 ```plc
+; zero-speed guard (new, src:3014)
+IF ATCStage && !ZeroSpeed_I THEN
+  FaultMsg_W = SPINDLE_FAULT_MSG_C,
+  SET ShowFaultStage, SET OtherFault_M,
+  RST ATCMotor_O, RST ATCUnlocked_O, RST M6_SV, ChangeToTool_W = 0,
+  RST ATCStage
+
+; Z-parked guard
 IF !ATC_Z_Zero_Release_I THEN
   FaultMsg_W = ATC_Spindle_Not_Parked_C,
-  SET ShowFaultStage,
-  SET OtherFault_M,
+  SET ShowFaultStage, SET OtherFault_M,
+  RST ATCMotor_O, RST ATCUnlocked_O, RST M6_SV, ChangeToTool_W = 0,
   RST ATCStage
 ```
-Unlike `MainStage`'s check (which gates on `ATC_Z_ClearedToolChanger_I`, `INP26`), this rung
-inside `ATCStage` checks `ATC_Z_Zero_Release_I` (`INP27`) — "Z axis has cleared tool ring."
-If Z is not clear of the carousel ring, the stage posts `ATC_Spindle_Not_Parked_C` (src:200,
-despite the constant's name referencing "spindle," the message text is "Spindle not parked.
-Z Axis not tool change position."), sets the generic `OtherFault_M` fault latch (folds into
-the fault OR-gate documented in main-stage.md's fault-aggregation section), and immediately
-`RST`s `ATCStage` — aborting the change before the carousel ever turns. Gotcha for future
-edits: **there is no check of `ZeroSpeed_I` (spindle-stopped) inside `ATCStage` itself** —
-spindle-stop safety lives entirely in `MainStage`'s `StopSpinBeforATC_T`/
-`ATC_Z_ClearedToolChanger_I` rung above (which, as noted, doesn't actually timeout/fault on
-its own); `ATCStage`'s own guard is Z-position only.
+
+- **Zero-speed guard** (`ZeroSpeed_I`, `INP12`): the carousel never indexes against a turning
+  spindle. INP12 is wired from the F510 VFD and tested; this is a live interlock, not just
+  defense-in-depth. It complements — does not replace — `MainStage`'s feed-hold interlock above.
+- **Z-parked guard** (`ATC_Z_Zero_Release_I`, `INP27`, "Z axis has cleared tool ring"): posts
+  `ATC_Spindle_Not_Parked_C` (src:200 — despite the constant's name referencing "spindle," the
+  message text is "Spindle not parked. Z Axis not tool change position.").
+
+Both set the generic `OtherFault_M` latch (folds into the fault OR-gate documented in
+main-stage.md's fault-aggregation section) and abort before the carousel turns. **Historical
+gotcha, now fixed:** the Z-parked abort previously did `RST ATCStage` *only*, leaving
+`ATCMotor_O`/`ATCUnlocked_O` energized and `M6_SV` set — the carousel could keep spinning
+unlocked while `MainStage` re-armed the stage every scan. Any new abort path must include the
+full cleanup.
 
 **Start the carousel** (`src:2945-2948`):
 ```plc

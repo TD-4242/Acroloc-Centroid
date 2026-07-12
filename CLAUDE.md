@@ -17,8 +17,9 @@ to find every custom addition (definitions and logic alike).
 
 - `Centroid-Acroloc-ALLIN1DC.src` — the PLC program (ladder logic in Centroid's text/stage
   language). This is the primary file. ~3000 lines.
-- `plc.map` — **generated** symbol→source-line map produced by the PLC compiler. Do not edit
-  by hand; it is regenerated on compile.
+- `plc.map` — **generated** symbol→source-line map produced by the PLC compiler. Not tracked
+  in git (gitignored build output); regenerated on every compile, locally or on the control PC.
+  Do not hand-edit.
 - `mfunc*.mac` — M-code macros (G-code-like) executed by the CNC when an M-function fires.
   - `mfunc3/4` = spindle CW/CCW, `mfunc6` = **tool change (M6)**, `mfunc7/8` = mist/flood
     coolant, `mfunc10/11` = clamp on/off.
@@ -91,7 +92,7 @@ outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71`/`W72`.
 - The carousel has **no timeout if a tool is never found** (see `;TODO` in `ATCStage`) — be
   careful when editing the match/exit conditions; an off-by-one in the position decode means
   the carousel spins indefinitely.
-- `plc.map` is build output; never hand-edit it and don't rely on its line numbers staying
-  in sync after you edit the `.src`.
+- `plc.map` is gitignored build output; never hand-edit it and don't rely on its line numbers
+  staying in sync after you edit the `.src`.
 - When changing the PLC source, update the affected docs/plc-spec/ section(s) and their
   pinned commit hash as part of the change.

@@ -13,6 +13,13 @@ This file covers the definitions block, `Centroid-Acroloc-ALLIN1DC.src` lines 1-
 the last stage definition, `BadMsgStage IS STG94` at src:1221); `Program Start` begins at
 src:1223.
 
+> **Note (2026-07-10, oil-pump auto-control):** the stock lube-metering symbols
+> `LubeAccumTime_W`, `Lube_W`, `LubeM_W`, `LubeS_W`, `LubeM_T`, `LubeS_T`,
+> `StopRunningPD_PD`, `LubeUsePumpTimersStage`, and `LubeUsePLCTimersStage` were removed
+> from the source (Parameter 179 retired; the oil pump is now driven by a `MainStage` coil),
+> so their rows are dropped below. Line numbers here remain as of the pinned commit above and
+> are not re-baselined for this removal.
+
 ## Message-constant encoding
 
 Message constants (`_C`) pack a message-file/message-number pair into one integer:
@@ -42,7 +49,7 @@ in the source.
 | `LubeOk_I` | INP9 | 216 | | Lube ok when closed. [main-stage.md](main-stage.md) |
 | `SpindleInverterOk_I` | INP10 | 217 | | Spindle inverter ok when closed. [main-stage.md](main-stage.md) |
 | `EStopOk_I` | INP11 | 218 | | E-stop circuit ok. [main-stage.md](main-stage.md) |
-| `ZeroSpeed_I` | INP12 | 219 | | Spindle at zero speed. [main-stage.md](main-stage.md), [gear-shift.md](gear-shift.md) |
+| `ZeroSpeed_I` | INP12 | 236 | | Spindle confirmed stopped (F510 VFD zero-speed output; wired and tested). Read by the changer feed-hold interlock and the `ATCStage` carousel guard. [main-stage.md](main-stage.md), [atc.md](atc.md) |
 | `SpinLowRange_I` | INP13 | 220 | | Spindle in low range (defined but unused — see below). |
 | `SpinMedRange_I` | INP14 | 221 | | Spindle in medium range (defined but unused — see below). |
 | `SpinHighRange_I` | INP15 | 222 | | Spindle in high range (defined but unused — see below). |
@@ -113,7 +120,7 @@ in the source.
 | Name | Resource | src line | Acroloc? | Meaning / used by |
 |---|---|---|---|---|
 | `NoFaultOut_O` | OUT1 | 368 | | "No fault" indicator, SPST. [main-stage.md](main-stage.md) |
-| `Lube_O` | OUT2 | 369 | | Lube pump, SPST. [main-stage.md](main-stage.md) |
+| `Lube_O` | OUT2 | 369 | | Oil pump, SPST — driven by the `MainStage` oil-pump coil. [main-stage.md](main-stage.md) |
 | `Flood_O` | OUT3 | 370 | | Flood coolant, SPST. [main-stage.md](main-stage.md) |
 | `Mist_O` | OUT4 | 371 | | Mist coolant, SPST. [main-stage.md](main-stage.md) |
 | `InverterResetOut_O` | OUT5 | 372 | | Spindle inverter reset, SPST. [main-stage.md](main-stage.md) |
@@ -216,6 +223,8 @@ in the source.
 | `KbMistOnOff_M` | MEM451 | 698 | | Keyboard mist on/off — "ctrl" + "k" (bound out of numeric sequence inside the Kb block). [jog-and-mpg.md](jog-and-mpg.md) |
 | `InToolSelect_M` | MEM443 | 710 | Acroloc | 0 = false, 1 = true — carousel currently accumulating a position ID. [atc.md](atc.md) |
 | `ToolSelected_M` | MEM444 | 711 | Acroloc | 0 = false, 1 = true — carousel has matched the target tool. [atc.md](atc.md) |
+| `ChangerHoldActive_M` | MEM448 | 729 | Acroloc | Latched while feed is held and the interlock waits for `ZeroSpeed_I`. [main-stage.md](main-stage.md) |
+| `ChangerHoldDone_M` | MEM449 | 730 | Acroloc | Once-per-entry latch (set on resume *and* on fault); blocks re-arming until Z clears the changer. [main-stage.md](main-stage.md) |
 
 Note: `MEM444` is bound to two different names in source — `KbAux13Key_M` (src:704, "ctrl"+"1")
 and `ToolSelected_M` (src:711, Acroloc ATC tool-matched flag). This is a real address
@@ -227,7 +236,6 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 
 | Name | Resource | src line | Acroloc? | Meaning / used by |
 |---|---|---|---|---|
-| `LubeAccumTime_W` | W1 | 1046 | | Lube accumulated time. [main-stage.md](main-stage.md) |
 | `KbOverride_W` | W2 | 1047 | | Keyboard feed override value. [jog-and-mpg.md](jog-and-mpg.md) |
 | `FeedrateKnob_W` | W3 | 1048 | | Feedrate override knob value. [jog-and-mpg.md](jog-and-mpg.md) |
 | `FinalFeedOverride_W` | W4 | 1049 | | Final feed override sent to CNC. [jog-and-mpg.md](jog-and-mpg.md) |
@@ -252,9 +260,6 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `PLC_Fault_W` | W54 | 1071 | | Raw `SV_PLC_FAULT_STATUS` snapshot. [faults-and-messages.md](faults-and-messages.md) |
 | `PLCFaultAddr_W` | W55 | 1072 | | Raw `SV_PLC_FAULT_ADDRESS` snapshot. [faults-and-messages.md](faults-and-messages.md) |
 | `SpindleMeter_W` | W59 | 1074 | | Spindle load meter value. [main-stage.md](main-stage.md) |
-| `Lube_W` | W61 | 1076 | | Lube word. [main-stage.md](main-stage.md) |
-| `LubeM_W` | W62 | 1077 | | Lube minutes. [main-stage.md](main-stage.md) |
-| `LubeS_W` | W63 | 1078 | | Lube seconds. [main-stage.md](main-stage.md) |
 | `SpindleRange_W` | W64 | 1079 | | 1 = low ... 4 = high, range reported to CNC. [gear-shift.md](gear-shift.md) |
 | `DesiredRange_W` | W73 | 1080 | Acroloc | Gear wanted by RPM logic (1 = low, 4 = high). [gear-shift.md](gear-shift.md) |
 | `EngagedRange_W` | W74 | 1081 | Acroloc | Gear currently engaged (open-loop, tracks clutch outputs; 0 = unknown/forced-neutral, see src:2397-2402). [gear-shift.md](gear-shift.md) |
@@ -299,13 +304,11 @@ significance beyond "one-shot edge of the same-named key/event".
 | `Initialize_T` | T4 | 1176 | | Initialization timer. [boot.md](boot.md) |
 | `ErrorFlag_T` | T5 | 1177 | | Error-flag timer. [faults-and-messages.md](faults-and-messages.md) |
 | `TriggerPause_T` | T6 | 1178 | | Trigger-pause timer. [main-stage.md](main-stage.md) |
-| `LubeM_T` | T13 | 1180 | | Lube minutes timer. [main-stage.md](main-stage.md) |
-| `LubeS_T` | T14 | 1181 | | Lube seconds timer. [main-stage.md](main-stage.md) |
 | `SkinFeedOverTimer_T` | T15 | 1182 | | Skin feed-override timer. [jog-and-mpg.md](jog-and-mpg.md) |
 | `OverrideMsgTimer_T` | T16 | 1183 | | Override message timer. [faults-and-messages.md](faults-and-messages.md) |
 | `MessageTimer_T` | T17 | 1184 | | Message display timer. [faults-and-messages.md](faults-and-messages.md) |
 | `NoMacroKeyPressedTimer_T` | T18 | 1185 | | No-macro-key-pressed timer (WMPG macro key reset delay). [jog-and-mpg.md](jog-and-mpg.md) |
-| `StopSpinBeforATC_T` | T23 | 1187 | Acroloc | Spindle-stopped-before-ATC-entry settle timer. [atc.md](atc.md) |
+| `ChangerStopTimer_T` | T23 | 1206 | Acroloc | 5 s timeout backstop for the spindle-in-changer feed-hold interlock; faults if the spindle never reaches zero. Renamed from `StopSpinBeforATC_T` (which was dead — armed, never read). Set point assigned at arm time, not at boot. [main-stage.md](main-stage.md), [atc.md](atc.md) |
 | `ATCSpin_T` | T24 | 1188 | Acroloc | Meant to detect fault if a carousel position is never found; defined but unused — see below (the `;TODO` no-timeout gap noted in the repo's CLAUDE.md). |
 | `GearCoast_T` | T25 | 1189 | Acroloc | Gear-shift coast dwell (neutral) before engaging the new gear; loaded from `SV_MACHINE_PARAMETER_943` or a 1500ms default. [gear-shift.md](gear-shift.md) |
 
@@ -383,8 +386,6 @@ identifier bound — no name to cite.
 | `MiniPLCErrorStage` | STG9 | 1201 | | [faults-and-messages.md](faults-and-messages.md) |
 | `LoadParametersStage` | STG10 | 1202 | | [boot.md](boot.md) |
 | `KeyboardEventsStage` | STG11 | 1203 | | [main-stage.md](main-stage.md) |
-| `LubeUsePumpTimersStage` | STG13 | 1204 | | [boot.md](boot.md) |
-| `LubeUsePLCTimersStage` | STG14 | 1205 | | [boot.md](boot.md) |
 | `ATCStage` | STG16 | 1207 | Acroloc | [atc.md](atc.md) |
 | `GearShiftStage` | STG17 | 1208 | Acroloc | [gear-shift.md](gear-shift.md) |
 | `JogKeysNormalStage` | STG26 | 1210 | | [jog-and-mpg.md](jog-and-mpg.md) |

@@ -92,11 +92,12 @@ Rung-by-rung (src:1257-1281), grouped by effect:
   message system in the "no fault" state.
 - Timer preset loads: `Initialize_T = 1000, SET Initialize_T` (src:1272 — this one is both
   loaded *and* explicitly armed, unlike the others here), `ErrorFlag_T = 1000` (src:1273),
-  `MsgClear_T = 1000` (src:1274), `StopSpinBeforATC_T = 1000` (src:1275) — four timers preset
-  to 1000 ms; only `Initialize_T` is armed (`SET`) in this same rung, so it is the one
-  timer guaranteed to actually be running immediately after power-up. `StopSpinBeforATC_T`
-  is the Acroloc ATC spindle-stopped-before-carousel-motion timer described in the
-  repo-level ATC flow — see [atc.md](atc.md) for where it is armed and read.
+  `MsgClear_T = 1000` (src:1274) — three timers preset to 1000 ms; only `Initialize_T` is
+  armed (`SET`) in this same rung, so it is the one timer guaranteed to actually be running
+  immediately after power-up. A fourth preset, `StopSpinBeforATC_T = 1000`, was **removed**
+  2026-07-09: that timer is now `ChangerStopTimer_T` (T23) and its set point is assigned at
+  arm time by the spindle-in-changer feed-hold interlock, so a boot preset would be dead code
+  and a second source of truth — see [atc.md](atc.md).
 - **Acroloc power-up gear defaults** (src:1276-1280), all tagged `; Acroloc`:
   `SET Spindle_Low_gear_O`, `SET Spindle_High_gear_O` (both on = **neutral**),
   `EngagedRange_W = 0` (gear unknown), `DesiredRange_W = 0`, `SpindleRange_W = 1`. See
@@ -142,11 +143,11 @@ setup takes effect within one scan without a PLC reload. Nothing in this stage i
 
 Grouped by function:
 
-- **Lube pump timing** (src:1294-1296): `Lube_W = SV_MACHINE_PARAMETER_179`, then decoded
-  per the file's own comment block (src:1286-1291) as `MMMSS` (minutes*100 + seconds) into
-  `LubeM_W` (minutes -> ms) and `LubeS_W` (seconds -> ms). Two lube-control methods are then
-  selected by whether `LubeS_W == 0` (src:1309-1310): `LubeUsePumpTimersStage` for pumps with
-  their own internal timer, `LubeUsePLCTimersStage` for pumps the PLC must time itself.
+- **Oil pump:** no longer timed at boot. Parameter 179 is retired (not read by the PLC),
+  and the two former lube-timer stages (`LubeUsePumpTimersStage`/`LubeUsePLCTimersStage`)
+  are removed. The pump on `Lube_O` (OUT2) is now driven by the oil-pump coil in `MainStage`
+  (`SV_JOB_IN_PROGRESS && !SV_MDI_MODE && !FeedHoldLED_O && EStopOk_M`) — on only while a
+  program actively runs. See [main-stage.md](main-stage.md).
 - **MPG/handwheel setup** (src:1299-1306): parameter 218 selects wired MPG
   (`MPGStage`) vs. wireless MPG (`WirelessMpgStage`) (src:1299-1300). Parameter 348 (or 351/354)
   sets `MPG_M`/`HandWheel_M` presence flags (src:1301-1304). Parameter 19's bit 1 is tested
@@ -174,4 +175,4 @@ Grouped by function:
 
 None of these parameter-driven selections touch the Acroloc gear-shift or ATC state —
 `LoadParametersStage` has no `; Acroloc` markers and its stage-selection rungs only target
-lube, MPG, jog-key, and load-meter stages.
+MPG, jog-key, and load-meter stages.

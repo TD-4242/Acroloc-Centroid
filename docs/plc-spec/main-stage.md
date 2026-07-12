@@ -157,6 +157,15 @@ manage recovery once `EStopOk_M` returns.
   [boot.md](boot.md)) so this doesn't fire during the lube system's own startup window.
 - (src:2856): `!LubeOk_I && SV_PROGRAM_RUNNING` posts a lube *warning* (not a fault) —
   running with low lube is allowed but flagged.
+- **Oil pump drive** (`; Acroloc`, added just after the lube-warning rung):
+  `IF SV_JOB_IN_PROGRESS && !SV_MDI_MODE && !FeedHoldLED_O && EStopOk_M THEN (Lube_O)`.
+  A combinational coil — OUT2 is powered *only* while a G-code program is actively
+  executing, and drops the same scan any term clears: off in MDI, at idle, on feed-hold,
+  and on any stop (cycle-cancel/reset, E-stop, program end). This replaced the stock
+  Parameter-179 lube-timer stages (`LubeUsePumpTimersStage`/`LubeUsePLCTimersStage`),
+  which are removed; P179 is retired. Interaction: the spindle-in-changer interlock's own
+  feed-hold (via `FeedHoldLED_O`) also parks the pump, which is intended. The lube-*fault*
+  rungs above are unchanged.
 - (src:2858-2860): `Initialize_T && !SpindleInverterOk_I` -> `SET SpindleFault_M`, post
   `SPINDLE_FAULT_MSG_C`; separately, `!EStopOk_M && !SpindleInverterOk_I` drives
   `InverterResetOut_O` — purpose inferred: pulses a reset line to the spindle inverter drive
@@ -225,17 +234,38 @@ hand-off rungs inside `MainStage` that arm `ATCStage`.
   posts either `ATC_Lock_Not_Released_C` or `ATC_Lock_Released_C`
   (src:2917-2922) via `ShowFaultStage`, purely as an operator status message
   (not a fault gate on its own).
-- **Spindle-stopped-before-ATC-entry safety** (src:2924-2928, tagged "Acroloc Make
-  sure spindle stops before entering tool changer"): `IF !ATC_Z_ClearedToolChanger_I THEN
-  RST SpindleEnableOut_O, SET StopSpinBeforATC_T` — while the Z axis has not yet reported
-  "cleared into the tool changer," the spindle enable output is forcibly dropped and
-  `StopSpinBeforATC_T` (preset to 1000 ms at boot, per [boot.md](boot.md)) is armed. The
-  commented-out line at src:2928 (`;SavedCurrentFeedrate = CurrentFeedrate ??`)
-  and the commented block at src:2930-2932 show an abandoned/incomplete idea to
-  zero the feedrate while this timer runs — dead code, not active logic. Gotcha: nothing in
-  this excerpt reads `StopSpinBeforATC_T` to gate anything (e.g. a timeout fault if the
-  spindle never actually reaches zero speed) — its consumer, if any, is outside `MainStage`
-  and is left to `atc.md` to confirm.
+- **Spindle-in-changer feed-hold interlock** (banner src:2959, tagged
+  "Acroloc -- Spindle-in-changer feed-hold interlock"). Replaced the old always-on stop block
+  on 2026-07-09 (spec
+  [2026-07-09-spindle-changer-feedhold-design.md](../superpowers/specs/2026-07-09-spindle-changer-feedhold-design.md)).
+  Six rungs, placed **after** the `SpinStart_M` seal-in coil so the per-scan enable-kill holds:
+  1. `IF ATC_Z_ClearedToolChanger_I THEN RST ChangerHoldDone_M` — clear the once-per-entry latch
+     when Z is clear.
+  2. `IF !ATC_Z_ClearedToolChanger_I THEN RST SpindleEnableOut_O` — **unconditional zone-kill**,
+     every scan, in *all* modes (program, MDI, manual). Independent of the hold latch, so the
+     spindle can never run — or be manually started — while Z is in the changer.
+  3. `IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN` clear all three latches — clean bail-out if
+     the program stops mid-hold, so the next run re-confirms zero from scratch.
+  4. **Arm** when a **direct** program/MDI move enters the zone with the spindle *not* already
+     stopped (`!ZeroSpeed_I`): `SET ChangerHoldActive_M, SET ActivateFeedHold_M`, load and start
+     `ChangerStopTimer_T = 5000`. Confirmed on-machine (2026-07-09): a **macro's** `G53` move
+     (e.g. the M6 park) does **not** assert `SV_PROGRAM_RUNNING`/`SV_MDI_MODE`, so this rung
+     never sees it — the M6 path is protected by `mfunc6`'s own `M101 /50012` ZeroSpeed wait, not
+     by this interlock. This rung catches errant *direct* moves (a hand-typed `G53 Z0`, a program
+     bug).
+  5. **Resume** the instant zero is confirmed: `IF ChangerHoldActive_M && ZeroSpeed_I THEN`
+     `SET DoCycleStart_SV` (a pulse, not a coil — a coil would clobber the stock operator
+     cycle-start).
+  6. **Timeout -> fault**: `IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN`
+     post `SPINDLE_FAULT_MSG_C`, `SET OtherFault_M`; motion stays held, no auto-resume.
+
+  Timer idiom: a bare timer is true **when expired**, so rung 6 fires only at the 5 s deadline.
+  Feed-hold handshake: `ActivateFeedHold_M` (MEM45) is a self-clearing trigger (stock code RSTs
+  it ~100 ms after set, src:2937-2938) that SETs `FeedHoldLED_O` (src:1866-1868) driving
+  `DoFeedHold_SV`; `DoCycleStart_SV` clears `FeedHoldLED_O` (src:1869-1872) to resume — so the
+  interlock deliberately does not RST `ActivateFeedHold_M`. Unlike the block it replaced, this
+  one **does** fault on a spindle that never reaches zero. See [atc.md](atc.md) for the
+  companion `ATCStage` zero-speed guard.
 
 ## Gear decision
 
