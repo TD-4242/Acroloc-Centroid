@@ -2950,27 +2950,27 @@ IF ATCStage && ChangeToTool_W > 0 THEN
   SET ATCUnlocked_O,
   SET ATCMotor_O
 
-; If carousel is moving and any of the position switchs are triggered we need to start
+; If carousel is moving and any of the position switches are triggered we need to start
 ; tracking the switches to calculate what position we are at
-IF ATCMotor_O && ( ATC_Pos1_I || ATC_POS2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_pos5_I ) THEN
+IF ATCMotor_O && ( ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I ) THEN
   CarouselToolID_W = 0,
   SET InToolSelect_M
 
 ; tools are in base16 encoded as decimal
 ; start adding any ID points that come across to identify the tool
-; swtch 1 2 3 4 5         1 2 3 4 5         1 2 3 4 5
+; switch 1 2 3 4 5         1 2 3 4 5         1 2 3 4 5
 ; T1 =  * O O O O    T5 = * O * O O    T9 = * O O * O
 ; T2 =  O * O O O    T6 = O * * O O   T10 = O O O O *
 ; T3 =  * * O O O    T7 = * * * O O   T11 = * O O O *
 ; T4 =  O O * O O    T8 = O O O * O   T12 = O * O O *
 If InToolSelect_M && ATC_Pos1_I THEN CarouselToolID_W = CarouselToolID_W + 1
-If InToolSelect_M && ATC_Pos2_I THEN CarouselToolId_W = CarouselToolID_W + 2
+If InToolSelect_M && ATC_Pos2_I THEN CarouselToolID_W = CarouselToolID_W + 2
 If InToolSelect_M && ATC_Pos3_I THEN CarouselToolID_W = CarouselToolID_W + 4
-If InToolSelect_M && ATC_Pos4_I THEN CarouselToolId_W = CarouselToolID_W + 8
-If InToolSelect_M && ATC_Pos5_I THEN CarouselToolId_W = CarouselToolID_W + 10; Not 16 due to base16 encoded as decimal
+If InToolSelect_M && ATC_Pos4_I THEN CarouselToolID_W = CarouselToolID_W + 8
+If InToolSelect_M && ATC_Pos5_I THEN CarouselToolID_W = CarouselToolID_W + 10; Not 16 due to base16 encoded as decimal
 
 ; If all tool position switches go back to 0 then we need to exit the tool selection mode
-; and CarouselToolId_W should be the tool number passing the spindle.
+; and CarouselToolID_W should be the tool number passing the spindle.
 IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !ATC_Pos5_I ) THEN
   RST InToolSelect_M
 
