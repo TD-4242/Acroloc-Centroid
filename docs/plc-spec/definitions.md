@@ -28,7 +28,7 @@ Message constants (`_C`) pack a message-file/message-number pair into one intege
 value = msgNumber + 256 * msgFile
 ```
 
-For example `ATC_Lock_Released_C` (src:202) `IS 45546 ;(2+256*174)` decodes to message 2 in
+For example `ATC_Lock_Released_C` (src:202) `IS 44546 ;(2+256*174)` decodes to message 2 in
 message file 174. The message *text* lives in CNC12's message files, keyed by that
 `(file, number)` pair — it is not present anywhere in this repo. The comment following each
 `_C` definition below (where present) already carries this `(n+256*m)` breakdown as written
@@ -369,7 +369,7 @@ identifier bound — no name to cite.
 | `MINI_PLC_1_WARNING_C` .. `MINI_PLC_8_WARNING_C` | 41218-43010 (2+256*161..168) | 190-197 | | Per-mini-PLC warning messages. [faults-and-messages.md](faults-and-messages.md) |
 | `ATC_Spindle_Not_Parked_C` | 44034 (2+256*172) | 200 | Acroloc | "Spindle not parked. Z Axis not tool change position." [atc.md](atc.md) |
 | `ATC_Lock_Not_Released_C` | 44290 (2+256*173) | 201 | Acroloc | "Tool Carousel not locked." [atc.md](atc.md) |
-| `ATC_Lock_Released_C` | 45546 (2+256*174) | 202 | Acroloc | "Tool Carousel locked." — see message-encoding example above. [atc.md](atc.md) |
+| `ATC_Lock_Released_C` | 44546 (2+256*174) | 202 | Acroloc | "Tool Carousel locked." — see message-encoding example above. [atc.md](atc.md) |
 | `CAROUSEL_TIMEOUT_MSG_C` | 16130 (2+256*63) | 211 | Acroloc | "CAROUSEL MOVE TIME OUT" — carousel search-timeout fault (reuses stock message 63). [atc.md](atc.md) |
 | `ATC_SPIN_TIMEOUT_MS_C` | 20000 | 212 | Acroloc | Carousel search timeout, ms (armed into `ATCSpin_T`). [atc.md](atc.md) |
 

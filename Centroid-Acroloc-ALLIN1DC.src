@@ -207,7 +207,7 @@ MINI_PLC_8_WARNING_C            IS 43010;(2+256*168)
 ; Acroloc ATC Messages
 ATC_Spindle_Not_Parked_C        IS 44034;(2+256*172) Spindle not parked.  Z Axis not tool change position.
 ATC_Lock_Not_Released_C         IS 44290;(2+256*173) Tool Carousel not locked.
-ATC_Lock_Released_C             IS 45546;(2+256*174) Tool Carousel locked.
+ATC_Lock_Released_C             IS 44546;(2+256*174) Tool Carousel locked.
 CAROUSEL_TIMEOUT_MSG_C          IS 16130 ;(2+256*63) CAROUSEL MOVE TIME OUT
 ATC_SPIN_TIMEOUT_MS_C           IS 20000 ; Acroloc carousel search timeout (ms)
 SPINDLE_IN_CHANGER_DBG_C        IS 44802;(2+256*175) DEBUG spindle in changer zone

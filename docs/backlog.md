@@ -20,11 +20,11 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done.
   Ctrl+1 could collide with the ATC "tool selected" flag). Move one to a free MEM and verify no
   behavior change. Small.
 
-- [ ] **Fix `ATC_Lock_Released_C` message value.** `Centroid-Acroloc-ALLIN1DC.src:210` has
-  `IS 45546 ;(2+256*174)`, but `2+256*174 = 44546` — the value is off by 1000 and does not
-  decode to a valid file-2 message, so the "Tool Carousel locked" message (msg 174, used at
-  src:2864) posts a bad/blank message. Change `45546` -> `44546`. One-number fix; adjacent to
-  the ATC-timeout constants, so it could be folded into that change.
+- [x] **Fix `ATC_Lock_Released_C` message value.** Was `IS 45546 ;(2+256*174)`, but
+  `2+256*174 = 44546` — the old value was off by 1000 and did not decode to a valid file-2
+  message, so the "Tool Carousel locked" message (msg 174, used at src:2864) posted a
+  bad/blank message. Corrected `45546` -> `44546` (source + the definitions.md references).
+  *Shipped on `post-release-fixes`.*
 
 ## Housekeeping / cleanup
 
