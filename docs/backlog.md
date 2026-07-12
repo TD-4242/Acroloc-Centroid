@@ -29,10 +29,10 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done.
 
 ## Housekeeping / cleanup
 
-- [ ] **Strip leftover DEBUG changer-safety tracing.** The temporary `; DEBUG` messages from the
-  spindle-in-changer work are still in shipped `main`: 3 constants + 4 rungs/comment in
-  `Centroid-Acroloc-ALLIN1DC.src` and 3 lines in `plcmsg.txt` (find all with
-  `grep -n DEBUG`). Interlock is validated; remove them and recompile. Small, low-risk.
+- [x] **Strip leftover DEBUG changer-safety tracing.** Removed the temporary `; DEBUG`
+  messages from the spindle-in-changer work: 3 constants + comment + 3 rungs in
+  `Centroid-Acroloc-ALLIN1DC.src` and 3 lines in `plcmsg.txt`. Compiles clean (0 errors,
+  193 warnings). *Shipped on `post-release-fixes`.*
 
 - [ ] **Re-baseline `docs/plc-spec/` line-number pins.** The specs anchor `src:NNNN` refs to
   "Line numbers as of commit 41f3fd6," now several commits stale (oil-pump + this backlog's work

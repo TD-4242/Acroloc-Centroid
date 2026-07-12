@@ -92,6 +92,3 @@
 172 5172 Spindle not parked.  Z Axis not at zero.
 173 5173 Tool Carousel not locked.
 174 5174 Tool Carousel locked.
-175 5175 DEBUG spindle in changer zone
-176 5176 DEBUG Z cleared tool ring
-177 5177 DEBUG changer feed-hold armed
