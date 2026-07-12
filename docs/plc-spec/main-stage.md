@@ -333,7 +333,7 @@ its downstream consumer.
 - Coolant **mode selection**: the two coolant rungs are coils that toggle the *mode LEDs*
   `CoolFloodLED_O` / `CoolMistLED_O` (each `LED XOR (!CoolAutoModeLED_O && CoolantXxxPD_PD)`
   for a manual key press, OR `CoolAutoModeLED_O && M8_SV`/`M7_SV` for auto), ANDed against a
-  kill condition (`!(SV_STOP || CoolantAutoManualPD_PD || (CoolAutoModeLED_O && !MxSV) ||
+  kill condition (`!(SV_STOP || CoolantAutoManualPD_PD || (CoolAutoModeLED_O && !M8_SV for flood / !M7_SV for wash) ||
   ErrorFlag_M || DoToolCheck_SV)`) and report `SelectCoolantFlood_SV`/`SelectCoolantMist_SV`
   to CNC12. They no longer drive the physical outputs directly. The panel modes are made
   mutually exclusive (a flood press RSTs `CoolMistLED_O` and vice versa, manual mode only).

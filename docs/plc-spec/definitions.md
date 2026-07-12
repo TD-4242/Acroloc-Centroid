@@ -22,17 +22,21 @@ src:1223.
 
 ## Message-constant encoding
 
-Message constants (`_C`) pack a message-file/message-number pair into one integer:
+Message constants (`_C`) pack a message *type* and *number* into one integer (the manual's
+formula):
 
 ```
-value = msgNumber + 256 * msgFile
+value = type + 256 * msgNumber
 ```
 
-For example `ATC_Lock_Released_C` (src:202) `IS 44546 ;(2+256*174)` decodes to message 2 in
-message file 174. The message *text* lives in CNC12's message files, keyed by that
-`(file, number)` pair — it is not present anywhere in this repo. The comment following each
-`_C` definition below (where present) already carries this `(n+256*m)` breakdown as written
-in the source.
+`type` is 1 (synchronous) or 2 (asynchronous); `msgNumber` is the entry number in the first
+column of `plcmsg.txt`. For example `ATC_Lock_Released_C` (src:202) `IS 44546 ;(2+256*174)`
+decodes as **type 2, msgNumber 174** — the "Tool Carousel locked" entry (line 174) in
+`plcmsg.txt`. The message *text* lives in CNC12's message files, not in this repo. The comment
+following each `_C` definition carries this `(type+256*msgNumber)` breakdown. (`CLAUDE.md`
+writes the same formula with reversed field names, `msgNumber + 256*msgFile`, where its
+`msgNumber` is this `type` and its `msgFile` is this `msgNumber`; see the
+[centroid-plc-programming messages reference](../../.claude/skills/centroid-plc-programming/reference/messages.md).)
 
 ## Inputs
 

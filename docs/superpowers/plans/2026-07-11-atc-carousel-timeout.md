@@ -10,6 +10,13 @@
 
 **Design spec:** `docs/superpowers/specs/2026-07-11-atc-carousel-timeout-design.md`
 
+> **Historical note:** this plan was executed as written; its before/after code anchors show
+> the file state **at execution time**. Two *later, separate* commits on the same
+> `post-release-fixes` branch then corrected `ATC_Lock_Released_C` (`45546 -> 44546`) and
+> removed the `; DEBUG` tracing — so the `45546` value and the `SPINDLE_IN_CHANGER_DBG_C`
+> anchor shown in Steps 2/8 no longer exist in the final source. Do not reintroduce them; the
+> "out of scope" note below was accurate for this task only.
+
 ## Global Constraints
 
 - **ASCII only** for `.src` — no em dashes/smart quotes/non-ASCII.

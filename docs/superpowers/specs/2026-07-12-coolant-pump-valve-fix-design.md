@@ -1,7 +1,7 @@
 # Coolant Pump / Flood-Valve Fix Design
 
 - Date: 2026-07-12
-- Status: approved design, pending implementation
+- Status: implemented on `post-release-fixes` (PR #15); on-machine validation outstanding
 - Scope: `Centroid-Acroloc-ALLIN1DC.src` (PLC coolant logic + defs), plus doc sync
 - Branch: `post-release-fixes` (part of the post-release rollup, PR #15)
 - Related: [[acroloc-s10]] coolant macros (`mfunc7.mac`/`mfunc8.mac`)

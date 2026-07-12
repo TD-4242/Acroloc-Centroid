@@ -1,10 +1,10 @@
 # ATC Carousel Search Timeout Design
 
 - Date: 2026-07-11
-- Status: approved design, pending implementation
+- Status: implemented on `post-release-fixes` (PR #15); on-machine validation outstanding
 - Scope: `Centroid-Acroloc-ALLIN1DC.src` (PLC), plus doc sync
 - Backlog item: [docs/backlog.md](../../backlog.md) #1
-- Related: [[acroloc-s10]] ATC flow; the spindle-in-changer interlock aborts this shares its exit shape with
+- Related: [[acroloc-s10]] ATC flow; this timeout's fault/exit shape mirrors the existing spindle-in-changer interlock aborts.
 
 ## Goal
 
