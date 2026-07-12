@@ -208,6 +208,8 @@ MINI_PLC_8_WARNING_C            IS 43010;(2+256*168)
 ATC_Spindle_Not_Parked_C        IS 44034;(2+256*172) Spindle not parked.  Z Axis not tool change position.
 ATC_Lock_Not_Released_C         IS 44290;(2+256*173) Tool Carousel not locked.
 ATC_Lock_Released_C             IS 45546;(2+256*174) Tool Carousel locked.
+CAROUSEL_TIMEOUT_MSG_C          IS 16130 ;(2+256*63) CAROUSEL MOVE TIME OUT
+ATC_SPIN_TIMEOUT_MS_C           IS 20000 ; Acroloc carousel search timeout (ms)
 SPINDLE_IN_CHANGER_DBG_C        IS 44802;(2+256*175) DEBUG spindle in changer zone
 Z_CLEARED_RING_DBG_C            IS 45058;(2+256*176) DEBUG Z cleared tool ring
 CHANGER_HOLD_ARMED_DBG_C        IS 45314;(2+256*177) DEBUG changer feed-hold armed
@@ -2851,6 +2853,10 @@ IF TriggerPause_T THEN RST TriggerPause_T, RST ActivateFeedHold_M
 IF True_M THEN RST OnAtPowerUp_M
 
 ; Acroloc tool stage start
+; Acroloc: arm the carousel search watchdog once, as the change kicks off.
+; Runs before the SET ATCStage below, so !ATCStage is true only on the first
+; scan of a change; it will not re-arm (reset) the timer on later scans.
+IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T
 IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
 
 ; Acroloc manual tool changes
@@ -2923,7 +2929,6 @@ IF ChangerHoldActive_M THEN InfoMsg_W = CHANGER_HOLD_ARMED_DBG_C ; DEBUG
 ;=============================================================================
    ATCStage ; Acroloc
 ;=============================================================================
-;TODO: add timer to error so carousol doesn't spin for ever if tool not found
 
 ; Acroloc: refuse to index the carousel unless the spindle is confirmed stopped (ZeroSpeed_I).
 IF ATCStage && !ZeroSpeed_I THEN
@@ -2934,6 +2939,7 @@ IF ATCStage && !ZeroSpeed_I THEN
   RST ATCUnlocked_O,
   RST M6_SV,
   ChangeToTool_W = 0,
+  RST ATCSpin_T,
   RST ATCStage
 
 IF !ATC_Z_Zero_Release_I THEN
@@ -2944,6 +2950,7 @@ IF !ATC_Z_Zero_Release_I THEN
   RST ATCUnlocked_O,
   RST M6_SV,
   ChangeToTool_W = 0,
+  RST ATCSpin_T,
   RST ATCStage
   
 ; z axis is clear of tool carousel, carousel is ready to spin
@@ -2982,6 +2989,21 @@ IF CarouselToolID_W == ChangeToTool_W THEN
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
+  RST ATCSpin_T,
+  RST ATCStage
+
+; Acroloc: carousel never found the tool within ATC_SPIN_TIMEOUT_MS_C ->
+; fault, stop the motor, relock. Placed after the match rung so a genuine
+; match on the same scan wins (it RSTs ATCStage/ATCSpin_T first).
+IF ATCStage && ATCSpin_T THEN
+  FaultMsg_W = CAROUSEL_TIMEOUT_MSG_C,
+  SET ShowFaultStage,
+  SET OtherFault_M,
+  RST ATCMotor_O,
+  RST ATCUnlocked_O,
+  RST M6_SV,
+  ChangeToTool_W = 0,
+  RST ATCSpin_T,
   RST ATCStage
 
 
