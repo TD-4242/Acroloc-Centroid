@@ -387,8 +387,8 @@ JpFeedOrKnobBit15_I             IS INP1264 ; unused
 ;------------------------------------------------------------------------------
 NoFaultOut_O                    IS OUT1  ;SPST Type
 Lube_O                          IS OUT2  ;SPST Type
-Flood_O                         IS OUT3  ;SPST Type
-Mist_O                          IS OUT4  ;SPST Type
+FloodValve_O                    IS OUT3  ; Acroloc flood valve: opens the coolant pump to the workspace nozzles (SPST)
+CoolantPump_O                   IS OUT4  ; Acroloc coolant pump: pressurizes coolant (+valve=flood nozzles, no valve=cleaning hose) (SPST)
 InverterResetOut_O              IS OUT5  ;SPST Type
 WorkLightOut_O                  IS OUT6  ;SPST Type
 SpindleEnableOut_O              IS OUT7  ;SPST Type
@@ -1056,9 +1056,9 @@ SetAxis8Part0_SV                 IS SV_PLC_SET_AXIS_8_PART_ZERO
 M3_SV                            IS SV_M94_M95_1 ;(Spindle CW)
 M4_SV                            IS SV_M94_M95_2 ;(Spindle CCW)
 M6_SV                            IS SV_M94_M95_8 ; Acroloc Tool change request
-M8_SV                            IS SV_M94_M95_3 ;(Flood_O On)
+M8_SV                            IS SV_M94_M95_3 ;(Flood mode: coolant pump + flood valve)
 M10_SV                           IS SV_M94_M95_4 ; Clamp
-M7_SV                            IS SV_M94_M95_5 ;(Mist_O)
+M7_SV                            IS SV_M94_M95_5 ;(Mist/wash mode: coolant pump only)
 ;                                IS SV_M94_M95_6 ;
 ;                                IS SV_M94_M95_7 ;
 
@@ -2033,17 +2033,29 @@ IF (CoolAutoModeLED_O && CoolantAutoManualPD_PD && AllowKbInput_M)
 ;  Turn off if entering manual mode
 ;  Toggle by key press
 IF CoolFloodKey_I || KbFloodOnOff_M || SkinCoolFlood_M_SV THEN (CoolantFloodPD_PD)
-IF ((Flood_O ^ (!CoolAutoModeLED_O && CoolantFloodPD_PD)) ||
+IF ((CoolFloodLED_O ^ (!CoolAutoModeLED_O && CoolantFloodPD_PD)) ||
    CoolAutoModeLED_O && M8_SV) &&
    !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M8_SV || ErrorFlag_M || DoToolCheck_SV)
-  THEN (Flood_O), (CoolFloodLED_O), (SelectCoolantFlood_SV)
+  THEN (CoolFloodLED_O), (SelectCoolantFlood_SV)
 
 ;--Mist coolant on/off
 IF (CoolMistKey_I || KbMistOnOff_M || SkinCoolMist_M_SV) THEN (CoolantMistPD_PD)
-IF ((Mist_O ^ (!CoolAutoModeLED_O && CoolantMistPD_PD)) ||
+IF ((CoolMistLED_O ^ (!CoolAutoModeLED_O && CoolantMistPD_PD)) ||
    CoolAutoModeLED_O && M7_SV) &&
    !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M7_SV || ErrorFlag_M || DoToolCheck_SV)
-  THEN (Mist_O), (CoolMistLED_O), (SelectCoolantMist_SV)
+  THEN (CoolMistLED_O), (SelectCoolantMist_SV)
+
+; Acroloc: flood and wash are mutually exclusive (valve open XOR closed while pump runs).
+; Manual mode only; auto mode is handled by the M7/M8 macros. After both toggle rungs so the
+; just-pressed mode wins.
+IF !CoolAutoModeLED_O && CoolantFloodPD_PD THEN RST CoolMistLED_O   ; flood press clears wash
+IF !CoolAutoModeLED_O && CoolantMistPD_PD  THEN RST CoolFloodLED_O  ; wash press clears flood
+
+; Acroloc: drive the coolant hardware from the selected mode.
+; Pump (OUT4) runs in either mode; the flood valve (OUT3) opens only in flood mode. The mode
+; LEDs are already gated off by SV_STOP/errors/tool-check above, so these inherit that.
+IF CoolFloodLED_O THEN (FloodValve_O)
+IF CoolFloodLED_O || CoolMistLED_O THEN (CoolantPump_O)
 
 ;--Spindle Control
 ;-------------------------------------------------------------
