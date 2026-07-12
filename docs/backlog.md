@@ -34,14 +34,15 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done.
   `Centroid-Acroloc-ALLIN1DC.src` and 3 lines in `plcmsg.txt`. Compiles clean (0 errors,
   193 warnings). *Shipped on `post-release-fixes`.*
 
-- [ ] **Re-baseline `docs/plc-spec/` line-number pins.** The specs anchor `src:NNNN` refs to
-  "Line numbers as of commit 41f3fd6," now several commits stale (oil-pump + this backlog's work
-  will add more drift). Do a periodic pass: regenerate line refs and bump the pinned commit on
-  each plc-spec doc. Mechanical; batch it after a few code changes land, not per-change.
+- [ ] **Re-baseline `docs/plc-spec/` line-number pins.** (Post-merge task.) The specs anchor
+  `src:NNNN` refs to "Line numbers as of commit 41f3fd6" across 9 docs (~505 refs total), now
+  several commits stale. Do one careful pass **after `post-release-fixes` merges**, pinned to
+  the resulting `main` commit — doing it mid-PR would pin to an unmerged (squash-discarded)
+  commit and be immediately re-shifted. Mechanical; regenerate refs + bump each doc's pin.
 
-- [ ] **Decide on the mill-manual PDF.** `docs/official/centroid-cnc12-mill-operator-manual.pdf`
-  (~57 MB) sits untracked. Choose: commit via Git LFS, add to `.gitignore`, or leave as a local
-  reference. Repo hygiene.
+- [x] **Decide on the mill-manual PDF.** `docs/official/centroid-cnc12-mill-operator-manual.pdf`
+  (~57 MB) added to `.gitignore` as a local-only reference (the other tracked
+  `docs/official/*.pdf` manuals are unaffected). *Shipped on `post-release-fixes`.*
 
 ## Enhancements (code)
 
