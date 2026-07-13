@@ -21,7 +21,7 @@ stay in `acroloc-s10`, which will cross-link to this skill.
 
 ## Why this skill
 
-VCP customization is spread across three coupled artifact types — the skin `.vcp` file (grid
+VCP customization is spread across three coupled artifact types -- the skin `.vcp` file (grid
 placement), per-button `Buttons/<name>/<name>.xml` + `<name>.svg`, and the PLC/macros a button
 drives. The manual documents the format but is 64 pages; the repo has a working example tree
 but no distilled guidance. Last session we reverse-engineered the button format the hard way
@@ -34,7 +34,7 @@ once so it is not re-derived.
 - `name: centroid-vcp`
 - `description:` follows the sibling convention (a "Use when ..." sentence enumerating the
   covered tasks), ending with a machine-agnostic disclaimer and source note, mirroring
-  `teco-f510`: "... Generic to the Centroid VCP — this-machine skin/buttons live in the
+  `teco-f510`: "... Generic to the Centroid VCP -- this-machine skin/buttons live in the
   acroloc-s10 skill. Source: official CNC12 VCP 2.0 Users Manual + this repo's resources/vcp."
 - Cross-linking:
   - This skill links **to** `acroloc-s10` for "our actual panel."
@@ -117,7 +117,7 @@ title, not page number** (page numbers rot across manual revisions).
 ### reference/button-anatomy.md
 - The `Buttons/<name>/` folder contract: `<name>.xml` + one or more `.svg` graphics; naming
   convention (folder == xml == default svg base name).
-- **Full button XML tag reference** — every tag observed in real button XMLs, with type and
+- **Full button XML tag reference** -- every tag observed in real button XMLs, with type and
   meaning, plus which are optional. Sourced by reading `resources/vcp/Buttons/*/*.xml` and the
   manual's "Button Graphics Location and Format" + "Create a New Button" sections.
 - **SVG conventions & sizing**, including the field-validated rules (size from `width`/`height`;
@@ -130,7 +130,7 @@ title, not page number** (page numbers rot across manual revisions).
 ### reference/visual-states.md
 - **LED indicator color** (`plc_output` + the color mechanism from "Change the LED indicator
   light color").
-- **Image swap on click/press** vs **image swap on function-activated** — the two distinct
+- **Image swap on click/press** vs **image swap on function-activated** -- the two distinct
   mechanisms, the extra SVG files they need (e.g. `reset`/`reset_tripped`/`reset_clear`,
   `probe_indicator`/`probe_trip`/`probe_clear` in the repo), and the XML that wires them.
 - **Hover/click/touch effects**, **borders & backgrounds**, **logos & icons** (including
@@ -155,7 +155,7 @@ title, not page number** (page numbers rot across manual revisions).
 ### reference/troubleshooting.md
 - The manual's "Trouble Shooting" and "Special Cases" content, distilled.
 - **Field-validated facts** (authoritative list; also summarized in SKILL.md):
-  1. The renderer **ignores SVG `text-anchor`** — center/position text with an explicit `x`.
+  1. The renderer **ignores SVG `text-anchor`** -- center/position text with an explicit `x`.
   2. Button **size is taken from the SVG `width`/`height`** attributes; removing them shrinks
      the button.
   3. `skin_event_num` is the button's **function binding**; it surfaces in the PLC as
@@ -176,7 +176,7 @@ title, not page number** (page numbers rot across manual revisions).
   examples*.
 - Not a PLC-language or macro reference (that is `centroid-plc-programming`); it links out for
   the PLC/macro side of button actions.
-- Not a transcription of all 64 manual pages — it distills to task playbooks + a tag reference,
+- Not a transcription of all 64 manual pages -- it distills to task playbooks + a tag reference,
   citing the manual by section for depth.
 
 ## Implementation notes

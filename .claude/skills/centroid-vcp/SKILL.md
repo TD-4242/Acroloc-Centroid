@@ -41,7 +41,7 @@ Children of `<vcp_button>` (details in [button-anatomy.md](reference/button-anat
 
 | Tag | Meaning | Detailed in |
 |-----|---------|-------------|
-| `<skin_event_num>N` | Function binding (PLC `SV_SKIN_EVENT_N`) | [actions.md](reference/actions.md) |
+| `<skin_event_num>` | Function binding (PLC `SV_SKIN_EVENT_N`) | [actions.md](reference/actions.md) |
 | `<plc_output>` | LED color, or image swap on an output's state | [visual-states.md](reference/visual-states.md) |
 | `<plc_input>` / `<plc_memory>` | Indicator: image swap on an input/mem bit | [visual-states.md](reference/visual-states.md) |
 | `<on_click_swap>` | Graphic shown only while pressed | [visual-states.md](reference/visual-states.md) |

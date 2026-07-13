@@ -58,7 +58,7 @@ is an Aux-key event runs that assigned macro when pressed. A button can be just:
 ```
 
 (Real in-repo `m55.xml`: Aux key, skin event 18.) To change what such a button does, edit the
-**assigned macro** (e.g. `mfunc55.mac`), not the button. The position of a button never makes it
+**assigned macro** (the `mfuncNN.mac` mapped to that Aux key in the Wizard), not the button. The position of a button never makes it
 an Aux key -- the skin event number does. See [acroloc-s10](../../acroloc-s10/SKILL.md) and
 [centroid-plc-programming](../../centroid-plc-programming/SKILL.md) for the macro side.
 

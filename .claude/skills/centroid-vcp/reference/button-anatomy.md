@@ -20,7 +20,7 @@ Every tag below is a child of the root `<vcp_button>` element. A minimal button 
 
 | Tag | Purpose | Detailed in |
 |-----|---------|-------------|
-| `<skin_event_num>N` | Bind the button to a CNC12 function / PLC logic N (in the PLC: `SV_SKIN_EVENT_N`). | [actions.md](actions.md) |
+| `<skin_event_num>` | Bind the button to a CNC12 function / PLC logic N (in the PLC: `SV_SKIN_EVENT_N`). | [actions.md](actions.md) |
 | `<plc_output>` (`<number>`, `<color_on>`, `<color_off>`) | LED indicator driven by a PLC output/mem read-back. | [visual-states.md](visual-states.md) |
 | `<plc_output>` (`<number>`, `<image_on>`, `<image_off>`) | Swap the whole graphic on the output's on/off state. | [visual-states.md](visual-states.md) |
 | `<plc_input>` (`<number>`, `<image_on>`, `<image_off>`) | Indicator: swap graphic on a PLC input's state. | [visual-states.md](visual-states.md) |

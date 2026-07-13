@@ -183,7 +183,7 @@ Confirm the tag set and the SVG width/height/text layout actually shipped.
 1. **The button folder contract:** `Buttons/<name>/` holds `<name>.xml` (behavior) + one or
    more `.svg` graphics; folder name == xml base name == default svg base name. The name in the
    skin's `<button>` line must match the folder.
-2. **Button XML tag reference table** — every `<vcp_button>` child, from the Reference facts
+2. **Button XML tag reference table** -- every `<vcp_button>` child, from the Reference facts
    block above: `skin_event_num`, `plc_output` (+`number`,`color_on`,`color_off`,`image_on`,
    `image_off`), `plc_input`, `plc_memory`, `on_click_swap`, `run`(+`line`,`macro`), `app`,
    `switch`, and the `group` attribute. Columns: tag | purpose | detailed in. Point
@@ -412,7 +412,7 @@ VCP 2.0 Users Manual + this repo's resources/vcp."
 
 - [ ] **Step 2: Write the body** with these sections:
 
-1. **`## When to use / when not`** — use for VCP skin/button customization; not for PLC language
+1. **`## When to use / when not`** -- use for VCP skin/button customization; not for PLC language
    (`centroid-plc-programming`), operating the machine (`centroid-cnc12-operating`), or our
    specific panel config (`acroloc-s10`).
 2. **The two-layer mental model:** skin `.vcp` (placement) vs button folder (`<name>.xml` +
@@ -456,7 +456,7 @@ Run: `grep -n "Task playbooks\|### 3. Add or change an M-code macro\|## See also
 Choose the insertion point: a new short task entry under "Task playbooks" (e.g. "### 5. Edit the
 VCP / operator panel") plus a "See also" bullet.
 
-- [ ] **Step 2: Add the cross-link** — a brief entry pointing VCP customization (our skin, our
+- [ ] **Step 2: Add the cross-link** -- a brief entry pointing VCP customization (our skin, our
 buttons like `coolant_pump`, the row/col placement) to the `centroid-vcp` skill for format/how-to,
 while noting this machine's specifics stay documented in `acroloc-s10`. Keep it to a few lines;
 match surrounding style. Add one `## See also` bullet linking `../centroid-vcp/SKILL.md`.
@@ -474,7 +474,7 @@ Expected: no output (didn't introduce non-ASCII).
 
 **Files:** none created; whole-skill review.
 
-- [ ] **Step 1: Cross-link integrity** — every relative link resolves:
+- [ ] **Step 1: Cross-link integrity** -- every relative link resolves:
 
 Run:
 `cd .claude/skills/centroid-vcp && for f in SKILL.md reference/*.md; do grep -oE "\]\(([a-zA-Z./_-]+\.md)" "$f" | sed -E 's/^\]\(//' | while read t; do (cd "$(dirname "$f")" && test -f "$t") && : || echo "BROKEN $f -> $t"; done; done; cd -`
@@ -485,13 +485,13 @@ Expected: no `BROKEN` lines.
 Run: `LC_ALL=C grep -rnP "[^\x00-\x7F]" .claude/skills/centroid-vcp/`
 Expected: no output.
 
-- [ ] **Step 3: Groundedness spot-check** — confirm each "real example" filename cited in the
+- [ ] **Step 3: Groundedness spot-check** -- confirm each "real example" filename cited in the
 skill actually exists:
 
 Run: `grep -rhoE "resources/vcp/[A-Za-z0-9_./-]+" .claude/skills/centroid-vcp/ | sort -u | while read p; do test -e "$p" && echo "OK $p" || echo "MISSING $p"; done`
 Expected: all `OK` (or the only non-OK are clearly-labeled generic templates, not real-file claims).
 
-- [ ] **Step 4: Machine-agnostic check** — no accidental Acroloc-specific config leaked in:
+- [ ] **Step 4: Machine-agnostic check** -- no accidental Acroloc-specific config leaked in:
 
 Run: `grep -rinE "acroloc|W71|W72|ATC_Pos|CarouselToolID" .claude/skills/centroid-vcp/ | grep -v "acroloc-s10"`
 Expected: no output (references to Acroloc appear only as cross-links to the acroloc-s10 skill).
