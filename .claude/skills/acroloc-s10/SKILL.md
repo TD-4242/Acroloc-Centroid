@@ -145,6 +145,16 @@ grep -n "SymbolName" Centroid-Acroloc-ALLIN1DC.src
 
 `plc.map` and `.sym` can resolve symbols to resource addresses, but their **line numbers go stale** after any edit to the `.src` — never rely on them for source navigation. Recompile to refresh them.
 
+### 5. Edit the VCP / operator panel
+
+This machine's on-screen operator panel (jog keys, spindle/coolant, custom buttons like
+`coolant_pump`) is the Centroid VCP under `resources/vcp/`. For the skin/button format and
+how-to -- moving/creating buttons, graphics and LED states, wiring a button to a
+function/macro/PLC bit, big buttons, live PLC-word displays, and why the VCP will not load --
+use the **[centroid-vcp](../centroid-vcp/SKILL.md)** skill. This machine's specific skin
+(`servo_mill_vcp_skin`), custom buttons, and the PLC bits they drive are documented here and in
+the PLC source; the format knowledge is generic and lives in `centroid-vcp`.
+
 ---
 
 ## See also
@@ -156,5 +166,6 @@ grep -n "SymbolName" Centroid-Acroloc-ALLIN1DC.src
 - [reference/atc.md](reference/atc.md) — ATC capacity and tooling limits
 - [reference/work-envelope-and-table.md](reference/work-envelope-and-table.md) — table and machine envelope
 - [centroid-plc-programming](../centroid-plc-programming/SKILL.md) — PLC language syntax, resource addressing, stage mechanics
+- [centroid-vcp](../centroid-vcp/SKILL.md) — VCP skin/button authoring (format + how-to for the operator panel)
 - [README.md](../../README.md) — machine overview, file descriptions, build/deploy
 - [CLAUDE.md](../../CLAUDE.md) — PLC architecture, ATC flow summary, coding conventions
