@@ -2046,15 +2046,12 @@ IF ((CoolMistLED_O ^ (!CoolAutoModeLED_O && CoolantMistPD_PD)) ||
    !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M7_SV || ErrorFlag_M || DoToolCheck_SV)
   THEN (CoolMistLED_O), (SelectCoolantMist_SV)
 
-; Acroloc: flood and wash are mutually exclusive (valve open XOR closed while pump runs).
-; Manual mode only; auto mode is handled by the M7/M8 macros. After both toggle rungs so the
-; just-pressed mode wins.
-IF !CoolAutoModeLED_O && CoolantFloodPD_PD THEN RST CoolMistLED_O   ; flood press clears wash
-IF !CoolAutoModeLED_O && CoolantMistPD_PD  THEN RST CoolFloodLED_O  ; wash press clears flood
 
-; Acroloc: drive the coolant hardware from the selected mode.
-; Pump (OUT4) runs in either mode; the flood valve (OUT3) opens only in flood mode. The mode
-; LEDs are already gated off by SV_STOP/errors/tool-check above, so these inherit that.
+; Acroloc: drive the coolant hardware. Flood and the coolant-motor (mist) buttons are
+; INDEPENDENT (not mutually exclusive): the pump (OUT4) runs whenever EITHER is on, and the
+; flood valve (OUT3) opens only for flood. So mist = coolant motor on/off, flood = motor +
+; work-area sprayers, and both can be on at once. The LEDs are already gated off by
+; SV_STOP/errors/tool-check above, so these outputs inherit that.
 IF CoolFloodLED_O THEN (FloodValve_O)
 IF CoolFloodLED_O || CoolMistLED_O THEN (CoolantPump_O)
 

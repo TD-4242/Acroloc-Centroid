@@ -335,13 +335,14 @@ its downstream consumer.
   for a manual key press, OR `CoolAutoModeLED_O && M8_SV`/`M7_SV` for auto), ANDed against a
   kill condition (`!(SV_STOP || CoolantAutoManualPD_PD || (CoolAutoModeLED_O && !M8_SV for flood / !M7_SV for wash) ||
   ErrorFlag_M || DoToolCheck_SV)`) and report `SelectCoolantFlood_SV`/`SelectCoolantMist_SV`
-  to CNC12. They no longer drive the physical outputs directly. The panel modes are made
-  mutually exclusive (a flood press RSTs `CoolMistLED_O` and vice versa, manual mode only).
+  to CNC12. They no longer drive the physical outputs directly, and the two panel buttons are
+  **independent** (not mutually exclusive) — both can be lit at once.
 - Coolant **outputs are derived** from the mode LEDs to match this machine's plumbing
   (OUT4 = coolant pump, OUT3 = flood valve): `IF CoolFloodLED_O THEN (FloodValve_O)` and
-  `IF CoolFloodLED_O || CoolMistLED_O THEN (CoolantPump_O)` — flood runs the pump **and**
-  opens the valve; wash/"mist" runs the pump only. The derived outputs inherit the LEDs'
-  stop/fault/tool-check gating.
+  `IF CoolFloodLED_O || CoolMistLED_O THEN (CoolantPump_O)` — the **mist button is the coolant
+  motor** (pump on/off on its own), and **flood runs the pump AND opens the work-area valve**.
+  Because the pump is `Flood OR Mist`, you can run the pump from the mist button and add/drop
+  flood independently. The derived outputs inherit the LEDs' stop/fault/tool-check gating.
 - Both mist and flood are reset as part of the M-code housekeeping rung inside the
   `MainStage` banner (`RST M8_SV, RST M7_SV`, src:2889-2890) when leaving
   `SV_PROGRAM_RUNNING`/`SV_MDI_MODE`, and both drive an `AutoCoolantPD_PD` feed-hold prompt
