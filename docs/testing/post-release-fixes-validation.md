@@ -90,8 +90,9 @@ OUT4 is the pump, OUT3 the flood valve. **This is the fix that makes flood actua
       runs at the workspace nozzles (pump audibly runs, valve opens). Result: ______
 - [ ] **Wash/"mist" button:** OUT4 on, OUT3 off; the cleaning hose pressurizes, no nozzle flow.
       Result: ______
-- [ ] **Switch flood <-> wash:** the pump stays running while the valve toggles; only one mode
-      LED lit at a time (mutually exclusive). Result: ______
+- [ ] **Switch flood <-> wash:** the pump stays running while the valve toggles. The buttons are
+      independent (not mutually exclusive) — both LEDs may be lit at once; dropping flood leaves
+      the pump on. Result: ______
 - [ ] **Coolant off:** both OUT4 and OUT3 drop. Result: ______
 - [ ] **Auto-coolant (MDI):** `M8` -> flood (pump+valve), `M7` -> wash (pump only), `M9` -> off.
       Result: ______

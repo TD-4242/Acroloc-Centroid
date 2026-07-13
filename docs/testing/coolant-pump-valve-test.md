@@ -29,8 +29,9 @@ CNC12's coolant indicator shows Flood / Mist / Off (the wash mode still reads "M
    `FloodValve_O` -> 0; the cleaning hose pressurizes, no nozzle flow. Result: ______
 
 3. **Switch flood <-> wash.** From flood, press wash (and back). Expect: the pump (OUT4)
-   stays running the whole time while the valve (OUT3) toggles; only one of the two mode LEDs
-   is lit at a time (mutually exclusive). Result: ______
+   stays running the whole time while the valve (OUT3) toggles. The flood and pump/mist buttons
+   are **independent** (not mutually exclusive) — both LEDs may be lit at once, which is
+   expected; dropping flood leaves the pump running. Result: ______
 
 4. **Coolant off.** Turn the active mode off. Expect: `CoolantPump_O` and `FloodValve_O`
    both -> 0. Result: ______

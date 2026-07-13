@@ -49,8 +49,14 @@ The physical outputs are **derived from the selected mode**:
 - `OUT3` (flood valve) = flood mode.
 - `OUT4` (coolant pump) = flood mode **OR** wash mode.
 
-Off (coolant-off / deselecting the active mode) turns both off. Flood and wash are mutually
-exclusive (the valve is either open or closed while the pump runs).
+Off (coolant-off / deselecting the active mode) turns both off.
+
+> **Revised after implementation (commit b52bb12):** the flood and pump/mist buttons were made
+> **independent** (not mutually exclusive) per operator request. The pump runs whenever *either*
+> is selected (`CoolFloodLED_O || CoolMistLED_O`) and flood only adds the valve, so both LEDs
+> can be lit at once and dropping flood leaves the pump running. The "Mutual exclusion on the
+> panel" section below was **removed from the shipped source**. Programmed `M7`/`M8` remain
+> mutually exclusive via the `mfunc7`/`mfunc8` macros.
 
 ## Design
 
@@ -111,7 +117,12 @@ Because the mode LEDs are already gated off by `SV_STOP` / errors / tool-check i
 rungs, the derived outputs inherit that gating -- no separate output gating needed. These are
 the **only** drivers of `FloodValve_O`/`CoolantPump_O` (no double-drive).
 
-### Mutual exclusion on the panel
+### Mutual exclusion on the panel — SUPERSEDED (removed in b52bb12)
+
+> This section is **not** in the shipped source. The manual flood/pump buttons were made
+> independent instead (see the revision note under "Corrected behavior"). Do not add these
+> `RST` rungs back.
+
 
 The `M7`/`M8` macros already clear the opposite mode. Add the same for the panel buttons so
 both LEDs cannot light at once (manual mode only, matching the toggle gate):

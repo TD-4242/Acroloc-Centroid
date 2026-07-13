@@ -10,6 +10,12 @@
 
 **Design spec:** `docs/superpowers/specs/2026-07-12-coolant-pump-valve-fix-design.md`
 
+> **Historical note:** this plan was executed as written, including the manual-mode
+> mutual-exclusion rungs in Step 6. A **later, separate commit (b52bb12) removed those two
+> `RST CoolMistLED_O` / `RST CoolFloodLED_O` rungs** — the shipped source makes the flood and
+> pump/mist buttons independent (both can be on; pump = `Flood OR Mist`). Do not reintroduce
+> the mutual-exclusion rungs shown in Step 6; the derivation rungs are unchanged.
+
 ## Global Constraints
 
 - **ASCII only** for `.src`.

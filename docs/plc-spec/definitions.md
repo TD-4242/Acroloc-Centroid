@@ -32,7 +32,9 @@ value = type + 256 * msgNumber
 `type` is 1 (synchronous) or 2 (asynchronous); `msgNumber` is the entry number in the first
 column of `plcmsg.txt`. For example `ATC_Lock_Released_C` (src:202) `IS 44546 ;(2+256*174)`
 decodes as **type 2, msgNumber 174** — the "Tool Carousel locked" entry (line 174) in
-`plcmsg.txt`. The message *text* lives in CNC12's message files, not in this repo. The comment
+`plcmsg.txt`. The message *text* is defined in this repo's `plcmsg.txt` (the PLC message file,
+keyed by the first-column number) and loaded by CNC12; stock CNC12 system messages live in
+CNC12's own message files, which are not tracked here. The comment
 following each `_C` definition carries this `(type+256*msgNumber)` breakdown. (`CLAUDE.md`
 writes the same formula with reversed field names, `msgNumber + 256*msgFile`, where its
 `msgNumber` is this `type` and its `msgFile` is this `msgNumber`; see the
@@ -270,8 +272,9 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `P170Value_W` | W68 | 1089 | | Cached `SV_MACHINE_PARAMETER_170`. [parameters.md](parameters.md) |
 | `P900Value_W` | W69 | 1090 | | Cached `SV_MACHINE_PARAMETER_900`. [parameters.md](parameters.md) |
 | `MiniPLCStatus_W` | W70 | 1091 | | Mini-PLC status word. [faults-and-messages.md](faults-and-messages.md) |
-| `CarouselToolID_W` | W71 | 1093 | Acroloc | Accumulated carousel position ID (base-16 encoded as decimal across the 5 position switches). [atc.md](atc.md) |
+| `CarouselToolID_W` | W71 | 1093 | Acroloc | Per-group **peak** of the position-switch sum = the settled tool ID (base-16 encoded as decimal across the 5 switches); compared to `ChangeToTool_W`. [atc.md](atc.md) |
 | `ChangeToTool_W` | W72 | 1094 | Acroloc | Target tool ID latched from `M6`. [atc.md](atc.md) |
+| `InstToolID_W` | W75 | 1113 | Acroloc | Instantaneous position-switch sum, rebuilt each scan; its per-group peak is latched into `CarouselToolID_W`. [atc.md](atc.md) |
 | `PValue_W` | W92 | 1096 | | Scratch parameter value. [parameters.md](parameters.md) |
 
 ### Float words (FW)
