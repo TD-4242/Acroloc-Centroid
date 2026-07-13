@@ -158,17 +158,26 @@ IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !
 
 **Match and exit:**
 ```plc
-IF CarouselToolID_W == ChangeToTool_W THEN
+IF !InToolSelect_M && CarouselToolID_W == ChangeToTool_W THEN
   ChangeToTool_W = 0,
   SET ToolSelected_M,
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
+  RST ATCSpin_T,
   RST ATCStage
 ```
-When the accumulated ID matches the latched target: motor stops, piston
-relocks, `M6_SV` is cleared (releasing `mfunc6.mac`'s `M100` wait), and
-`ATCStage` resets. The macro then cleans up with `M95 /8`.
+The compare is gated on `!InToolSelect_M` so it only fires **after all five position
+switches return to 0** (the settled ID) — never on the half-built sum during accumulation,
+which otherwise let a single-switch transient (e.g. `Pos3` = 4) false-match while passing
+another tool (requested T4 stopping at T6/T7). When the settled ID matches the target: motor
+stops, piston relocks, `M6_SV` clears (releasing `mfunc6.mac`'s `M100` wait), the search
+watchdog `ATCSpin_T` resets, and `ATCStage` resets. The macro then cleans up with `M95 /8`.
+
+`CarouselToolID_W` is also **cleared once at the M6 kickoff** (in the arm rung), so a stale ID
+from the previous change cannot immediate-match — the carousel always physically re-indexes to
+the requested tool, even the same tool number (a manual change may have left the wrong tool
+under the spindle).
 
 ---
 

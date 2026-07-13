@@ -224,32 +224,33 @@ Once all five switches drop (the gap between tool positions on the carousel), `I
 clears and `CarouselToolID_W` holds the settled ID of the tool that just passed the read
 position.
 
-**Match and exit** (`src:2974-2981`, comment `; lets fire and stop on tool`):
+**Match and exit** (comment `; lets fire and stop on tool`):
 ```plc
-IF CarouselToolID_W == ChangeToTool_W THEN
+IF !InToolSelect_M && CarouselToolID_W == ChangeToTool_W THEN
   ChangeToTool_W = 0,
   SET ToolSelected_M,
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
+  RST ATCSpin_T,
   RST ATCStage
 ```
-This compare is **unconditional** — it is a bare `IF`, gated on neither `InToolSelect_M` nor
-`ATCMotor_O`, and it runs every PLC scan regardless of where in the switch-accumulation cycle
-the carousel currently is. **Timing sensitivity:** because `CarouselToolID_W` is zeroed at the
-leading edge of each tool's switch group and then accumulates across several scans as
-individual switches assert (see Accumulator above), the *partial* sum during that
-accumulation window is a live value this rung reads every scan. If a partial sum transiently
-equals `ChangeToTool_W` before the group finishes settling, the carousel stops prematurely on
-the wrong tool (or the right tool, by luck, mid-transition). Any edit to the accumulator
-weights or to the `InToolSelect_M` gating rungs must preserve — or explicitly reason about —
-this window; it is not merely a stylistic quirk but the actual mechanism (in combination with
-correct weight design) that makes stopping on the fully-settled ID reliable in practice. On
-match: `ChangeToTool_W` is zeroed, `ToolSelected_M` (`MEM444`, src:711) is set, the motor
-(`ATCMotor_O`) and unlock (`ATCUnlocked_O`) outputs are both reset (carousel stops and
-relocks), `M6_SV` is reset (releasing `mfunc6.mac`'s `M100 /93016` wait), and `ATCStage`
-itself resets — which is also the write to stage-bit `93016` that `mfunc6.mac:25` was
-blocked on.
+The compare is gated on **`!InToolSelect_M`**, so it fires **only after the switch group has
+fully settled** (all five switches returned to 0). `CarouselToolID_W` is zeroed at the leading
+edge of each tool's switch group and accumulates across several scans as individual switches
+assert (see Accumulator above), so the *partial* sum is a live value during that window.
+Comparing it directly (an earlier bug) let a single-switch transient — e.g. `Pos3` = 4 arriving
+a scan ahead of its companions — false-match while passing another tool, stopping a requested
+**T4 on T6/T7**. Gating on `!InToolSelect_M` compares only the settled ID; this is the design's
+intent ("do not act on the tool until all switches return to 0") and is timing-independent.
+Separately, `CarouselToolID_W` is **cleared once at the M6 kickoff** (in the arm rung), so a
+stale ID from the previous change cannot immediate-match — the carousel always physically
+re-indexes to the requested tool, **even the same tool** (guarding against a manual tool change
+that left the wrong tool under the spindle). On match: `ChangeToTool_W` is zeroed,
+`ToolSelected_M` (`MEM452`) is set, the motor (`ATCMotor_O`) and unlock (`ATCUnlocked_O`)
+outputs reset (carousel stops and relocks), `M6_SV` resets (releasing `mfunc6.mac`'s
+`M100 /93016` wait), the `ATCSpin_T` search watchdog resets, and `ATCStage` itself resets —
+which is also the write to stage-bit `93016` that `mfunc6.mac:25` was blocked on.
 
 ## Known gaps
 

@@ -2862,10 +2862,12 @@ IF TriggerPause_T THEN RST TriggerPause_T, RST ActivateFeedHold_M
 IF True_M THEN RST OnAtPowerUp_M
 
 ; Acroloc tool stage start
-; Acroloc: arm the carousel search watchdog once, as the change kicks off.
-; Runs before the SET ATCStage below, so !ATCStage is true only on the first
-; scan of a change; it will not re-arm (reset) the timer on later scans.
-IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T
+; Acroloc: once per change (before SET ATCStage below, so !ATCStage is true only on the
+; first scan): arm the carousel search watchdog, AND clear CarouselToolID_W so a stale
+; value from the previous change cannot cause an immediate match -- the carousel always
+; re-indexes to the requested tool, even the same tool (a manual change may have left the
+; wrong tool under the spindle).
+IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CarouselToolID_W = 0
 IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
 
 ; Acroloc manual tool changes
@@ -2987,7 +2989,12 @@ IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !
   RST InToolSelect_M
 
 ; lets fire and stop on tool
-IF CarouselToolID_W == ChangeToTool_W THEN
+; Only compare once the position code has fully settled: InToolSelect_M is set while any
+; switch is engaged and cleared only when all 5 return to 0, so gating on !InToolSelect_M
+; never matches the half-built sum during accumulation (a single-switch transient such as
+; Pos3 = 4 would otherwise false-match while passing another tool -- e.g. requesting T4 and
+; stopping at T6/T7).
+IF !InToolSelect_M && CarouselToolID_W == ChangeToTool_W THEN
   ChangeToTool_W = 0,
   SET ToolSelected_M,
   RST ATCMotor_O,
