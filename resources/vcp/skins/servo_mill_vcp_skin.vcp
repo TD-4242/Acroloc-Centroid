@@ -105,7 +105,7 @@
   <button row="4" column="6">aux12</button>
   <button row="5" column="2">coolant_auto_man</button>
   <button row="5" column="3">flood_coolant</button>
-  <button row="5" column="4">mist_coolant</button>
+  <button row="5" column="4">coolant_pump</button>
   <button row="5" column="5">aux13_legacy</button>
   <button row="5" column="6">aux14_legacy</button>
   <button row="6" column="2">incr_cont</button>
