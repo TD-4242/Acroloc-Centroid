@@ -131,26 +131,37 @@ IF ATCStage && ChangeToTool_W > 0 THEN
   SET ATCMotor_O         ; OUT17 — spin carousel
 ```
 
-**Position detection — `InToolSelect_M` gating:**
+**Position detection — `InToolSelect_M` gating (peak decode):**
 ```plc
-IF ATCMotor_O && ( ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I ) THEN
+; leading edge only (&& !InToolSelect_M): reset the peak once per switch group
+IF ATCMotor_O && ( ATC_Pos1_I || ... || ATC_Pos5_I ) && !InToolSelect_M THEN
   CarouselToolID_W = 0,
   SET InToolSelect_M
 ```
-When any position switch asserts while the motor is running, `CarouselToolID_W`
-(W71) is zeroed and `InToolSelect_M` (MEM443) is set. The accumulator lines
-then fire:
+On the first switch of a group `CarouselToolID_W` (W71) is zeroed and
+`InToolSelect_M` (MEM443) is set. Each scan the **instantaneous** switch sum is
+built in `InstToolID_W` (W75) and its running **peak** is kept in
+`CarouselToolID_W`:
 
 ```plc
-If InToolSelect_M && ATC_Pos1_I THEN CarouselToolID_W = CarouselToolID_W + 1
-If InToolSelect_M && ATC_Pos2_I THEN CarouselToolID_W = CarouselToolID_W + 2
-If InToolSelect_M && ATC_Pos3_I THEN CarouselToolID_W = CarouselToolID_W + 4
-If InToolSelect_M && ATC_Pos4_I THEN CarouselToolID_W = CarouselToolID_W + 8
-If InToolSelect_M && ATC_Pos5_I THEN CarouselToolID_W = CarouselToolID_W + 10
+IF InToolSelect_M THEN InstToolID_W = 0
+If InToolSelect_M && ATC_Pos1_I THEN InstToolID_W = InstToolID_W + 1
+If InToolSelect_M && ATC_Pos2_I THEN InstToolID_W = InstToolID_W + 2
+If InToolSelect_M && ATC_Pos3_I THEN InstToolID_W = InstToolID_W + 4
+If InToolSelect_M && ATC_Pos4_I THEN InstToolID_W = InstToolID_W + 8
+If InToolSelect_M && ATC_Pos5_I THEN InstToolID_W = InstToolID_W + 10
+IF InToolSelect_M && InstToolID_W > CarouselToolID_W THEN CarouselToolID_W = InstToolID_W
 ```
 
+The position switches do **not** open/close simultaneously, so the instantaneous
+sum passes through single-switch values (e.g. Pos3 alone = 4) at the entry and
+exit edges. Only the **peak** — reached when all of a pocket's switches are on at
+the aligned dwell — is the true tool ID, so the decode uses the peak and ignores
+the edge partials (this is what stops a requested T4 from false-matching the Pos3
+transient at T5/T6/T7).
+
 When all switches drop to 0 (gap between tool positions), `InToolSelect_M`
-is cleared and `CarouselToolID_W` holds the ID of the tool just seen:
+is cleared and `CarouselToolID_W` holds the peak = the ID of the tool just seen:
 ```plc
 IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !ATC_Pos5_I ) THEN
   RST InToolSelect_M

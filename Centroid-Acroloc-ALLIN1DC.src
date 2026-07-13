@@ -1110,6 +1110,7 @@ MiniPLCStatus_W                 IS W70
 
 CarouselToolID_W                 IS W71 ; Acroloc
 ChangeToTool_W                   IS W72 ; Acroloc
+InstToolID_W                     IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CarouselToolID_W
 
 PValue_W                        IS W92
 
@@ -2966,7 +2967,7 @@ IF ATCStage && ChangeToTool_W > 0 THEN
 
 ; If carousel is moving and any of the position switches are triggered we need to start
 ; tracking the switches to calculate what position we are at
-IF ATCMotor_O && ( ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I ) THEN
+IF ATCMotor_O && ( ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I ) && !InToolSelect_M THEN
   CarouselToolID_W = 0,
   SET InToolSelect_M
 
@@ -2977,11 +2978,19 @@ IF ATCMotor_O && ( ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_P
 ; T2 =  O * O O O    T6 = O * * O O   T10 = O O O O *
 ; T3 =  * * O O O    T7 = * * * O O   T11 = * O O O *
 ; T4 =  O O * O O    T8 = O O O * O   T12 = O * O O *
-If InToolSelect_M && ATC_Pos1_I THEN CarouselToolID_W = CarouselToolID_W + 1
-If InToolSelect_M && ATC_Pos2_I THEN CarouselToolID_W = CarouselToolID_W + 2
-If InToolSelect_M && ATC_Pos3_I THEN CarouselToolID_W = CarouselToolID_W + 4
-If InToolSelect_M && ATC_Pos4_I THEN CarouselToolID_W = CarouselToolID_W + 8
-If InToolSelect_M && ATC_Pos5_I THEN CarouselToolID_W = CarouselToolID_W + 10; Not 16 due to base16 encoded as decimal
+; The position switches for a pocket do NOT open/close simultaneously, so the instantaneous
+; sum passes through single-switch values (e.g. Pos3 alone = 4) at the entry AND exit edges.
+; Build the instantaneous sum each scan, then keep the PEAK across the group in
+; CarouselToolID_W -- the peak is reached only when all of the pocket's switches are on at
+; the aligned dwell, so it is the true tool ID. Comparing the peak (not a live edge partial)
+; stops requesting-T4 from false-matching the Pos3 transient at T5/T6/T7.
+IF InToolSelect_M THEN InstToolID_W = 0
+If InToolSelect_M && ATC_Pos1_I THEN InstToolID_W = InstToolID_W + 1
+If InToolSelect_M && ATC_Pos2_I THEN InstToolID_W = InstToolID_W + 2
+If InToolSelect_M && ATC_Pos3_I THEN InstToolID_W = InstToolID_W + 4
+If InToolSelect_M && ATC_Pos4_I THEN InstToolID_W = InstToolID_W + 8
+If InToolSelect_M && ATC_Pos5_I THEN InstToolID_W = InstToolID_W + 10; Not 16 due to base16 encoded as decimal
+IF InToolSelect_M && InstToolID_W > CarouselToolID_W THEN CarouselToolID_W = InstToolID_W
 
 ; If all tool position switches go back to 0 then we need to exit the tool selection mode
 ; and CarouselToolID_W should be the tool number passing the spindle.
@@ -2989,11 +2998,9 @@ IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !
   RST InToolSelect_M
 
 ; lets fire and stop on tool
-; Only compare once the position code has fully settled: InToolSelect_M is set while any
-; switch is engaged and cleared only when all 5 return to 0, so gating on !InToolSelect_M
-; never matches the half-built sum during accumulation (a single-switch transient such as
-; Pos3 = 4 would otherwise false-match while passing another tool -- e.g. requesting T4 and
-; stopping at T6/T7).
+; Compare only after the group ends (!InToolSelect_M, all switches back to 0). CarouselToolID_W
+; now holds the per-group PEAK (the settled full tool ID), so neither an entry nor an exit
+; single-switch partial can false-match.
 IF !InToolSelect_M && CarouselToolID_W == ChangeToTool_W THEN
   ChangeToTool_W = 0,
   SET ToolSelected_M,

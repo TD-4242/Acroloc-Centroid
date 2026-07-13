@@ -182,15 +182,19 @@ five position switches (`ATC_Pos1_I` (`INP32`, src:234) through `ATC_Pos5_I`
 **Accumulator** (`src:2956-2967`, comment block at `src:2956-2962` documents the encoding
 and a worked T1-T12 truth table):
 ```plc
-If InToolSelect_M && ATC_Pos1_I THEN CarouselToolID_W = CarouselToolID_W + 1
-If InToolSelect_M && ATC_Pos2_I THEN CarouselToolId_W = CarouselToolID_W + 2
-If InToolSelect_M && ATC_Pos3_I THEN CarouselToolID_W = CarouselToolID_W + 4
-If InToolSelect_M && ATC_Pos4_I THEN CarouselToolId_W = CarouselToolID_W + 8
-If InToolSelect_M && ATC_Pos5_I THEN CarouselToolId_W = CarouselToolID_W + 10; Not 16 due to base16 encoded as decimal
+IF InToolSelect_M THEN InstToolID_W = 0
+If InToolSelect_M && ATC_Pos1_I THEN InstToolID_W = InstToolID_W + 1
+If InToolSelect_M && ATC_Pos2_I THEN InstToolID_W = InstToolID_W + 2
+If InToolSelect_M && ATC_Pos3_I THEN InstToolID_W = InstToolID_W + 4
+If InToolSelect_M && ATC_Pos4_I THEN InstToolID_W = InstToolID_W + 8
+If InToolSelect_M && ATC_Pos5_I THEN InstToolID_W = InstToolID_W + 10; Not 16 due to base16 encoded as decimal
+IF InToolSelect_M && InstToolID_W > CarouselToolID_W THEN CarouselToolID_W = InstToolID_W
 ```
-(`CarouselToolId_W` on the Pos2/Pos4/Pos5 lines is the same case-insensitive resolution to
-`CarouselToolID_W`.) Each switch adds its weight while `InToolSelect_M` holds and that switch
-is closed. `ATC_Pos5_I` adds **10, not 16** — the comment on that line and the block comment
+Each scan the **instantaneous** switch sum is built in `InstToolID_W` (W75) and its running
+**peak** is kept in `CarouselToolID_W`. The switches for a pocket do not close simultaneously,
+so only the peak — all of the pocket's switches on at the aligned dwell — is the true tool ID;
+the entry/exit single-switch partials (e.g. Pos3 alone = 4) are always smaller and never
+false-match. `ATC_Pos5_I` adds **10, not 16** — the comment on that line and the block comment
 above spell out why: tool IDs beyond 9 are encoded as base-16 values but *written and compared
 as decimal*, so the "16s place" is represented by an offset of 10 (the decimal-looking "tens
 digit") rather than a true binary 16. The five switches therefore encode 31 possible raw sums
