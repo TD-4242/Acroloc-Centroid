@@ -1,0 +1,91 @@
+# Skins and the button grid (the layout layer)
+
+The VCP has two layers. This file is the **layout layer**: the skin `.vcp` file that places
+named buttons onto a grid. The **button layer** (each button's own folder) is covered in
+[button-anatomy.md](button-anatomy.md).
+
+> Change *where* a button is -> edit the skin `.vcp` file (here).
+> Change *what* a button is -> edit the button folder ([button-anatomy.md](button-anatomy.md)).
+
+## Where skins live and which one is active
+
+Skins are XML files under `resources/vcp/skins/*.vcp` (on the control PC:
+`c:\cncm\resources\vcp\skins\`). A machine can have any number of skins.
+
+The active skin is chosen in `resources/vcp/options.xml` by the `Skin` option's value (the skin
+file name **without** the `.vcp` extension):
+
+```xml
+<VcpOption>
+  <Name>Skin</Name>
+  <Value>servo_mill_vcp_skin</Value>
+</VcpOption>
+```
+
+This repo ships two skins: `servo_mill_vcp_skin.vcp` (active) and
+`servo_mill_vcp_rapid_skin.vcp` (adds the rapid/feed override switch; see
+[advanced.md](advanced.md)). A button referenced by more than one skin must be edited and
+re-checked in **each** skin.
+
+## The grid
+
+Buttons sit on an even row/column grid. Each placement is one line inside `<vcp_skin>`:
+
+```xml
+<button row="5" column="4">coolant_pump</button>
+```
+
+`coolant_pump` is the button folder name under `resources/vcp/Buttons/`. The stock mill skin is
+**6 columns x 14 rows**. The grid identifies location only; any button can go in any cell.
+
+Grid size is adjustable (CNC12 v5.40+) with two skin-level tags placed right under
+`<vcp_skin>`:
+
+```xml
+<column_count>7</column_count>
+<row_count>15</row_count>
+```
+
+Buttons scale proportionally within the fixed VCP size, so more cells = smaller buttons.
+
+## Move a button
+
+Change its `row`/`column` attribute and restart CNC12. For example, to move `single_block` from
+its shipped cell (row 10, column 3) to column 1:
+
+```xml
+<!-- before -->
+<button row="10" column="3">single_block</button>
+<!-- after -->
+<button row="10" column="1">single_block</button>
+```
+
+Always back up the `.vcp` first (copy to `*_backup.vcp`) and change one thing at a time.
+
+## Delete a button
+
+Remove its `<button>` line; the cell becomes empty and available for another button:
+
+```xml
+<!-- deleting these frees two cells -->
+<button row="7" column="2">4th_positive</button>
+<button row="9" column="2">4th_negative</button>
+```
+
+If the button sat inside a decorative `<border>` group box or under a static `<image>`, adjust
+or remove that too (see [visual-states.md](visual-states.md)).
+
+## What else lives at skin level
+
+Besides `<button>` lines, the skin `.vcp` holds page-wide elements, each detailed elsewhere:
+
+- `<background>` -- VCP background color or image (default `#a6a5a5`). See
+  [visual-states.md](visual-states.md).
+- `<border>` -- group boxes / solid fills (can also carry `<plc_word>` or `<text>`). See
+  [visual-states.md](visual-states.md) and [advanced.md](advanced.md).
+- `<image>` -- static logos/icons overlaid on the grid. See [visual-states.md](visual-states.md).
+- `<text>` and `<plc_word>` -- static text and live PLC data. See [advanced.md](advanced.md).
+- `<on_hover>` / `<on_click>` -- mouse/touch feedback. See [visual-states.md](visual-states.md).
+- `<hide_group>` and switching groups -- see [advanced.md](advanced.md).
+
+After any skin edit, **restart CNC12** to reload it.
