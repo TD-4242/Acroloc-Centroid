@@ -207,10 +207,9 @@ MINI_PLC_8_WARNING_C            IS 43010;(2+256*168)
 ; Acroloc ATC Messages
 ATC_Spindle_Not_Parked_C        IS 44034;(2+256*172) Spindle not parked.  Z Axis not tool change position.
 ATC_Lock_Not_Released_C         IS 44290;(2+256*173) Tool Carousel not locked.
-ATC_Lock_Released_C             IS 45546;(2+256*174) Tool Carousel locked.
-SPINDLE_IN_CHANGER_DBG_C        IS 44802;(2+256*175) DEBUG spindle in changer zone
-Z_CLEARED_RING_DBG_C            IS 45058;(2+256*176) DEBUG Z cleared tool ring
-CHANGER_HOLD_ARMED_DBG_C        IS 45314;(2+256*177) DEBUG changer feed-hold armed
+ATC_Lock_Released_C             IS 44546;(2+256*174) Tool Carousel locked.
+CAROUSEL_TIMEOUT_MSG_C          IS 16130 ;(2+256*63) CAROUSEL MOVE TIME OUT
+ATC_SPIN_TIMEOUT_MS_C           IS 20000 ; Acroloc carousel search timeout (ms)
 
 ;------------------------------------------------------------------------------
 ;                        INPUT DEFINITIONS
@@ -238,9 +237,9 @@ LubeOk_I                        IS INP9  ;Lube_O is "OK" when input is closed
 SpindleInverterOk_I             IS INP10 ;Inverter is "OK" when input is closed
 EStopOk_I                       IS INP11
 ZeroSpeed_I                     IS INP12
-SpinLowRange_I                  IS INP13 ; Acroloc: stock gear-sense input, now unused (reserved for future gear-position confirmation)
-SpinMedRange_I                  IS INP14
-SpinHighRange_I                 IS INP15
+; INP13-15 are stock gear-sense inputs (low/med/high range). Left unwired/unused:
+; the two-speed shift is intentionally open-loop; closed-loop gear confirmation is
+; not planned (would need the sense switches wired). Symbols removed to avoid dead code.
 
 ;If a PLC expansion board (PLCADD1616) is used, the additional inputs will
 ;begin at input 17.
@@ -388,8 +387,8 @@ JpFeedOrKnobBit15_I             IS INP1264 ; unused
 ;------------------------------------------------------------------------------
 NoFaultOut_O                    IS OUT1  ;SPST Type
 Lube_O                          IS OUT2  ;SPST Type
-Flood_O                         IS OUT3  ;SPST Type
-Mist_O                          IS OUT4  ;SPST Type
+FloodValve_O                    IS OUT3  ; Acroloc flood valve: opens the coolant pump to the workspace nozzles (SPST)
+CoolantPump_O                   IS OUT4  ; Acroloc coolant pump: pressurizes coolant (+valve=flood nozzles, no valve=cleaning hose) (SPST)
 InverterResetOut_O              IS OUT5  ;SPST Type
 WorkLightOut_O                  IS OUT6  ;SPST Type
 SpindleEnableOut_O              IS OUT7  ;SPST Type
@@ -729,7 +728,7 @@ KbAux16Key_M                  IS MEM447 ; "ctrl" + "4"
 
 ; Tool changer position state tracking
 InToolSelect_M                IS MEM443 ; Acroloc 0=false, 1=true
-ToolSelected_M                IS MEM444 ; Acroloc 0=false, 1=true
+ToolSelected_M                IS MEM452 ; Acroloc 0=false, 1=true (moved off MEM444; it collided with KbAux13Key_M)
 ChangerHoldActive_M           IS MEM448 ; Acroloc feed-hold active while spindle stops in changer zone
 ChangerHoldDone_M             IS MEM449 ; Acroloc once-per-entry latch, cleared when Z clears changer
 ;------------------------------------------------------------------------------
@@ -1057,9 +1056,9 @@ SetAxis8Part0_SV                 IS SV_PLC_SET_AXIS_8_PART_ZERO
 M3_SV                            IS SV_M94_M95_1 ;(Spindle CW)
 M4_SV                            IS SV_M94_M95_2 ;(Spindle CCW)
 M6_SV                            IS SV_M94_M95_8 ; Acroloc Tool change request
-M8_SV                            IS SV_M94_M95_3 ;(Flood_O On)
+M8_SV                            IS SV_M94_M95_3 ;(Flood mode: coolant pump + flood valve)
 M10_SV                           IS SV_M94_M95_4 ; Clamp
-M7_SV                            IS SV_M94_M95_5 ;(Mist_O)
+M7_SV                            IS SV_M94_M95_5 ;(Mist/wash mode: coolant pump only)
 ;                                IS SV_M94_M95_6 ;
 ;                                IS SV_M94_M95_7 ;
 
@@ -1111,6 +1110,7 @@ MiniPLCStatus_W                 IS W70
 
 CarouselToolID_W                 IS W71 ; Acroloc
 ChangeToTool_W                   IS W72 ; Acroloc
+InstToolID_W                     IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CarouselToolID_W
 
 PValue_W                        IS W92
 
@@ -2034,17 +2034,26 @@ IF (CoolAutoModeLED_O && CoolantAutoManualPD_PD && AllowKbInput_M)
 ;  Turn off if entering manual mode
 ;  Toggle by key press
 IF CoolFloodKey_I || KbFloodOnOff_M || SkinCoolFlood_M_SV THEN (CoolantFloodPD_PD)
-IF ((Flood_O ^ (!CoolAutoModeLED_O && CoolantFloodPD_PD)) ||
+IF ((CoolFloodLED_O ^ (!CoolAutoModeLED_O && CoolantFloodPD_PD)) ||
    CoolAutoModeLED_O && M8_SV) &&
    !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M8_SV || ErrorFlag_M || DoToolCheck_SV)
-  THEN (Flood_O), (CoolFloodLED_O), (SelectCoolantFlood_SV)
+  THEN (CoolFloodLED_O), (SelectCoolantFlood_SV)
 
 ;--Mist coolant on/off
 IF (CoolMistKey_I || KbMistOnOff_M || SkinCoolMist_M_SV) THEN (CoolantMistPD_PD)
-IF ((Mist_O ^ (!CoolAutoModeLED_O && CoolantMistPD_PD)) ||
+IF ((CoolMistLED_O ^ (!CoolAutoModeLED_O && CoolantMistPD_PD)) ||
    CoolAutoModeLED_O && M7_SV) &&
    !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M7_SV || ErrorFlag_M || DoToolCheck_SV)
-  THEN (Mist_O), (CoolMistLED_O), (SelectCoolantMist_SV)
+  THEN (CoolMistLED_O), (SelectCoolantMist_SV)
+
+
+; Acroloc: drive the coolant hardware. Flood and the coolant-motor (mist) buttons are
+; INDEPENDENT (not mutually exclusive): the pump (OUT4) runs whenever EITHER is on, and the
+; flood valve (OUT3) opens only for flood. So mist = coolant motor on/off, flood = motor +
+; work-area sprayers, and both can be on at once. The LEDs are already gated off by
+; SV_STOP/errors/tool-check above, so these outputs inherit that.
+IF CoolFloodLED_O THEN (FloodValve_O)
+IF CoolFloodLED_O || CoolMistLED_O THEN (CoolantPump_O)
 
 ;--Spindle Control
 ;-------------------------------------------------------------
@@ -2851,6 +2860,12 @@ IF TriggerPause_T THEN RST TriggerPause_T, RST ActivateFeedHold_M
 IF True_M THEN RST OnAtPowerUp_M
 
 ; Acroloc tool stage start
+; Acroloc: once per change (before SET ATCStage below, so !ATCStage is true only on the
+; first scan): arm the carousel search watchdog, AND clear CarouselToolID_W so a stale
+; value from the previous change cannot cause an immediate match -- the carousel always
+; re-indexes to the requested tool, even the same tool (a manual change may have left the
+; wrong tool under the spindle).
+IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CarouselToolID_W = 0
 IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
 
 ; Acroloc manual tool changes
@@ -2915,15 +2930,9 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
   RST ChangerStopTimer_T
   
 
-; ---- DEBUG changer-safety tracing (temporary; remove all with: grep -n DEBUG) ----
-IF !ATC_Z_ClearedToolChanger_I THEN InfoMsg_W = SPINDLE_IN_CHANGER_DBG_C ; DEBUG
-IF ATC_Z_Zero_Release_I THEN InfoMsg_W = Z_CLEARED_RING_DBG_C ; DEBUG
-IF ChangerHoldActive_M THEN InfoMsg_W = CHANGER_HOLD_ARMED_DBG_C ; DEBUG
-
 ;=============================================================================
    ATCStage ; Acroloc
 ;=============================================================================
-;TODO: add timer to error so carousol doesn't spin for ever if tool not found
 
 ; Acroloc: refuse to index the carousel unless the spindle is confirmed stopped (ZeroSpeed_I).
 IF ATCStage && !ZeroSpeed_I THEN
@@ -2934,6 +2943,7 @@ IF ATCStage && !ZeroSpeed_I THEN
   RST ATCUnlocked_O,
   RST M6_SV,
   ChangeToTool_W = 0,
+  RST ATCSpin_T,
   RST ATCStage
 
 IF !ATC_Z_Zero_Release_I THEN
@@ -2944,6 +2954,7 @@ IF !ATC_Z_Zero_Release_I THEN
   RST ATCUnlocked_O,
   RST M6_SV,
   ChangeToTool_W = 0,
+  RST ATCSpin_T,
   RST ATCStage
   
 ; z axis is clear of tool carousel, carousel is ready to spin
@@ -2951,37 +2962,63 @@ IF ATCStage && ChangeToTool_W > 0 THEN
   SET ATCUnlocked_O,
   SET ATCMotor_O
 
-; If carousel is moving and any of the position switchs are triggered we need to start
+; If carousel is moving and any of the position switches are triggered we need to start
 ; tracking the switches to calculate what position we are at
-IF ATCMotor_O && ( ATC_Pos1_I || ATC_POS2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_pos5_I ) THEN
+IF ATCMotor_O && ( ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I ) && !InToolSelect_M THEN
   CarouselToolID_W = 0,
   SET InToolSelect_M
 
 ; tools are in base16 encoded as decimal
 ; start adding any ID points that come across to identify the tool
-; swtch 1 2 3 4 5         1 2 3 4 5         1 2 3 4 5
+; switch 1 2 3 4 5         1 2 3 4 5         1 2 3 4 5
 ; T1 =  * O O O O    T5 = * O * O O    T9 = * O O * O
 ; T2 =  O * O O O    T6 = O * * O O   T10 = O O O O *
 ; T3 =  * * O O O    T7 = * * * O O   T11 = * O O O *
 ; T4 =  O O * O O    T8 = O O O * O   T12 = O * O O *
-If InToolSelect_M && ATC_Pos1_I THEN CarouselToolID_W = CarouselToolID_W + 1
-If InToolSelect_M && ATC_Pos2_I THEN CarouselToolId_W = CarouselToolID_W + 2
-If InToolSelect_M && ATC_Pos3_I THEN CarouselToolID_W = CarouselToolID_W + 4
-If InToolSelect_M && ATC_Pos4_I THEN CarouselToolId_W = CarouselToolID_W + 8
-If InToolSelect_M && ATC_Pos5_I THEN CarouselToolId_W = CarouselToolID_W + 10; Not 16 due to base16 encoded as decimal
+; The position switches for a pocket do NOT open/close simultaneously, so the instantaneous
+; sum passes through single-switch values (e.g. Pos3 alone = 4) at the entry AND exit edges.
+; Build the instantaneous sum each scan, then keep the PEAK across the group in
+; CarouselToolID_W -- the peak is reached only when all of the pocket's switches are on at
+; the aligned dwell, so it is the true tool ID. Comparing the peak (not a live edge partial)
+; stops requesting-T4 from false-matching the Pos3 transient at T5/T6/T7.
+IF InToolSelect_M THEN InstToolID_W = 0
+If InToolSelect_M && ATC_Pos1_I THEN InstToolID_W = InstToolID_W + 1
+If InToolSelect_M && ATC_Pos2_I THEN InstToolID_W = InstToolID_W + 2
+If InToolSelect_M && ATC_Pos3_I THEN InstToolID_W = InstToolID_W + 4
+If InToolSelect_M && ATC_Pos4_I THEN InstToolID_W = InstToolID_W + 8
+If InToolSelect_M && ATC_Pos5_I THEN InstToolID_W = InstToolID_W + 10; Not 16 due to base16 encoded as decimal
+IF InToolSelect_M && InstToolID_W > CarouselToolID_W THEN CarouselToolID_W = InstToolID_W
 
 ; If all tool position switches go back to 0 then we need to exit the tool selection mode
-; and CarouselToolId_W should be the tool number passing the spindle.
+; and CarouselToolID_W should be the tool number passing the spindle.
 IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !ATC_Pos5_I ) THEN
   RST InToolSelect_M
 
 ; lets fire and stop on tool
-IF CarouselToolID_W == ChangeToTool_W THEN
+; Compare only after the group ends (!InToolSelect_M, all switches back to 0). CarouselToolID_W
+; now holds the per-group PEAK (the settled full tool ID), so neither an entry nor an exit
+; single-switch partial can false-match.
+IF !InToolSelect_M && CarouselToolID_W == ChangeToTool_W THEN
   ChangeToTool_W = 0,
   SET ToolSelected_M,
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
+  RST ATCSpin_T,
+  RST ATCStage
+
+; Acroloc: carousel never found the tool within ATC_SPIN_TIMEOUT_MS_C ->
+; fault, stop the motor, relock. Placed after the match rung so a genuine
+; match on the same scan wins (it RSTs ATCStage/ATCSpin_T first).
+IF ATCStage && ATCSpin_T THEN
+  FaultMsg_W = CAROUSEL_TIMEOUT_MSG_C,
+  SET ShowFaultStage,
+  SET OtherFault_M,
+  RST ATCMotor_O,
+  RST ATCUnlocked_O,
+  RST M6_SV,
+  ChangeToTool_W = 0,
+  RST ATCSpin_T,
   RST ATCStage
 
 

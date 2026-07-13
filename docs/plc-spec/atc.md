@@ -114,11 +114,9 @@ spindle. Its dead boot preset and the commented feedrate-to-zero block are gone.
 
 Banner at `src:2934-2936` (`ATCStage` (src:2935), tagged `; Acroloc`).
 
-**Known-timeout gap, stated in source** (`src:2937`):
-```plc
-;TODO: add timer to error so carousol doesn't spin for ever if tool not found
-```
-See [Known gaps](#known-gaps) below.
+**Search watchdog:** `ATCSpin_T` (T24) is armed at M6 kickoff; if the target tool is never
+matched within `ATC_SPIN_TIMEOUT_MS_C` (20 s), `ATCStage` faults `CAROUSEL MOVE TIME OUT`
+(message 63) and stops/relocks the carousel. See [Search timeout](#search-timeout) below.
 
 **Entry safety guards.** `ATCStage` has **two** aborts, and (since 2026-07-09) both perform the
 same full cleanup the match/finish rung does — stop the motor, relock, drop the M6 request:
@@ -184,15 +182,19 @@ five position switches (`ATC_Pos1_I` (`INP32`, src:234) through `ATC_Pos5_I`
 **Accumulator** (`src:2956-2967`, comment block at `src:2956-2962` documents the encoding
 and a worked T1-T12 truth table):
 ```plc
-If InToolSelect_M && ATC_Pos1_I THEN CarouselToolID_W = CarouselToolID_W + 1
-If InToolSelect_M && ATC_Pos2_I THEN CarouselToolId_W = CarouselToolID_W + 2
-If InToolSelect_M && ATC_Pos3_I THEN CarouselToolID_W = CarouselToolID_W + 4
-If InToolSelect_M && ATC_Pos4_I THEN CarouselToolId_W = CarouselToolID_W + 8
-If InToolSelect_M && ATC_Pos5_I THEN CarouselToolId_W = CarouselToolID_W + 10; Not 16 due to base16 encoded as decimal
+IF InToolSelect_M THEN InstToolID_W = 0
+If InToolSelect_M && ATC_Pos1_I THEN InstToolID_W = InstToolID_W + 1
+If InToolSelect_M && ATC_Pos2_I THEN InstToolID_W = InstToolID_W + 2
+If InToolSelect_M && ATC_Pos3_I THEN InstToolID_W = InstToolID_W + 4
+If InToolSelect_M && ATC_Pos4_I THEN InstToolID_W = InstToolID_W + 8
+If InToolSelect_M && ATC_Pos5_I THEN InstToolID_W = InstToolID_W + 10; Not 16 due to base16 encoded as decimal
+IF InToolSelect_M && InstToolID_W > CarouselToolID_W THEN CarouselToolID_W = InstToolID_W
 ```
-(`CarouselToolId_W` on the Pos2/Pos4/Pos5 lines is the same case-insensitive resolution to
-`CarouselToolID_W`.) Each switch adds its weight while `InToolSelect_M` holds and that switch
-is closed. `ATC_Pos5_I` adds **10, not 16** — the comment on that line and the block comment
+Each scan the **instantaneous** switch sum is built in `InstToolID_W` (W75) and its running
+**peak** is kept in `CarouselToolID_W`. The switches for a pocket do not close simultaneously,
+so only the peak — all of the pocket's switches on at the aligned dwell — is the true tool ID;
+the entry/exit single-switch partials (e.g. Pos3 alone = 4) are always smaller and never
+false-match. `ATC_Pos5_I` adds **10, not 16** — the comment on that line and the block comment
 above spell out why: tool IDs beyond 9 are encoded as base-16 values but *written and compared
 as decimal*, so the "16s place" is represented by an offset of 10 (the decimal-looking "tens
 digit") rather than a true binary 16. The five switches therefore encode 31 possible raw sums
@@ -226,50 +228,78 @@ Once all five switches drop (the gap between tool positions on the carousel), `I
 clears and `CarouselToolID_W` holds the settled ID of the tool that just passed the read
 position.
 
-**Match and exit** (`src:2974-2981`, comment `; lets fire and stop on tool`):
+**Match and exit** (comment `; lets fire and stop on tool`):
 ```plc
-IF CarouselToolID_W == ChangeToTool_W THEN
+IF !InToolSelect_M && CarouselToolID_W == ChangeToTool_W THEN
   ChangeToTool_W = 0,
   SET ToolSelected_M,
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
+  RST ATCSpin_T,
   RST ATCStage
 ```
-This compare is **unconditional** — it is a bare `IF`, gated on neither `InToolSelect_M` nor
-`ATCMotor_O`, and it runs every PLC scan regardless of where in the switch-accumulation cycle
-the carousel currently is. **Timing sensitivity:** because `CarouselToolID_W` is zeroed at the
-leading edge of each tool's switch group and then accumulates across several scans as
-individual switches assert (see Accumulator above), the *partial* sum during that
-accumulation window is a live value this rung reads every scan. If a partial sum transiently
-equals `ChangeToTool_W` before the group finishes settling, the carousel stops prematurely on
-the wrong tool (or the right tool, by luck, mid-transition). Any edit to the accumulator
-weights or to the `InToolSelect_M` gating rungs must preserve — or explicitly reason about —
-this window; it is not merely a stylistic quirk but the actual mechanism (in combination with
-correct weight design) that makes stopping on the fully-settled ID reliable in practice. On
-match: `ChangeToTool_W` is zeroed, `ToolSelected_M` (`MEM444`, src:711) is set, the motor
-(`ATCMotor_O`) and unlock (`ATCUnlocked_O`) outputs are both reset (carousel stops and
-relocks), `M6_SV` is reset (releasing `mfunc6.mac`'s `M100 /93016` wait), and `ATCStage`
-itself resets — which is also the write to stage-bit `93016` that `mfunc6.mac:25` was
-blocked on.
+The compare is gated on **`!InToolSelect_M`**, so it fires **only after the switch group has
+fully settled** (all five switches returned to 0). `CarouselToolID_W` is zeroed at the leading
+edge of each tool's switch group and accumulates across several scans as individual switches
+assert (see Accumulator above), so the *partial* sum is a live value during that window.
+Comparing it directly (an earlier bug) let a single-switch transient — e.g. `Pos3` = 4 arriving
+a scan ahead of its companions — false-match while passing another tool, stopping a requested
+**T4 on T6/T7**. Gating on `!InToolSelect_M` compares only the settled ID; this is the design's
+intent ("do not act on the tool until all switches return to 0") and is timing-independent.
+Separately, `CarouselToolID_W` is **cleared once at the M6 kickoff** (in the arm rung), so a
+stale ID from the previous change cannot immediate-match — the carousel always physically
+re-indexes to the requested tool, **even the same tool** (guarding against a manual tool change
+that left the wrong tool under the spindle). On match: `ChangeToTool_W` is zeroed,
+`ToolSelected_M` (`MEM452`) is set, the motor (`ATCMotor_O`) and unlock (`ATCUnlocked_O`)
+outputs reset (carousel stops and relocks), `M6_SV` resets (releasing `mfunc6.mac`'s
+`M100 /93016` wait), the `ATCSpin_T` search watchdog resets, and `ATCStage` itself resets —
+which is also the write to stage-bit `93016` that `mfunc6.mac:25` was blocked on.
+
+### Decode assumptions (validated on-machine)
+
+The peak/settled-ID decode rests on a few mechanical assumptions. All were confirmed working
+on the machine; each failure mode degrades to the 20 s `CAROUSEL MOVE TIME OUT` fault (never a
+wrong tool or an infinite spin), so they are safe:
+
+- **Stop point is the all-switches-off gap, just past the pocket, not the dwell.** The match
+  fires only when `!InToolSelect_M`, so the motor stops after the switches drop and the lock
+  pin seats the carousel. This is the intended "do not act until all return to 0" behavior;
+  on-machine testing confirms it locks cleanly on the pocket.
+- **Requires a clean all-off gap of at least one PLC scan between pockets.** The leading-edge
+  reset (`&& !InToolSelect_M`) discards the prior peak when the next pocket's switches begin,
+  and the match only evaluates while `!InToolSelect_M`. If the carousel ever spun fast enough
+  that the switches never all cleared for a scan, `InToolSelect_M` would never drop, peaks
+  would merge across pockets, and the change would time out. Holds comfortably at this
+  machine's speed (<10 s/revolution).
+- **Requires all of a pocket's switches to co-assert at the aligned dwell** so the peak equals
+  the full tool ID. A pocket whose flags never overlap would peak below its true ID and never
+  match (-> timeout). Confirmed: the dwell reads the full multi-bit code (e.g. T12 = Pos2+Pos5
+  = 12, T7 = Pos1+Pos2+Pos3 = 7).
+- **`M6 T0`** (or any `ChangeToTool_W == 0`) exits `ATCStage` immediately without spinning,
+  because kickoff clears `CarouselToolID_W` to 0 and `0 == 0` matches at once. Intended (T0 =
+  no tool).
+
+**Maintenance caution:** the 20 s watchdog is disarmed by `RST ATCSpin_T` in **all four**
+`ATCStage` exits (both entry aborts, the match rung, and the timeout rung). They must stay in
+sync — dropping the `RST` from any one exit could leave a stale-expired timer that
+immediate-faults the next change.
 
 ## Known gaps
 
-### No carousel timeout
+### Search timeout
 
-Stated directly in source at `src:2937`:
-```plc
-;TODO: add timer to error so carousol doesn't spin for ever if tool not found
-```
-`ATCSpin_T` (`T24`, `ATCSpin_T` (src:1188), comment "used to detect fault if unable to find
-position") is **defined but never `SET`, armed, or read** anywhere in the current `.src` —
-grep confirms no other occurrence of `ATCSpin_T` in the file. If `ChangeToTool_W` never
-matches `CarouselToolID_W` — a faulty position switch, an out-of-range tool number, a wiring
-fault, or a mismatched accumulator edit — the match rung (`src:2975`) never fires,
-`ATCMotor_O` stays asserted indefinitely, and `mfunc6.mac`'s `M100 /93016` wait
-(`mfunc6.mac:25`) never returns. There is no operator-visible fault path for this condition;
-the carousel simply keeps spinning. `CLAUDE.md` calls this out as a caution for anyone
-touching the match/exit rungs.
+Resolved (was the "no carousel timeout" `;TODO`). `ATCSpin_T` (T24) is armed once at M6
+kickoff in `MainStage` — `IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET
+ATCSpin_T` — with `ATC_SPIN_TIMEOUT_MS_C = 20000` (ms). A fault rung placed after the match
+rung, `IF ATCStage && ATCSpin_T THEN`, posts `CAROUSEL_TIMEOUT_MSG_C` (message 63, "CAROUSEL
+MOVE TIME OUT"), stops the motor, relocks, and clears `M6_SV`/`ChangeToTool_W`/`ATCStage`.
+Every `ATCStage` exit (both aborts and the match) `RST ATCSpin_T` so the timer is clean
+before the next change re-arms. So if `ChangeToTool_W` never matches `CarouselToolID_W` — a
+faulty position switch, an out-of-range tool number, a wiring fault, or a mismatched
+accumulator edit — the carousel now faults at 20 s instead of spinning forever (and
+`mfunc6.mac`'s wait returns once the stage clears). Placing the fault rung after the match
+rung lets a genuine same-scan match win the tie.
 
 ### Message-rung unconditional posting
 

@@ -330,13 +330,25 @@ its downstream consumer.
 
 - (src:2089-2099): `CoolantAutoManualPD_PD` toggles `CoolAutoModeLED_O` (forced on at
   power-up, src:2091), which is mirrored to CNC12 via `SelectCoolAutoMan_SV`.
-- (src:2117-2120) Flood: `Flood_O` is a coil combining a manual-mode toggle
-  (`Flood_O XOR (!CoolAutoModeLED_O && CoolantFloodPD_PD)`, i.e. flip on a manual key press)
-  with an auto-mode drive (`CoolAutoModeLED_O && M8_SV`, i.e. follow the M8 code exactly),
-  ANDed against a kill condition (`!(SV_STOP || CoolantAutoManualPD_PD ||
-  (CoolAutoModeLED_O && !M8_SV) || ErrorFlag_M || DoToolCheck_SV)`) — flood is forced off on
-  stop/fault/tool-check or the instant the mode is toggled or auto mode has no M8 asserted.
-- (src:2124-2127) Mist: identical shape, `Mist_O` against `M7_SV`.
+- Coolant **mode selection**: the two coolant rungs are coils that toggle the *mode LEDs*
+  `CoolFloodLED_O` / `CoolMistLED_O` (each `LED XOR (!CoolAutoModeLED_O && CoolantXxxPD_PD)`
+  for a manual key press, OR `CoolAutoModeLED_O && M8_SV`/`M7_SV` for auto), ANDed against a
+  kill condition (`!(SV_STOP || CoolantAutoManualPD_PD || (CoolAutoModeLED_O && !M8_SV for flood / !M7_SV for wash) ||
+  ErrorFlag_M || DoToolCheck_SV)`) and report `SelectCoolantFlood_SV`/`SelectCoolantMist_SV`
+  to CNC12. They no longer drive the physical outputs directly, and the two panel buttons are
+  **independent** (not mutually exclusive) — both can be lit at once.
+- Coolant **outputs are derived** from the mode LEDs to match this machine's plumbing
+  (OUT4 = coolant pump, OUT3 = flood valve): `IF CoolFloodLED_O THEN (FloodValve_O)` and
+  `IF CoolFloodLED_O || CoolMistLED_O THEN (CoolantPump_O)` — the **mist button is the coolant
+  motor** (pump on/off on its own), and **flood runs the pump AND opens the work-area valve**.
+  Because the pump is `Flood OR Mist`, you can run the pump from the mist button and add/drop
+  flood independently. The derived outputs inherit the LEDs' stop/fault/tool-check gating.
+  - **Scope of independence:** only the *manual panel buttons* are independent. In auto-coolant
+    mode a G-code program's `M7`/`M8` stay mutually exclusive, because `mfunc7`/`mfunc8` clear
+    each other (`M95` of the opposite bit) before setting their own.
+  - **Display note:** with both LEDs lit, both `SelectCoolantFlood_SV` and
+    `SelectCoolantMist_SV` are reported to CNC12 at once; the software's Flood/Mist indicator
+    may show a combined state. Cosmetic only — the pump/valve outputs are correct.
 - Both mist and flood are reset as part of the M-code housekeeping rung inside the
   `MainStage` banner (`RST M8_SV, RST M7_SV`, src:2889-2890) when leaving
   `SV_PROGRAM_RUNNING`/`SV_MDI_MODE`, and both drive an `AutoCoolantPD_PD` feed-hold prompt

@@ -110,7 +110,7 @@ The M6 flow spans three cooperating places — read all three before changing an
 Full state-machine details, timing, and exact PLC snippets: **[reference/atc-flow.md](reference/atc-flow.md)**.
 
 **Critical gotchas:**
-- **No timeout.** `ATCSpin_T` (T24) is defined but never started or checked — if the target tool is never found, the carousel spins indefinitely. Any edit to the accumulator lines (`+1 / +2 / +4 / +8 / +10`) or to `InToolSelect_M` gating must be tested with care.
+- **20 s search watchdog.** `ATCSpin_T` (T24) is armed at M6 kickoff; if the target tool is never matched within `ATC_SPIN_TIMEOUT_MS_C` (20000 ms), `ATCStage` faults `CAROUSEL MOVE TIME OUT` (msg 63) and stops/relocks the carousel. Any edit to the accumulator lines (`+1 / +2 / +4 / +8 / +10`) or to `InToolSelect_M` gating must still be tested with care — a decode error now faults at 20 s rather than spinning forever.
 - **`ATC_Pos5_I` adds +10, not +16.** Tool numbers use base-16 encoded as decimal. Changing Pos5 to +16 breaks tools 10–15 (they will never match).
 
 ### 2. Edit spindle range/shift logic

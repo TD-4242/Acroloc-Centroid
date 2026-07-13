@@ -131,26 +131,37 @@ IF ATCStage && ChangeToTool_W > 0 THEN
   SET ATCMotor_O         ; OUT17 — spin carousel
 ```
 
-**Position detection — `InToolSelect_M` gating:**
+**Position detection — `InToolSelect_M` gating (peak decode):**
 ```plc
-IF ATCMotor_O && ( ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I ) THEN
+; leading edge only (&& !InToolSelect_M): reset the peak once per switch group
+IF ATCMotor_O && ( ATC_Pos1_I || ... || ATC_Pos5_I ) && !InToolSelect_M THEN
   CarouselToolID_W = 0,
   SET InToolSelect_M
 ```
-When any position switch asserts while the motor is running, `CarouselToolID_W`
-(W71) is zeroed and `InToolSelect_M` (MEM443) is set. The accumulator lines
-then fire:
+On the first switch of a group `CarouselToolID_W` (W71) is zeroed and
+`InToolSelect_M` (MEM443) is set. Each scan the **instantaneous** switch sum is
+built in `InstToolID_W` (W75) and its running **peak** is kept in
+`CarouselToolID_W`:
 
 ```plc
-If InToolSelect_M && ATC_Pos1_I THEN CarouselToolID_W = CarouselToolID_W + 1
-If InToolSelect_M && ATC_Pos2_I THEN CarouselToolID_W = CarouselToolID_W + 2
-If InToolSelect_M && ATC_Pos3_I THEN CarouselToolID_W = CarouselToolID_W + 4
-If InToolSelect_M && ATC_Pos4_I THEN CarouselToolID_W = CarouselToolID_W + 8
-If InToolSelect_M && ATC_Pos5_I THEN CarouselToolID_W = CarouselToolID_W + 10
+IF InToolSelect_M THEN InstToolID_W = 0
+If InToolSelect_M && ATC_Pos1_I THEN InstToolID_W = InstToolID_W + 1
+If InToolSelect_M && ATC_Pos2_I THEN InstToolID_W = InstToolID_W + 2
+If InToolSelect_M && ATC_Pos3_I THEN InstToolID_W = InstToolID_W + 4
+If InToolSelect_M && ATC_Pos4_I THEN InstToolID_W = InstToolID_W + 8
+If InToolSelect_M && ATC_Pos5_I THEN InstToolID_W = InstToolID_W + 10
+IF InToolSelect_M && InstToolID_W > CarouselToolID_W THEN CarouselToolID_W = InstToolID_W
 ```
 
+The position switches do **not** open/close simultaneously, so the instantaneous
+sum passes through single-switch values (e.g. Pos3 alone = 4) at the entry and
+exit edges. Only the **peak** — reached when all of a pocket's switches are on at
+the aligned dwell — is the true tool ID, so the decode uses the peak and ignores
+the edge partials (this is what stops a requested T4 from false-matching the Pos3
+transient at T5/T6/T7).
+
 When all switches drop to 0 (gap between tool positions), `InToolSelect_M`
-is cleared and `CarouselToolID_W` holds the ID of the tool just seen:
+is cleared and `CarouselToolID_W` holds the peak = the ID of the tool just seen:
 ```plc
 IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !ATC_Pos5_I ) THEN
   RST InToolSelect_M
@@ -158,17 +169,26 @@ IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !
 
 **Match and exit:**
 ```plc
-IF CarouselToolID_W == ChangeToTool_W THEN
+IF !InToolSelect_M && CarouselToolID_W == ChangeToTool_W THEN
   ChangeToTool_W = 0,
   SET ToolSelected_M,
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
+  RST ATCSpin_T,
   RST ATCStage
 ```
-When the accumulated ID matches the latched target: motor stops, piston
-relocks, `M6_SV` is cleared (releasing `mfunc6.mac`'s `M100` wait), and
-`ATCStage` resets. The macro then cleans up with `M95 /8`.
+The compare is gated on `!InToolSelect_M` so it only fires **after all five position
+switches return to 0** (the settled ID) — never on the half-built sum during accumulation,
+which otherwise let a single-switch transient (e.g. `Pos3` = 4) false-match while passing
+another tool (requested T4 stopping at T6/T7). When the settled ID matches the target: motor
+stops, piston relocks, `M6_SV` clears (releasing `mfunc6.mac`'s `M100` wait), the search
+watchdog `ATCSpin_T` resets, and `ATCStage` resets. The macro then cleans up with `M95 /8`.
+
+`CarouselToolID_W` is also **cleared once at the M6 kickoff** (in the arm rung), so a stale ID
+from the previous change cannot immediate-match — the carousel always physically re-indexes to
+the requested tool, even the same tool number (a manual change may have left the wrong tool
+under the spindle).
 
 ---
 
@@ -222,30 +242,31 @@ must account for this timing sensitivity.
 
 ## ⚠️ Known gaps
 
-### 1. No carousel timeout — motor can spin forever
+### 1. Carousel search timeout — 20 s watchdog
 
-At the top of `ATCStage`, the source contains:
-```plc
-;TODO: add timer to error so carousol doesn't spin for ever if tool not found
-```
-
-`ATCSpin_T` (T24) is **defined** (`ATCSpin_T IS T24 ; used to detect fault
-if unable to find position`) but is **never set or checked** anywhere in the
-current logic. If `ChangeToTool_W` never matches — due to an off-by-one in
-the position decode, a faulty switch, or an invalid tool number — `ATCMotor_O`
-stays asserted and the carousel spins indefinitely.
+`ATCSpin_T` (T24) is armed once at M6 kickoff in `MainStage`
+(`IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T`,
+`ATC_SPIN_TIMEOUT_MS_C = 20000` ms). A fault rung after the match rung
+(`IF ATCStage && ATCSpin_T THEN`) posts `CAROUSEL MOVE TIME OUT` (msg 63),
+stops the motor, relocks, and clears the change. Every `ATCStage` exit RSTs the
+timer so it re-arms cleanly. If `ChangeToTool_W` never matches — an off-by-one
+in the position decode, a faulty switch, or an invalid tool number — the
+carousel faults at 20 s instead of spinning forever.
 
 **Risk:** Any edit to the accumulator lines (`+1 / +2 / +4 / +8 / +10`) or to
-the `InToolSelect_M` gating must be tested extremely carefully. A value of
-`+16` for Pos5 instead of `+10` would cause tools 10–15 to never match.
+the `InToolSelect_M` gating must still be tested carefully. A value of
+`+16` for Pos5 instead of `+10` would cause tools 10–15 to never match (now a
+20 s fault rather than an infinite spin).
 
-### 2. Transmission shift is automated open-loop (no gear-position feedback)
+### 2. Transmission shift is open-loop by design
 
 `Spindle_Low_gear_O` (OUT19) and `Spindle_High_gear_O` (OUT20) are driven by
 the RPM-based auto-shift logic: a decision block in `MainStage` picks the gear
 from the un-overridden commanded S (crossover P941 ± hysteresis P942) and
 `GearShiftStage` (STG17) swaps clutches with a neutral coast dwell (P943).
-There is **no gear-position or speed feedback** — the engaged gear is tracked
-only from the commanded clutch outputs (`EngagedRange_W`), and a shift is
-inhibited during `ATCStage`. See the "Automatic RPM-based gear shifting"
-section of `README.md` and `reference/spindle-transmission.md`.
+This is **intentionally open-loop** — the engaged gear is tracked only from the
+commanded clutch outputs (`EngagedRange_W`), and a shift is inhibited during
+`ATCStage`. Closed-loop gear confirmation is **not planned**: the stock
+gear-sense inputs (INP13-15) are unwired and their PLC symbols were removed. See
+the "Automatic RPM-based gear shifting" section of `README.md` and
+`reference/spindle-transmission.md`.

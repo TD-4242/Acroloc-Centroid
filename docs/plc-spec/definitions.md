@@ -22,17 +22,23 @@ src:1223.
 
 ## Message-constant encoding
 
-Message constants (`_C`) pack a message-file/message-number pair into one integer:
+Message constants (`_C`) pack a message *type* and *number* into one integer (the manual's
+formula):
 
 ```
-value = msgNumber + 256 * msgFile
+value = type + 256 * msgNumber
 ```
 
-For example `ATC_Lock_Released_C` (src:202) `IS 45546 ;(2+256*174)` decodes to message 2 in
-message file 174. The message *text* lives in CNC12's message files, keyed by that
-`(file, number)` pair — it is not present anywhere in this repo. The comment following each
-`_C` definition below (where present) already carries this `(n+256*m)` breakdown as written
-in the source.
+`type` is 1 (synchronous) or 2 (asynchronous); `msgNumber` is the entry number in the first
+column of `plcmsg.txt`. For example `ATC_Lock_Released_C` (src:202) `IS 44546 ;(2+256*174)`
+decodes as **type 2, msgNumber 174** — the "Tool Carousel locked" entry (line 174) in
+`plcmsg.txt`. The message *text* is defined in this repo's `plcmsg.txt` (the PLC message file,
+keyed by the first-column number) and loaded by CNC12; stock CNC12 system messages live in
+CNC12's own message files, which are not tracked here. The comment
+following each `_C` definition carries this `(type+256*msgNumber)` breakdown. (`CLAUDE.md`
+writes the same formula with reversed field names, `msgNumber + 256*msgFile`, where its
+`msgNumber` is this `type` and its `msgFile` is this `msgNumber`; see the
+[centroid-plc-programming messages reference](../../.claude/skills/centroid-plc-programming/reference/messages.md).)
 
 ## Inputs
 
@@ -50,9 +56,6 @@ in the source.
 | `SpindleInverterOk_I` | INP10 | 217 | | Spindle inverter ok when closed. [main-stage.md](main-stage.md) |
 | `EStopOk_I` | INP11 | 218 | | E-stop circuit ok. [main-stage.md](main-stage.md) |
 | `ZeroSpeed_I` | INP12 | 236 | | Spindle confirmed stopped (F510 VFD zero-speed output; wired and tested). Read by the changer feed-hold interlock and the `ATCStage` carousel guard. [main-stage.md](main-stage.md), [atc.md](atc.md) |
-| `SpinLowRange_I` | INP13 | 220 | | Spindle in low range (defined but unused — see below). |
-| `SpinMedRange_I` | INP14 | 221 | | Spindle in medium range (defined but unused — see below). |
-| `SpinHighRange_I` | INP15 | 222 | | Spindle in high range (defined but unused — see below). |
 | `ATCManualUnlock_I` | INP24 | 226 | Acroloc | Front-panel manual unlock button. [atc.md](atc.md) |
 | `ATCLocked_I` | INP25 | 227 | Acroloc | Piston sensor confirming carousel locked. [atc.md](atc.md) |
 | `ATC_Z_ClearedToolChanger_I` | INP26 | 228 | Acroloc | Spindle has entered the tool changer (zero rpm). [atc.md](atc.md) |
@@ -121,8 +124,8 @@ in the source.
 |---|---|---|---|---|
 | `NoFaultOut_O` | OUT1 | 368 | | "No fault" indicator, SPST. [main-stage.md](main-stage.md) |
 | `Lube_O` | OUT2 | 369 | | Oil pump, SPST — driven by the `MainStage` oil-pump coil. [main-stage.md](main-stage.md) |
-| `Flood_O` | OUT3 | 370 | | Flood coolant, SPST. [main-stage.md](main-stage.md) |
-| `Mist_O` | OUT4 | 371 | | Mist coolant, SPST. [main-stage.md](main-stage.md) |
+| `FloodValve_O` | OUT3 | 370 | Acroloc | Flood valve — opens the coolant pump to the workspace nozzles; SPST. [main-stage.md](main-stage.md) |
+| `CoolantPump_O` | OUT4 | 371 | Acroloc | Coolant pump — pressurizes coolant (+valve = flood nozzles, no valve = cleaning hose); SPST. [main-stage.md](main-stage.md) |
 | `InverterResetOut_O` | OUT5 | 372 | | Spindle inverter reset, SPST. [main-stage.md](main-stage.md) |
 | `WorkLightOut_O` | OUT6 | 373 | | Work light, SPST. [main-stage.md](main-stage.md) |
 | `SpindleEnableOut_O` | OUT7 | 374 | | Spindle enable, SPST. [main-stage.md](main-stage.md) |
@@ -269,8 +272,9 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `P170Value_W` | W68 | 1089 | | Cached `SV_MACHINE_PARAMETER_170`. [parameters.md](parameters.md) |
 | `P900Value_W` | W69 | 1090 | | Cached `SV_MACHINE_PARAMETER_900`. [parameters.md](parameters.md) |
 | `MiniPLCStatus_W` | W70 | 1091 | | Mini-PLC status word. [faults-and-messages.md](faults-and-messages.md) |
-| `CarouselToolID_W` | W71 | 1093 | Acroloc | Accumulated carousel position ID (base-16 encoded as decimal across the 5 position switches). [atc.md](atc.md) |
+| `CarouselToolID_W` | W71 | 1093 | Acroloc | Per-group **peak** of the position-switch sum = the settled tool ID (base-16 encoded as decimal across the 5 switches); compared to `ChangeToTool_W`. [atc.md](atc.md) |
 | `ChangeToTool_W` | W72 | 1094 | Acroloc | Target tool ID latched from `M6`. [atc.md](atc.md) |
+| `InstToolID_W` | W75 | 1113 | Acroloc | Instantaneous position-switch sum, rebuilt each scan; its per-group peak is latched into `CarouselToolID_W`. [atc.md](atc.md) |
 | `PValue_W` | W92 | 1096 | | Scratch parameter value. [parameters.md](parameters.md) |
 
 ### Float words (FW)
@@ -309,7 +313,7 @@ significance beyond "one-shot edge of the same-named key/event".
 | `MessageTimer_T` | T17 | 1184 | | Message display timer. [faults-and-messages.md](faults-and-messages.md) |
 | `NoMacroKeyPressedTimer_T` | T18 | 1185 | | No-macro-key-pressed timer (WMPG macro key reset delay). [jog-and-mpg.md](jog-and-mpg.md) |
 | `ChangerStopTimer_T` | T23 | 1206 | Acroloc | 5 s timeout backstop for the spindle-in-changer feed-hold interlock; faults if the spindle never reaches zero. Renamed from `StopSpinBeforATC_T` (which was dead — armed, never read). Set point assigned at arm time, not at boot. [main-stage.md](main-stage.md), [atc.md](atc.md) |
-| `ATCSpin_T` | T24 | 1188 | Acroloc | Meant to detect fault if a carousel position is never found; defined but unused — see below (the `;TODO` no-timeout gap noted in the repo's CLAUDE.md). |
+| `ATCSpin_T` | T24 | 1188 | Acroloc | Carousel search watchdog: armed at M6 kickoff (`= ATC_SPIN_TIMEOUT_MS_C`, 20 s); if the tool is never matched, `ATCStage` faults `CAROUSEL MOVE TIME OUT`. [atc.md](atc.md#search-timeout) |
 | `GearCoast_T` | T25 | 1189 | Acroloc | Gear-shift coast dwell (neutral) before engaging the new gear; loaded from `SV_MACHINE_PARAMETER_943` or a 1500ms default. [gear-shift.md](gear-shift.md) |
 
 ## System variables
@@ -369,7 +373,9 @@ identifier bound — no name to cite.
 | `MINI_PLC_1_WARNING_C` .. `MINI_PLC_8_WARNING_C` | 41218-43010 (2+256*161..168) | 190-197 | | Per-mini-PLC warning messages. [faults-and-messages.md](faults-and-messages.md) |
 | `ATC_Spindle_Not_Parked_C` | 44034 (2+256*172) | 200 | Acroloc | "Spindle not parked. Z Axis not tool change position." [atc.md](atc.md) |
 | `ATC_Lock_Not_Released_C` | 44290 (2+256*173) | 201 | Acroloc | "Tool Carousel not locked." [atc.md](atc.md) |
-| `ATC_Lock_Released_C` | 45546 (2+256*174) | 202 | Acroloc | "Tool Carousel locked." — see message-encoding example above. [atc.md](atc.md) |
+| `ATC_Lock_Released_C` | 44546 (2+256*174) | 202 | Acroloc | "Tool Carousel locked." — see message-encoding example above. [atc.md](atc.md) |
+| `CAROUSEL_TIMEOUT_MSG_C` | 16130 (2+256*63) | 211 | Acroloc | "CAROUSEL MOVE TIME OUT" — carousel search-timeout fault (reuses stock message 63). [atc.md](atc.md) |
+| `ATC_SPIN_TIMEOUT_MS_C` | 20000 | 212 | Acroloc | Carousel search timeout, ms (armed into `ATCSpin_T`). [atc.md](atc.md) |
 
 ## Stages
 
@@ -402,13 +408,9 @@ identifier bound — no name to cite.
 
 ## Defined but unused
 
-Verified via `grep -n '<name>' Centroid-Acroloc-ALLIN1DC.src` showing only the definition
-line (no reads or writes elsewhere in the file):
-
-- `SpinLowRange_I` (`INP13`, src:220)
-- `SpinMedRange_I` (`INP14`, src:221)
-- `SpinHighRange_I` (`INP15`, src:222)
-- `ATCSpin_T` (`T24`, src:1188) — its own comment says it's "used to detect fault if unable
-  to find position", but no logic reads or arms this timer anywhere in the file. This lines
-  up with the `;TODO` noted in the repo's `CLAUDE.md`: the carousel has no timeout if a tool
-  is never found.
+None currently. The former stock gear-sense inputs `SpinLowRange_I` / `SpinMedRange_I` /
+`SpinHighRange_I` (INP13-15) were **removed** — the two-speed shift is intentionally
+open-loop and closed-loop gear confirmation is not planned; a source comment at the old
+definition site records that INP13-15 are the (unwired) gear-sense inputs. `ATCSpin_T`
+(`T24`) is now armed at M6 kickoff and read as the carousel search watchdog; see
+[atc.md](atc.md#search-timeout).

@@ -12,8 +12,10 @@ assert/deassert PLC bits (`M94 /bit`, `M95 /bit`), see the general skill's
 | `mfunc3`   | M3       | Clears CCW (`M95 /2`), sets CW (`M94 /1`); loops displaying "Please Select Auto Spindle To Continue!" until `SpindleAutoManualLED` (`OUT1058`, `#61058`) is asserted |
 | `mfunc4`   | M4       | Clears CW (`M95 /1`), sets CCW (`M94 /2`); same auto-spindle loop as M3 |
 | `mfunc6`   | M6       | Drives the full ATC tool-change sequence — see [atc-flow.md](./atc-flow.md) |
-| `mfunc7`   | M7       | Clears flood (`M95 /3`), sets mist (`M94 /5`); loops displaying "Please Select Auto Coolant To Continue!" until `CoolantAutoManualLED` (`OUT1077`, `#61077`) is asserted |
-| `mfunc8`   | M8       | Clears mist (`M95 /5`), sets flood (`M94 /3`); same auto-coolant loop as M7 |
+| `mfunc7`   | M7       | Wash/hose mode (coolant pump only): clears flood (`M95 /3`), sets mist (`M94 /5`); loops displaying "Please Select Auto Coolant To Continue!" until `CoolantAutoManualLED` (`OUT1077`, `#61077`) is asserted |
+| `mfunc8`   | M8       | Flood mode (pump + valve): clears mist (`M95 /5`), sets flood (`M94 /3`); same auto-coolant loop as M7 |
+
+> On this machine OUT4 (`CoolantPump_O`) is the coolant pump and OUT3 (`FloodValve_O`) is the flood valve. The macros just select the mode; the PLC derives the outputs — `M8` = flood (pump + valve), `M7` = wash/hose (pump only). See [main-stage.md](../../../docs/plc-spec/main-stage.md).
 | `mfunc10`  | M10      | Sets clamp on (`M94 /4`) |
 | `mfunc11`  | M11      | Clears clamp (`M95 /4`) |
 
