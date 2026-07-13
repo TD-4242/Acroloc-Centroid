@@ -343,6 +343,12 @@ its downstream consumer.
   motor** (pump on/off on its own), and **flood runs the pump AND opens the work-area valve**.
   Because the pump is `Flood OR Mist`, you can run the pump from the mist button and add/drop
   flood independently. The derived outputs inherit the LEDs' stop/fault/tool-check gating.
+  - **Scope of independence:** only the *manual panel buttons* are independent. In auto-coolant
+    mode a G-code program's `M7`/`M8` stay mutually exclusive, because `mfunc7`/`mfunc8` clear
+    each other (`M95` of the opposite bit) before setting their own.
+  - **Display note:** with both LEDs lit, both `SelectCoolantFlood_SV` and
+    `SelectCoolantMist_SV` are reported to CNC12 at once; the software's Flood/Mist indicator
+    may show a combined state. Cosmetic only — the pump/valve outputs are correct.
 - Both mist and flood are reset as part of the M-code housekeeping rung inside the
   `MainStage` banner (`RST M8_SV, RST M7_SV`, src:2889-2890) when leaving
   `SV_PROGRAM_RUNNING`/`SV_MDI_MODE`, and both drive an `AutoCoolantPD_PD` feed-hold prompt

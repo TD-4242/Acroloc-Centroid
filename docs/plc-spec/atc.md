@@ -256,6 +256,35 @@ outputs reset (carousel stops and relocks), `M6_SV` resets (releasing `mfunc6.ma
 `M100 /93016` wait), the `ATCSpin_T` search watchdog resets, and `ATCStage` itself resets —
 which is also the write to stage-bit `93016` that `mfunc6.mac:25` was blocked on.
 
+### Decode assumptions (validated on-machine)
+
+The peak/settled-ID decode rests on a few mechanical assumptions. All were confirmed working
+on the machine; each failure mode degrades to the 20 s `CAROUSEL MOVE TIME OUT` fault (never a
+wrong tool or an infinite spin), so they are safe:
+
+- **Stop point is the all-switches-off gap, just past the pocket, not the dwell.** The match
+  fires only when `!InToolSelect_M`, so the motor stops after the switches drop and the lock
+  pin seats the carousel. This is the intended "do not act until all return to 0" behavior;
+  on-machine testing confirms it locks cleanly on the pocket.
+- **Requires a clean all-off gap of at least one PLC scan between pockets.** The leading-edge
+  reset (`&& !InToolSelect_M`) discards the prior peak when the next pocket's switches begin,
+  and the match only evaluates while `!InToolSelect_M`. If the carousel ever spun fast enough
+  that the switches never all cleared for a scan, `InToolSelect_M` would never drop, peaks
+  would merge across pockets, and the change would time out. Holds comfortably at this
+  machine's speed (<10 s/revolution).
+- **Requires all of a pocket's switches to co-assert at the aligned dwell** so the peak equals
+  the full tool ID. A pocket whose flags never overlap would peak below its true ID and never
+  match (-> timeout). Confirmed: the dwell reads the full multi-bit code (e.g. T12 = Pos2+Pos5
+  = 12, T7 = Pos1+Pos2+Pos3 = 7).
+- **`M6 T0`** (or any `ChangeToTool_W == 0`) exits `ATCStage` immediately without spinning,
+  because kickoff clears `CarouselToolID_W` to 0 and `0 == 0` matches at once. Intended (T0 =
+  no tool).
+
+**Maintenance caution:** the 20 s watchdog is disarmed by `RST ATCSpin_T` in **all four**
+`ATCStage` exits (both entry aborts, the match rung, and the timeout rung). They must stay in
+sync — dropping the `RST` from any one exit could leave a stale-expired timer that
+immediate-faults the next change.
+
 ## Known gaps
 
 ### Search timeout

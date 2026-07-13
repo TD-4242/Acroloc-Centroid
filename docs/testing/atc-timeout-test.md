@@ -42,8 +42,21 @@ The watchdog preset is `ATC_SPIN_TIMEOUT_MS_C = 20000` ms.
    valid tool. Expected: it completes normally — proving the watchdog re-armed cleanly after
    the timeout. Result: ______
 
-**Pass = normal changes never trip, an unfindable tool faults at ~20 s (motor off + relocked),
-and a normal change works again afterward.**
+4. **Multi-switch decode (peak).** Command tools whose codes use several position switches at
+   once — e.g. **T7** (Pos1+Pos2+Pos3), **T12** (Pos2+Pos5), **T9** (Pos1+Pos4). Each must land
+   on the correct pocket (the peak must read the full multi-bit code, not a single-switch
+   partial). Also sweep single-switch tools (**T4**=Pos3, **T8**=Pos4, **T2**=Pos2, **T10**=Pos5)
+   from several starting pockets — requesting T4 must drive all the way to 4, never stop on
+   5/6/7. Result: ______
+
+5. **Same-tool re-index + clean seating.** Request the tool that is already loaded: the carousel
+   must do a **full re-index** (not sit still), and on every stop confirm the carousel **locks
+   cleanly on the pocket** (it stops in the all-switches-off gap just past the pocket and the
+   lock pin seats it — verify no tool sits a hair past/short). Result: ______
+
+**Pass = normal changes never trip, multi-switch and single-switch tools land on the correct
+pocket and seat cleanly, same-tool re-indexes, an unfindable tool faults at ~20 s (motor off +
+relocked), and a normal change works again afterward.**
 
 ---
 
