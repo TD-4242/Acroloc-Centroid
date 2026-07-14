@@ -28,3 +28,4 @@
 # Large vendor manual kept as a local-only reference (~57 MB); the other
 # docs/official/*.pdf manuals stay tracked.
 /docs/official/centroid-cnc12-mill-operator-manual.pdf
+.superpowers/
