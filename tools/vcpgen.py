@@ -417,19 +417,19 @@ def render_knob_svg(high):
 # ------------------------------------------------------- buttons table ----
 # text_y values are in content coordinates (mockup center-58 system).
 BUTTONS = [
-    dict(name='spindle_plus', row=3, col=1, lines=['+'], fs=20, icon='up',
+    dict(name='spindle_plus', row=2, col=1, lines=['+'], fs=20, icon='up',
          text_y=[79]),
-    dict(name='spindle_100', row=3, col=2, lines=['SPIN', '100%']),
-    dict(name='spindle_minus', row=3, col=3, lines=['-'], fs=20, icon='down',
+    dict(name='spindle_100', row=2, col=2, lines=['SPIN', '100%']),
+    dict(name='spindle_minus', row=2, col=3, lines=['-'], fs=20, icon='down',
          text_y=[52]),
-    dict(name='spindle_auto_man', row=3, col=4, lines=['SPIN', 'MAN'],
+    dict(name='spindle_auto_man', row=2, col=4, lines=['SPIN', 'MAN'],
          lines_on=['SPIN', 'AUTO']),
-    dict(name='spindle_cw', row=4, col=1, lines=['CW'], fs=14, icon='cw',
+    dict(name='spindle_cw', row=3, col=1, lines=['CW'], fs=14, icon='cw',
          text_x=78),
-    dict(name='spindle_ccw', row=4, col=2, lines=['CCW'], fs=13, icon='ccw',
+    dict(name='spindle_ccw', row=3, col=2, lines=['CCW'], fs=13, icon='ccw',
          text_x=80),
-    dict(name='spindle_start', row=4, col=3, lines=['SPIN', 'START']),
-    dict(name='spindle_cancel', row=4, col=4, lines=['SPIN', 'STOP']),
+    dict(name='spindle_start', row=3, col=3, lines=['SPIN', 'START']),
+    dict(name='spindle_cancel', row=3, col=4, lines=['SPIN', 'STOP']),
     dict(name='coolant_auto_man', row=5, col=1, lines=['CLNT', 'MAN'],
          lines_on=['CLNT', 'AUTO']),
     dict(name='flood_coolant', row=5, col=2, lines=['FLOOD', 'M8'], fs=13,
@@ -471,7 +471,7 @@ BUTTONS = [
     dict(name='feedrate_25', row=13, col=4, lines=['25%']),
     dict(name='feedrate_50', row=13, col=5, lines=['50%']),
     dict(name='feedrate_75', row=13, col=6, lines=['75%']),
-    dict(name='gear_range', row=3, col=5, row_span=2,
+    dict(name='gear_range', row=2, col=5, row_span=2,
          special='knob'),
     dict(name='reset', row=12, col=1, row_span=3, col_span=3,
          special='reset'),
@@ -617,7 +617,7 @@ def render_feedrate_bezel_svg():
 def render_skin():
     p = ['<vcp_skin>\n']
     p.append('\t<background>#141210</background>\n')
-    p.append(_border(1, 4, 3, 2, label='SPINDLE'))
+    p.append(_border(1, 4, 2, 2, label='SPINDLE'))
     p.append(_border(1, 3, 5, 1, label='COOLANT'))
     p.append(_border(1, 5, 6, 5, label='AXIS JOG'))
     p.append(_border(4, 3, 12, 2, label='FEEDRATE'))
