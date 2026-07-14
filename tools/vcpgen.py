@@ -322,6 +322,9 @@ def render_reset_svg(tripped):
     p = []
     p.append('<svg xmlns="http://www.w3.org/2000/svg" width="252" '
              'height="252" viewBox="0 0 268 268">')
+    # full-bleed backing: pins the drawing bounds to the whole artboard so
+    # the bezel cannot float away from the spanned area's edges
+    p.append('<rect x="0" y="0" width="268" height="268" fill="#141210"/>')
     p.append('<defs>' + _bezel_grad('rbz', 268, 268) + dome +
              _grad('skirt', 'radial',
                    (('0', '#a81c1c'), ('0.7', '#6e0c0c'), ('1', '#3d0404')),
