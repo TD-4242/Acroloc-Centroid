@@ -8,9 +8,14 @@ endings are preserved.
 
 ## Usage
 
-    python3 tools/plcfmt.py            # check (dry run): print diff + findings, exit 1 if changes needed
+    python3 tools/plcfmt.py            # check (dry run): print diff + findings, exit 1 if a reformat is needed
     python3 tools/plcfmt.py --fix      # apply, then verify the compiled program is unchanged
     python3 tools/plcfmt.py --fix --no-verify   # apply without the compile gate
+
+Exit codes: 0 = clean (findings are advisory and never affect the exit code),
+1 = check mode found a pending reformat, 2 = error (gate failure/refusal, bad file).
+The gate only works on `Centroid-Acroloc-ALLIN1DC.src` itself (compile.sh compiles
+that fixed name); verifying any other filename is refused rather than faked.
 
 ## Safety gate
 

@@ -50,7 +50,7 @@ def test_format_text_strips_trailing_blank_lines_to_one_newline():
     assert plcfmt.format_text("a\r\n\r\n\r\n") == "a\r\n"
 
 
-def test_read_src_rejects_non_ascii(_tmp=None):
+def test_read_src_rejects_non_ascii():
     with tempfile.TemporaryDirectory() as td:
         p = os.path.join(td, "x.src")
         with open(p, "wb") as f:
@@ -101,6 +101,7 @@ def test_comment_space_inserted():
 def test_comment_space_leaves_banners_and_blank():
     assert plcfmt.fix_comment_space(";----------") == ";----------"
     assert plcfmt.fix_comment_space(";==== X ====") == ";==== X ===="
+    assert plcfmt.fix_comment_space(";##########") == ";##########"
     assert plcfmt.fix_comment_space(";") == ";"
 
 
@@ -160,6 +161,20 @@ def test_non_if_lines_unchanged_by_continuation():
     assert plcfmt.format_text(src) == src
 
 
+def test_continuation_mid_block_comment_documented_behavior():
+    # Known limitation: a full-line comment inside a block is re-indented to
+    # the target column and terminates the block (rest left untouched).
+    # Semantically safe and idempotent; no occurrences in the real source.
+    src = ("IF A THEN X = 1,\r\n"
+           "; note\r\n"
+           "      Y = 2\r\n")
+    out = plcfmt.format_text(src)
+    lines = out.split("\r\n")
+    assert lines[1] == " " * 10 + "; note"
+    assert lines[2] == "      Y = 2"                   # untouched
+    assert plcfmt.format_text(out) == out              # idempotent
+
+
 # --------------------------------------------------------------------------- #
 # Task 7: Rules 8-9 -- report-only
 # --------------------------------------------------------------------------- #
@@ -207,6 +222,37 @@ def test_run_fix_writes_and_returns_0():
         assert open(p, "rb").read() == b"IF a THEN b\r\n"
 
 
+def test_check_findings_are_advisory_exit_0():
+    # a formatted file with only naming findings must NOT fail check mode
+    with tempfile.TemporaryDirectory() as td:
+        p = os.path.join(td, "x.src")
+        text = "BadName_M" + " " * 22 + " IS INP6\r\n"     # formatted, bad suffix
+        with open(p, "wb") as f:
+            f.write(text.encode("ascii"))
+        assert plcfmt.run(p, fix=False, verify=False) == 0
+
+
+def test_verify_refuses_non_canonical_filename():
+    # compile.sh only compiles the hardcoded SRC; verifying any other file
+    # would pass vacuously, so the gate must refuse instead.
+    with tempfile.TemporaryDirectory() as td:
+        p = os.path.join(td, "other-name.src")
+        with open(p, "wb") as f:
+            f.write(b"if a then b\r\n")
+        _raises(RuntimeError, plcfmt.verify_compile_identical,
+                p, "if a then b\r\n", "IF a THEN b\r\n")
+
+
+def test_main_reports_gate_error_cleanly():
+    # RuntimeError surfaces as exit code 2, not a traceback
+    with tempfile.TemporaryDirectory() as td:
+        p = os.path.join(td, "other-name.src")
+        with open(p, "wb") as f:
+            f.write(b"if a then b\r\n")
+        assert plcfmt.main(["--fix", p]) == 2
+        assert open(p, "rb").read() == b"if a then b\r\n"   # nothing written
+
+
 # --------------------------------------------------------------------------- #
 # Task 9: compile-checksum gate (integration; self-skips without compiler)
 # --------------------------------------------------------------------------- #
@@ -231,7 +277,8 @@ def test_real_src_reformats_fingerprint_identical():
         target = os.path.join(work, plcfmt.SRC)
         original = plcfmt.read_src(target)
         formatted = plcfmt.format_text(original)
-        assert formatted != original           # the real file does need changes
+        # (the committed .src may already be fully formatted; the gate must
+        # hold either way)
         plcfmt.verify_compile_identical(target, original, formatted)  # must not raise
         assert plcfmt.read_src(target) == formatted
 

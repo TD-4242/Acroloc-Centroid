@@ -93,7 +93,7 @@ def fix_comment_space(line):
     if not comment:
         return line
     after = comment[1:]
-    if after and after[0] not in " -=*":     # skip banners (-,=,*) and lone ';'
+    if after and after[0] not in " -=*#":    # skip banners (-,=,*,#) and lone ';'
         comment = "; " + after
     return code + comment
 
@@ -231,6 +231,17 @@ def verify_compile_identical(path, original, formatted):
     RuntimeError.
     """
     cwd = os.path.dirname(os.path.abspath(path)) or "."
+    # compile.sh cd's to its own directory and compiles the hardcoded SRC name,
+    # so verifying any other file would compile the wrong source and pass
+    # vacuously. Refuse rather than pretend to verify.
+    if os.path.basename(path) != SRC:
+        raise RuntimeError(
+            "cannot verify %r: compile.sh only compiles %s -- "
+            "use --no-verify to format without the gate" % (path, SRC))
+    if not os.path.exists(os.path.join(cwd, "compile.sh")):
+        raise RuntimeError(
+            "cannot verify: compile.sh not found next to %r -- "
+            "use --no-verify to format without the gate" % path)
     with tempfile.TemporaryDirectory() as td:
         before = os.path.join(td, "before.plc")
         after = os.path.join(td, "after.plc")
@@ -283,7 +294,9 @@ def run(path, fix, verify):
         sys.stdout.writelines(diff)
     for ln, rule, msg in findings:
         sys.stderr.write("%s:%d: [%s] %s\n" % (path, ln, rule, msg))
-    return 1 if (changed or findings) else 0
+    # findings are advisory (they can never be autofixed); only a pending
+    # reformat fails the check, so CI stays green on a formatted file.
+    return 1 if changed else 0
 
 
 def main(argv=None):
@@ -295,7 +308,11 @@ def main(argv=None):
     p.add_argument("--no-verify", action="store_true",
                    help="skip the program-checksum gate on --fix")
     args = p.parse_args(argv)
-    return run(args.file, fix=args.fix, verify=not args.no_verify)
+    try:
+        return run(args.file, fix=args.fix, verify=not args.no_verify)
+    except (RuntimeError, ValueError, OSError) as e:
+        sys.stderr.write("error: %s\n" % e)
+        return 2
 
 
 if __name__ == "__main__":
