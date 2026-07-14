@@ -17,6 +17,7 @@
 !/README.md
 !/Centroid-Acroloc-ALLIN1DC.src
 !/compile.sh
+!/tools/
 !/mfunc*.mac
 !/mpucomp.exe
 !/plcmsg.txt
