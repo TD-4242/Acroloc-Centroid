@@ -33,21 +33,29 @@ STYLES = {
 }
 
 # ------------------------------------------------------------ text metrics -
-# Arial Narrow Bold width fractions (of font size). The CNC12 renderer
-# ignores text-anchor, so every <text> gets an explicit left-edge x.
+# Arial Bold advance widths (fraction of font size, from the standard AFM
+# metrics). The CNC12 renderer ignores text-anchor, so every <text> gets an
+# explicit left-edge x. Font is plain Arial: the control PC lacks Arial
+# Narrow and the silent fallback made all legends render right of center.
 CHAR_W = {
-    'I': 0.26, 'J': 0.40, 'L': 0.42, 'F': 0.44, 'T': 0.46, 'E': 0.46,
-    'M': 0.68, 'W': 0.70, '%': 0.72, '+': 0.48, '-': 0.34, ' ': 0.24,
-    '/': 0.26, '.': 0.22, '1': 0.40,
+    'A': 0.722, 'B': 0.722, 'C': 0.722, 'D': 0.722, 'E': 0.667, 'F': 0.611,
+    'G': 0.778, 'H': 0.722, 'I': 0.278, 'J': 0.556, 'K': 0.722, 'L': 0.611,
+    'M': 0.833, 'N': 0.722, 'O': 0.778, 'P': 0.667, 'Q': 0.778, 'R': 0.722,
+    'S': 0.667, 'T': 0.611, 'U': 0.722, 'V': 0.667, 'W': 0.944, 'X': 0.667,
+    'Y': 0.667, 'Z': 0.611,
+    'h': 0.611, 'i': 0.278, 't': 0.333, 'w': 0.778,
+    '+': 0.584, '-': 0.333, '%': 0.889, ' ': 0.278, '/': 0.278, '.': 0.278,
 }
-CHAR_W_DEFAULT = 0.50
+CHAR_W_DIGIT = 0.556
+CHAR_W_DEFAULT = 0.6
 LETTER_SPACING = 0.4
 
 
 def text_width(s, fs):
     if not s:
         return 0.0
-    w = sum(CHAR_W.get(c, CHAR_W_DEFAULT) for c in s) * fs
+    w = sum(CHAR_W_DIGIT if c.isdigit() else CHAR_W.get(c, CHAR_W_DEFAULT)
+            for c in s) * fs
     return w + LETTER_SPACING * (len(s) - 1)
 
 
@@ -55,7 +63,7 @@ def text_el(s, cx, y, fs, fill):
     x = cx - text_width(s, fs) / 2.0
     return ('<text x="%.1f" y="%s" font-size="%s" font-weight="700" '
             'letter-spacing="0.4" fill="%s" '
-            'font-family="Arial Narrow, Arial, sans-serif">%s</text>'
+            'font-family="Arial, sans-serif">%s</text>'
             % (x, y, fs, fill, s))
 
 
