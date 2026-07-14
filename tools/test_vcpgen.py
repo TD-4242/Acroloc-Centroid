@@ -139,13 +139,16 @@ class TestEmitButtons(unittest.TestCase):
         self.assertIn('CONT', on)
         self.assertIn('INCR', off)
 
-    def test_all_emitted_files_ascii(self):
+    def test_all_emitted_files_ascii_and_crlf(self):
         for root, _dirs, files in os.walk(self.bdir):
             for f in files:
                 with open(os.path.join(root, f), 'rb') as fh:
                     data = fh.read()
                 self.assertTrue(max(data) < 128,
                                 'non-ASCII byte in %s' % f)
+                # CNC12 runs on Windows: every newline must be CRLF
+                self.assertEqual(data.count(b'\n'), data.count(b'\r\n'),
+                                 'bare LF in %s' % f)
 
 
 class TestSkin(unittest.TestCase):

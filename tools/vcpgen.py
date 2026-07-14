@@ -368,7 +368,8 @@ def _retro_xml(name, xml):
 
 
 def _write(path, content):
-    with open(path, 'w', newline='\n') as f:
+    # CRLF: CNC12 runs on a Windows host
+    with open(path, 'w', newline='\r\n') as f:
         f.write(content)
 
 
