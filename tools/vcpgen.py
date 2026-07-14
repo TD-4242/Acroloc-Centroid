@@ -165,3 +165,52 @@ ICONS = {
               '<circle cx="79.41" cy="71.04" r="1.41" fill="#ffffff" '
               'opacity="0.85"/></g>'),
 }
+
+
+# -------------------------------------------------- ACROLOC nameplate -----
+# Glyphs traced from the original machine badge photo, then idealized
+# (edges snapped square, uniform stroke, 4-unit chamfers). 90x90 boxes.
+NAME_GLYPHS = {
+    'A': 'M48,0 H85 L90,6 V90 H58 L45,66 L46,62 H64 L66,60 V25 H63 L38,66 '
+         'L27,90 H2 L0,87 L2,82 Z',
+    'C': 'M4,0 H86 L90,4 V24 L86,28 H32 V62 H86 L90,66 V86 L86,90 H4 L0,86 '
+         'V4 Z',
+    'R': 'M4,0 H82 L86,4 V60 L82,64 L77,66 L90,85 V88 L88,90 H62 L38,50 '
+         'L36,45 L39,42 H58 V28 H28 V88 L26,90 H4 L0,86 V4 Z',
+    'O': 'M4,0 H86 L90,4 V86 L86,90 H4 L0,86 V4 Z M26,26 H64 V64 H26 Z',
+    'L': 'M4,0 H24 L28,4 V62 H86 L90,66 V86 L86,90 H4 L0,86 V4 Z',
+}
+
+
+def render_nameplate_svg():
+    word, gap, cell = 'ACROLOC', 10, 64
+    scale = cell / 90.0
+    total = len(word) * cell + (len(word) - 1) * gap
+    x = (634 - total) / 2.0
+    glyphs = []
+    for ch in word:
+        glyphs.append('<path d="%s" transform="translate(%.1f,18) '
+                      'scale(%.3f)" fill="#4a2028" fill-rule="evenodd" '
+                      'stroke="#3a1820" stroke-width="2" '
+                      'stroke-linejoin="round"/>'
+                      % (NAME_GLYPHS[ch], x, scale))
+        x += cell + gap
+    streaks = []
+    for y in range(8, 96, 7):
+        op = 0.04 + 0.05 * ((y * 13) % 10) / 10.0
+        streaks.append('<line x1="6" y1="%d" x2="628" y2="%d" '
+                       'stroke="#ffffff" stroke-width="0.5" opacity="%.3f"/>'
+                       % (y, y + 1, op))
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="634" height="100" '
+        'viewBox="0 0 634 100">'
+        '<defs><linearGradient id="alum" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0" stop-color="#d8d5d0"/>'
+        '<stop offset="0.3" stop-color="#b8b4ae"/>'
+        '<stop offset="0.6" stop-color="#cac6c0"/>'
+        '<stop offset="1" stop-color="#8e8a84"/></linearGradient></defs>'
+        '<rect x="2" y="2" width="630" height="96" rx="4" fill="url(#alum)" '
+        'stroke="#100f0d" stroke-width="1.5"/>'
+        '<rect x="6" y="6" width="622" height="88" rx="2" fill="none" '
+        'stroke="#ffffff" stroke-width="0.8" opacity="0.4"/>'
+        + ''.join(streaks) + ''.join(glyphs) + '</svg>\n')
