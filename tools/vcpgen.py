@@ -504,16 +504,43 @@ def _border(col, colspan, row, rowspan, label=None, fill='Transparent',
                lab, extra))
 
 
+# Live feedrate digits in a seven-segment face (DSEG7 Classic must be
+# installed on the control PC; Windows falls back to the default font if
+# not). The % sign is a separate normal-font label - 7-seg fonts have no
+# percent glyph.
 FEEDRATE_WORD = ('\n\t\t<plc_word>\n'
                  '\t\t\t<number>4</number>\n'
                  '\t\t\t<color>#ff3333</color>\n'
-                 '\t\t\t<fontsize>26</fontsize>\n'
-                 '\t\t\t<font>Consolas</font>\n'
+                 '\t\t\t<fontsize>24</fontsize>\n'
+                 '\t\t\t<font>DSEG7 Classic</font>\n'
                  '\t\t\t<fontstyle>bold</fontstyle>\n'
                  '\t\t\t<verticalalignment>center</verticalalignment>\n'
                  '\t\t\t<horizontalalignment>center</horizontalalignment>\n'
-                 '\t\t\t<percentage>true</percentage>\n'
                  '\t\t</plc_word>')
+
+FEEDRATE_PCT = ('\n\t\t<text>\n'
+                '\t\t\t<content>%</content>\n'
+                '\t\t\t<fontsize>16</fontsize>\n'
+                '\t\t\t<color>#ff3333</color>\n'
+                '\t\t\t<font>Arial</font>\n'
+                '\t\t\t<fontstyle>bold</fontstyle>\n'
+                '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
+                '\t\t\t<verticalalignment>center</verticalalignment>\n'
+                '\t\t\t<marginright>92</marginright>\n'
+                '\t\t</text>')
+
+
+def render_feedrate_bezel_svg():
+    # LED window smaller than the 3-cell span: transparent artboard with a
+    # centered dark bezel (318x84 matches the spanned area's aspect)
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="318" height="84" '
+        'viewBox="0 0 318 84">'
+        '<rect x="86" y="16" width="146" height="52" rx="6" fill="#1a0000" '
+        'stroke="#3a3630" stroke-width="2"/>'
+        '<rect x="90" y="20" width="138" height="8" rx="3" fill="#000000" '
+        'opacity="0.5"/>'
+        '</svg>\n')
 
 
 def render_skin():
@@ -523,8 +550,19 @@ def render_skin():
     p.append(_border(1, 3, 5, 1, label='COOLANT'))
     p.append(_border(1, 5, 6, 5, label='AXIS JOG'))
     p.append(_border(4, 3, 12, 2, label='FEEDRATE'))
-    p.append(_border(4, 3, 11, 1, fill='#1a0000', outline='#3a3630',
-                     thickness=2, extra=FEEDRATE_WORD))
+    # readout: drawn bezel image (smaller than the cell span) under two
+    # transparent borders carrying the 7-seg digits and the % label
+    p.append('\t<image>\n'
+             '\t\t<column_span>3</column_span>\n'
+             '\t\t<column_start>4</column_start>\n'
+             '\t\t<row_span>1</row_span>\n'
+             '\t\t<row_start>11</row_start>\n'
+             '\t\t<path>resources\\vcp\\images\\feedrate_bezel.svg</path>\n'
+             '\t</image>\n')
+    p.append(_border(4, 3, 11, 1, outline='Transparent',
+                     extra=FEEDRATE_WORD))
+    p.append(_border(4, 3, 11, 1, outline='Transparent',
+                     extra=FEEDRATE_PCT))
     p.append('\t<image>\n'
              '\t\t<column_span>6</column_span>\n'
              '\t\t<column_start>1</column_start>\n'
@@ -553,6 +591,8 @@ def generate(out_dir):
     os.makedirs(img_dir, exist_ok=True)
     _write(os.path.join(img_dir, 'acroloc_nameplate.svg'),
            render_nameplate_svg())
+    _write(os.path.join(img_dir, 'feedrate_bezel.svg'),
+           render_feedrate_bezel_svg())
     skin_dir = os.path.join(out_dir, 'resources', 'vcp', 'skins')
     os.makedirs(skin_dir, exist_ok=True)
     _write(os.path.join(skin_dir, 'acroloc_retro_vcp_skin.vcp'),
