@@ -275,3 +275,121 @@ def render_reset_svg(tripped):
         p.append(text_el('RESET', cx, dome_y + 10, 32, '#ffd9d9'))
     p.append('</svg>')
     return ''.join(p) + '\n'
+
+
+# ------------------------------------------------------- buttons table ----
+# text_y values are in content coordinates (mockup center-58 system).
+BUTTONS = [
+    dict(name='spindle_plus', row=3, col=2, lines=['+'], fs=20, icon='up',
+         text_y=[79]),
+    dict(name='spindle_100', row=3, col=3, lines=['SPIN', '100%']),
+    dict(name='spindle_minus', row=3, col=4, lines=['-'], fs=20, icon='down',
+         text_y=[52]),
+    dict(name='spindle_auto_man', row=3, col=5, lines=['SPIN', 'AUTO'],
+         lines_on=['SPIN', 'MAN']),
+    dict(name='spindle_cw', row=4, col=2, lines=['CW'], fs=14, icon='cw',
+         text_x=78),
+    dict(name='spindle_ccw', row=4, col=3, lines=['CCW'], fs=13, icon='ccw',
+         text_x=80),
+    dict(name='spindle_start', row=4, col=4, lines=['SPIN', 'START']),
+    dict(name='spindle_cancel', row=4, col=5, lines=['SPIN', 'STOP']),
+    dict(name='coolant_auto_man', row=5, col=2, lines=['CLNT', 'AUTO'],
+         lines_on=['CLNT', 'MAN']),
+    dict(name='flood_coolant', row=5, col=3, lines=['FLOOD', 'M8'], fs=13,
+         icon='flood', text_y=[66, 82]),
+    dict(name='coolant_pump', row=5, col=4, lines=['PUMP'], fs=13,
+         icon='pump', text_y=[76]),
+    dict(name='incr_cont', row=6, col=2, lines=['INCR'], lines_on=['CONT']),
+    dict(name='x1', row=6, col=3, lines=['X1']),
+    dict(name='x10', row=6, col=4, lines=['X10']),
+    dict(name='x100', row=6, col=5, lines=['X100']),
+    dict(name='mpg', row=6, col=6, lines=[], icon='wheel'),
+    dict(name='y_positive', row=7, col=4, lines=['+Y'], icon='up',
+         text_y=[79]),
+    dict(name='z_positive', row=7, col=6, lines=['+Z'], icon='up',
+         text_y=[79]),
+    dict(name='x_negative', row=8, col=3, lines=['-X'], icon='left',
+         text_y=[79]),
+    dict(name='tortoise_hare', row=8, col=4, lines=[], icon='hare',
+         icon_on='tortoise'),
+    dict(name='x_positive', row=8, col=5, lines=['+X'], icon='right',
+         text_y=[79]),
+    dict(name='y_negative', row=9, col=4, lines=['-Y'], icon='down',
+         text_y=[52]),
+    dict(name='z_negative', row=9, col=6, lines=['-Z'], icon='down',
+         text_y=[52]),
+    dict(name='cycle_start', row=10, col=2, lines=['CYCLE', 'START'],
+         style='green', style_on='grnlit'),
+    dict(name='cycle_cancel', row=10, col=3, lines=['CYCLE', 'CANCEL'],
+         fs=13, style='red', style_on='lit'),
+    dict(name='single_block', row=10, col=4, lines=['SINGLE', 'BLOCK'],
+         fs=13),
+    dict(name='tool_check', row=10, col=5, lines=['TOOL', 'CHECK']),
+    dict(name='feed_hold', row=10, col=6, lines=['FEED', 'HOLD']),
+    dict(name='feedrate_negative', row=12, col=4, lines=['-'], fs=20,
+         icon='down', text_y=[52]),
+    dict(name='feedrate_100', row=12, col=5, lines=['FEED', '100%']),
+    dict(name='feedrate_positive', row=12, col=6, lines=['+'], fs=20,
+         icon='up', text_y=[79]),
+    dict(name='feedrate_25', row=13, col=4, lines=['25%']),
+    dict(name='feedrate_50', row=13, col=5, lines=['50%']),
+    dict(name='feedrate_75', row=13, col=6, lines=['75%']),
+    dict(name='reset', row=12, col=1, row_span=3, col_span=3,
+         special='reset'),
+    dict(name='vcp_options', row=14, col=4, lines=['VCP', 'OPTIONS'], fs=13),
+    dict(name='push_free', row=14, col=5, lines=['PUSH', 'FREE']),
+]
+
+
+def stock_xml(name):
+    p = os.path.join(REPO, 'resources', 'vcp', 'Buttons', name,
+                     name + '.xml')
+    with open(p) as f:
+        return f.read()
+
+
+def _retro_xml(name, xml):
+    rn = 'retro_' + name
+    xml = re.sub(r'<color_on>[^<]*</color_on>',
+                 '<image_on>%s_on.svg</image_on>' % rn, xml)
+    xml = re.sub(r'<color_off>[^<]*</color_off>',
+                 '<image_off>%s.svg</image_off>' % rn, xml)
+    xml = xml.replace('reset_tripped.svg', 'retro_reset_tripped.svg')
+    xml = xml.replace('>reset.svg<', '>retro_reset.svg<')
+    xml = xml.replace('push_pin.svg', 'retro_push_free_on.svg')
+    if not xml.endswith('\n'):
+        xml += '\n'
+    return xml
+
+
+def _write(path, content):
+    with open(path, 'w', newline='\n') as f:
+        f.write(content)
+
+
+def emit_buttons(out_dir):
+    for b in BUTTONS:
+        name = b['name']
+        rn = 'retro_' + name
+        d = os.path.join(out_dir, 'resources', 'vcp', 'Buttons', rn)
+        os.makedirs(d, exist_ok=True)
+        xml = stock_xml(name)
+        _write(os.path.join(d, rn + '.xml'), _retro_xml(name, xml))
+        if b.get('special') == 'reset':
+            _write(os.path.join(d, 'retro_reset.svg'),
+                   render_reset_svg(False))
+            _write(os.path.join(d, 'retro_reset_tripped.svg'),
+                   render_reset_svg(True))
+            continue
+        kw = dict(fs=b.get('fs', 15), text_y=b.get('text_y'),
+                  text_x=b.get('text_x'))
+        _write(os.path.join(d, rn + '.svg'),
+               render_button_svg(b.get('lines', []), b.get('style', 'amber'),
+                                 ICONS.get(b.get('icon', ''), ''), **kw))
+        if ('color_on' in xml or 'image_on' in xml or 'on_click_swap' in xml):
+            _write(os.path.join(d, rn + '_on.svg'),
+                   render_button_svg(
+                       b.get('lines_on', b.get('lines', [])),
+                       b.get('style_on', 'lit'),
+                       ICONS.get(b.get('icon_on', b.get('icon', '')), ''),
+                       **kw))

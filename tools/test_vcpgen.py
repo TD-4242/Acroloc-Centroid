@@ -1,6 +1,7 @@
 # Structural tests for tools/vcpgen.py (stdlib unittest; no pytest on dev box).
 import os
 import sys
+import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -70,6 +71,63 @@ class TestReset(unittest.TestCase):
         self.assertIn('RESET', normal)
         self.assertNotIn('TRIPPED', normal)
         self.assertIn('TRIPPED', tripped)
+
+
+class TestEmitButtons(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.out = tempfile.mkdtemp(prefix='vcpgen_')
+        vcpgen.emit_buttons(cls.out)
+        cls.bdir = os.path.join(cls.out, 'resources', 'vcp', 'Buttons')
+
+    def _read(self, *parts):
+        with open(os.path.join(self.bdir, *parts)) as f:
+            return f.read()
+
+    def test_every_table_entry_has_folder_xml_svg(self):
+        for b in vcpgen.BUTTONS:
+            rn = 'retro_' + b['name']
+            xml = self._read(rn, rn + '.xml')
+            ET.fromstring(xml)
+            self.assertTrue(os.path.exists(
+                os.path.join(self.bdir, rn, rn + '.svg')))
+
+    def test_stateful_led_becomes_image_swap(self):
+        xml = self._read('retro_spindle_cw', 'retro_spindle_cw.xml')
+        self.assertIn('<number>1063</number>', xml)       # PLC bit preserved
+        self.assertIn('<image_on>retro_spindle_cw_on.svg</image_on>', xml)
+        self.assertIn('<image_off>retro_spindle_cw.svg</image_off>', xml)
+        self.assertNotIn('color_on', xml)
+        self.assertTrue(os.path.exists(os.path.join(
+            self.bdir, 'retro_spindle_cw', 'retro_spindle_cw_on.svg')))
+
+    def test_momentary_has_single_svg(self):
+        xml = self._read('retro_x_positive', 'retro_x_positive.xml')
+        self.assertIn('<skin_event_num>39</skin_event_num>', xml)
+        self.assertFalse(os.path.exists(os.path.join(
+            self.bdir, 'retro_x_positive', 'retro_x_positive_on.svg')))
+
+    def test_reset_uses_retro_filenames(self):
+        xml = self._read('retro_reset', 'retro_reset.xml')
+        self.assertIn('<image_on>retro_reset_tripped.svg</image_on>', xml)
+        self.assertIn('<image_off>retro_reset.svg</image_off>', xml)
+        for f in ('retro_reset.svg', 'retro_reset_tripped.svg'):
+            self.assertTrue(os.path.exists(
+                os.path.join(self.bdir, 'retro_reset', f)))
+
+    def test_legend_swap_pairs(self):
+        on = self._read('retro_incr_cont', 'retro_incr_cont_on.svg')
+        off = self._read('retro_incr_cont', 'retro_incr_cont.svg')
+        self.assertIn('CONT', on)
+        self.assertIn('INCR', off)
+
+    def test_all_emitted_files_ascii(self):
+        for root, _dirs, files in os.walk(self.bdir):
+            for f in files:
+                with open(os.path.join(root, f), 'rb') as fh:
+                    data = fh.read()
+                self.assertTrue(max(data) < 128,
+                                'non-ASCII byte in %s' % f)
 
 
 if __name__ == '__main__':
