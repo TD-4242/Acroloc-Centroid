@@ -213,31 +213,16 @@ def render_nameplate_svg():
     x = (634 - total) / 2.0
     glyphs = []
     for ch in word:
-        glyphs.append('<path d="%s" fill="#4a2028" fill-rule="evenodd" '
-                      'stroke="#3a1820" stroke-width="2" '
+        # bright red-maroon lettering straight on the panel (no plate)
+        glyphs.append('<path d="%s" fill="#c22540" fill-rule="evenodd" '
+                      'stroke="#8a1428" stroke-width="2" '
                       'stroke-linejoin="round"/>'
                       % _xform_path(NAME_GLYPHS[ch], scale, x, 18))
         x += cell + gap
-    streaks = []
-    for y in range(8, 96, 7):
-        op = 0.04 + 0.05 * ((y * 13) % 10) / 10.0
-        streaks.append('<line x1="6" y1="%d" x2="628" y2="%d" '
-                       'stroke="#ffffff" stroke-width="0.5" opacity="%.3f"/>'
-                       % (y, y + 1, op))
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" width="634" height="100" '
         'viewBox="0 0 634 100">'
-        '<defs><linearGradient id="alum" x1="317" y1="0" x2="317" y2="100" '
-        'gradientUnits="userSpaceOnUse">'
-        '<stop offset="0" stop-color="#d8d5d0"/>'
-        '<stop offset="0.3" stop-color="#b8b4ae"/>'
-        '<stop offset="0.6" stop-color="#cac6c0"/>'
-        '<stop offset="1" stop-color="#8e8a84"/></linearGradient></defs>'
-        '<rect x="2" y="2" width="630" height="96" rx="4" fill="url(#alum)" '
-        'stroke="#100f0d" stroke-width="1.5"/>'
-        '<rect x="6" y="6" width="622" height="88" rx="2" fill="none" '
-        'stroke="#ffffff" stroke-width="0.8" opacity="0.4"/>'
-        + ''.join(streaks) + ''.join(glyphs) + '</svg>\n')
+        + ''.join(glyphs) + '</svg>\n')
 
 
 # ------------------------------------------------------- round RESET ------
