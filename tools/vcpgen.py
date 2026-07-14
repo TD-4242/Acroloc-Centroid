@@ -536,9 +536,9 @@ def render_feedrate_bezel_svg():
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" width="318" height="84" '
         'viewBox="0 0 318 84">'
-        '<rect x="86" y="23" width="146" height="38" rx="6" fill="#1a0000" '
+        '<rect x="86" y="28" width="146" height="28" rx="5" fill="#1a0000" '
         'stroke="#3a3630" stroke-width="2"/>'
-        '<rect x="90" y="27" width="138" height="6" rx="3" fill="#000000" '
+        '<rect x="90" y="31" width="138" height="5" rx="2" fill="#000000" '
         'opacity="0.5"/>'
         '</svg>\n')
 
