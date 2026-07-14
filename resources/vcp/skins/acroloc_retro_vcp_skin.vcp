@@ -1,63 +1,6 @@
 <vcp_skin>
 	<background>#141210</background>
 	<border>
-		<column_span>6</column_span>
-		<column_start>1</column_start>
-		<fill>Transparent</fill>
-		<row_span>2</row_span>
-		<row_start>2</row_start>
-		<outline_color>#6a645c</outline_color>
-		<outline_thickness>1</outline_thickness>
-		<text>
-			<content>SPINDLE</content>
-			<fontsize>11</fontsize>
-			<color>#b0a898</color>
-			<font>Arial Narrow</font>
-			<fontstyle>bold</fontstyle>
-			<horizontalalignment>center</horizontalalignment>
-			<verticalalignment>top</verticalalignment>
-			<margintop>-8</margintop>
-		</text>
-	</border>
-	<border>
-		<column_span>4</column_span>
-		<column_start>1</column_start>
-		<fill>Transparent</fill>
-		<row_span>2</row_span>
-		<row_start>4</row_start>
-		<outline_color>#6a645c</outline_color>
-		<outline_thickness>1</outline_thickness>
-		<text>
-			<content>COOLANT</content>
-			<fontsize>11</fontsize>
-			<color>#b0a898</color>
-			<font>Arial Narrow</font>
-			<fontstyle>bold</fontstyle>
-			<horizontalalignment>center</horizontalalignment>
-			<verticalalignment>top</verticalalignment>
-			<margintop>-8</margintop>
-		</text>
-	</border>
-	<border>
-		<column_span>5</column_span>
-		<column_start>1</column_start>
-		<fill>Transparent</fill>
-		<row_span>5</row_span>
-		<row_start>6</row_start>
-		<outline_color>#6a645c</outline_color>
-		<outline_thickness>1</outline_thickness>
-		<text>
-			<content>AXIS JOG</content>
-			<fontsize>11</fontsize>
-			<color>#b0a898</color>
-			<font>Arial Narrow</font>
-			<fontstyle>bold</fontstyle>
-			<horizontalalignment>center</horizontalalignment>
-			<verticalalignment>top</verticalalignment>
-			<margintop>-8</margintop>
-		</text>
-	</border>
-	<border>
 		<column_span>3</column_span>
 		<column_start>4</column_start>
 		<fill>Transparent</fill>

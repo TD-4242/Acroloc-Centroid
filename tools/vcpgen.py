@@ -663,9 +663,6 @@ def render_feedrate_bezel_svg():
 def render_skin():
     p = ['<vcp_skin>\n']
     p.append('\t<background>#141210</background>\n')
-    p.append(_border(1, 6, 2, 2, label='SPINDLE'))
-    p.append(_border(1, 4, 4, 2, label='COOLANT'))
-    p.append(_border(1, 5, 6, 5, label='AXIS JOG'))
     p.append(_border(4, 3, 12, 2, label='FEEDRATE'))
     # readout: drawn bezel image (smaller than the cell span) under two
     # transparent borders carrying the 7-seg digits and the % label
