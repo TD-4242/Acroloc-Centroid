@@ -262,28 +262,31 @@ CENTROID_LOGO = (
 
 
 def render_nameplate_svg():
-    # layout: ACROLOC left, small "with", Centroid logo right-aligned
-    word, gap, cell = 'ACROLOC', 8, 48
+    # layout: ACROLOC centered on top; "with <Centroid logo>" below,
+    # right-aligned to ACROLOC's right edge
+    word, gap, cell = 'ACROLOC', 9, 56
     scale = cell / 90.0
-    x = 8.0
+    total = len(word) * cell + (len(word) - 1) * gap      # 446
+    x0 = (634 - total) / 2.0
+    x = x0
     glyphs = []
     for ch in word:
         # bright red-maroon lettering straight on the panel (no plate)
         glyphs.append('<path d="%s" fill="#c22540" fill-rule="evenodd" '
                       'stroke="#8a1428" stroke-width="2" '
                       'stroke-linejoin="round"/>'
-                      % _xform_path(NAME_GLYPHS[ch], scale, x, 26))
+                      % _xform_path(NAME_GLYPHS[ch], scale, x, 8))
         x += cell + gap
-    acroloc_end = x - gap                       # 392
-    logo_scale = 0.36                           # 560x100 -> 201.6x36
-    logo_x = 634.0 - 8 - 560 * logo_scale       # right-aligned
-    logo_y = (100 - 100 * logo_scale) / 2.0
-    with_cx = (acroloc_end + logo_x) / 2.0
+    acroloc_right = x0 + total
+    logo_scale = 0.24                           # 560x100 -> 134.4x24
+    logo_x = acroloc_right - 560 * logo_scale   # right edges align
+    logo_y = 70.0                               # small gap under ACROLOC
+    with_cx = logo_x - 8 - text_width('with', 14) / 2.0
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" width="634" height="100" '
         'viewBox="0 0 634 100">'
         + ''.join(glyphs)
-        + text_el('with', with_cx, 56, 16, '#b0a898')
+        + text_el('with', with_cx, 87, 14, '#b0a898')
         + '<g transform="matrix(%g 0 0 %g %g %g)">%s</g>'
           % (logo_scale, logo_scale, logo_x, logo_y, CENTROID_LOGO)
         + '</svg>\n')
