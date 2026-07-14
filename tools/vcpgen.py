@@ -307,11 +307,14 @@ def render_nameplate_svg():
 
 # ------------------------------------------------------- round RESET ------
 def render_reset_svg(tripped):
-    # square artboard: the bezel outline fills the 3x3 span just inside its
-    # edges (the old 348x268 letterboxed inside the square cell area)
-    cx, cy = 134, 144            # button center in the 268x268 artboard
-    dome_r = 66 if tripped else 75
-    dome_y = cy - 6 if tripped else cy - 8
+    # Stock reset.svg artboard is 378x349.9 for this same 3x3 span and the
+    # VCP renders an image at its declared size - matching it exactly is
+    # what makes the graphic fill the spanned area (a smaller artboard
+    # leaves a gap; seen as a band above the tripped reset on-machine).
+    W, H = 378, 350
+    cx, cy = W / 2.0, 190
+    dome_r = 92 if tripped else 105
+    dome_y = cy - 8 if tripped else cy - 11
     stops = (('#ffb0b0', '#ff3838', '#c40f0f', '#7a0505') if tripped
              else ('#f26b6b', '#d42a2a', '#8c0f0f', '#5c0505'))
     dome = _grad('dome', 'radial',
@@ -320,46 +323,50 @@ def render_reset_svg(tripped):
                  dict(cx=cx - 0.24 * dome_r, cy=dome_y - 0.4 * dome_r,
                       r=1.5 * dome_r))
     p = []
-    p.append('<svg xmlns="http://www.w3.org/2000/svg" width="252" '
-             'height="252" viewBox="0 0 268 268">')
-    # full-bleed backing: pins the drawing bounds to the whole artboard so
-    # the bezel cannot float away from the spanned area's edges
-    p.append('<rect x="0" y="0" width="268" height="268" fill="#141210"/>')
-    p.append('<defs>' + _bezel_grad('rbz', 268, 268) + dome +
+    p.append('<svg xmlns="http://www.w3.org/2000/svg" width="%d" '
+             'height="%d" viewBox="0 0 %d %d">' % (W, H, W, H))
+    p.append('<rect x="0" y="0" width="%d" height="%d" fill="#141210"/>'
+             % (W, H))
+    p.append('<defs>' + _bezel_grad('rbz', W, H) + dome +
              _grad('skirt', 'radial',
                    (('0', '#a81c1c'), ('0.7', '#6e0c0c'), ('1', '#3d0404')),
-                   dict(cx=cx, cy=cy - 20, r=120)) +
+                   dict(cx=cx, cy=cy - 26, r=168)) +
              _grad('well', 'radial',
                    (('0', '#1c1916'), ('1', '#0a0908')),
-                   dict(cx=cx, cy=cy - 22, r=200)) + '</defs>')
-    p.append('<rect x="4" y="4" width="260" height="260" rx="8" '
-             'fill="url(#rbz)" stroke="#100f0d" stroke-width="1.5"/>')
-    p.append('<rect x="10" y="10" width="248" height="248" rx="5" fill="none" '
-             'stroke="#c9c5be" stroke-width="0.8" opacity="0.35"/>')
-    p.append('<rect x="15" y="15" width="238" height="238" rx="5" '
-             'fill="url(#well)" stroke="#000000" stroke-width="1.5"/>')
-    p.append('<rect x="15" y="15" width="238" height="14" rx="4" '
-             'fill="#000000" opacity="0.45"/>')
+                   dict(cx=cx, cy=cy - 30, r=280)) + '</defs>')
+    p.append('<rect x="4" y="4" width="%d" height="%d" rx="10" '
+             'fill="url(#rbz)" stroke="#100f0d" stroke-width="2"/>'
+             % (W - 8, H - 8))
+    p.append('<rect x="12" y="12" width="%d" height="%d" rx="6" fill="none" '
+             'stroke="#c9c5be" stroke-width="1" opacity="0.35"/>'
+             % (W - 24, H - 24))
+    p.append('<rect x="19" y="19" width="%d" height="%d" rx="6" '
+             'fill="url(#well)" stroke="#000000" stroke-width="2"/>'
+             % (W - 38, H - 38))
+    p.append('<rect x="19" y="19" width="%d" height="18" rx="5" '
+             'fill="#000000" opacity="0.45"/>' % (W - 38))
     if tripped:
         # fake halo: layered translucent circles (no <filter> support)
-        p.append('<circle cx="%d" cy="%d" r="100" fill="#ff2020" '
+        p.append('<circle cx="%.0f" cy="%.0f" r="140" fill="#ff2020" '
                  'opacity="0.10"/>' % (cx, cy))
-        p.append('<circle cx="%d" cy="%d" r="92" fill="#ff2020" '
+        p.append('<circle cx="%.0f" cy="%.0f" r="128" fill="#ff2020" '
                  'opacity="0.16"/>' % (cx, cy))
-    p.append('<circle cx="%d" cy="%d" r="86" fill="url(#skirt)" '
-             'stroke="#2a0505" stroke-width="2"/>' % (cx, cy))
-    p.append('<circle cx="%d" cy="%d" r="%d" fill="url(#dome)" '
-             'stroke="#4a0808" stroke-width="1.5"/>' % (cx, dome_y, dome_r))
+    p.append('<circle cx="%.0f" cy="%.0f" r="120" fill="url(#skirt)" '
+             'stroke="#2a0505" stroke-width="3"/>' % (cx, cy))
+    p.append('<circle cx="%.0f" cy="%.0f" r="%d" fill="url(#dome)" '
+             'stroke="#4a0808" stroke-width="2"/>' % (cx, dome_y, dome_r))
     if tripped:
         # depression reads from the smaller, lower, darker dome + banners
-        p.append('<ellipse cx="%d" cy="%d" rx="24" ry="12" fill="#ffffff" '
-                 'opacity="0.14"/>' % (cx - 15, dome_y - 26))
-        p.append(text_el('RESET', cx, 40, 24, '#ff5555'))
-        p.append(text_el('TRIPPED', cx, 248, 24, '#ff5555'))
+        p.append('<ellipse cx="%.0f" cy="%.0f" rx="32" ry="16" '
+                 'fill="#ffffff" opacity="0.14"/>'
+                 % (cx - 21, dome_y - 36))
+        p.append(text_el('RESET', cx, 52, 32, '#ff5555'))
+        p.append(text_el('TRIPPED', cx, 324, 32, '#ff5555'))
     else:
-        p.append('<ellipse cx="%d" cy="%d" rx="34" ry="20" fill="#ffffff" '
-                 'opacity="0.22"/>' % (cx - 20, dome_y - 26))
-        p.append(text_el('RESET', cx, dome_y + 8, 28, '#ffd9d9'))
+        p.append('<ellipse cx="%.0f" cy="%.0f" rx="46" ry="28" '
+                 'fill="#ffffff" opacity="0.22"/>'
+                 % (cx - 28, dome_y - 36))
+        p.append(text_el('RESET', cx, dome_y + 12, 38, '#ffd9d9'))
     p.append('</svg>')
     return ''.join(p) + '\n'
 
