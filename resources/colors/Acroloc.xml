@@ -2,20 +2,20 @@
 <Table>
   <Colors>
     <warnSpeedColor>3700b3</warnSpeedColor>
-    <gcodeBackground>03dac6</gcodeBackground>
+    <gcodeBackground>85bd53</gcodeBackground>
     <DROColor>ffffff</DROColor>
     <miniDROColor>ffffff</miniDROColor>
-    <infoTextHeaderColor>48b1e7</infoTextHeaderColor>
+    <infoTextHeaderColor>85bd53</infoTextHeaderColor>
     <infoTextColor>ffffff</infoTextColor>
-    <infoWarningTextColor>3700b3</infoWarningTextColor>
-    <infoWarningHighlightColor>cf6679</infoWarningHighlightColor>
-    <infoFavorableHighlightColor>03dac6</infoFavorableHighlightColor>
+    <infoWarningTextColor>f3ab3a</infoWarningTextColor>
+    <infoWarningHighlightColor>e27531</infoWarningHighlightColor>
+    <infoFavorableHighlightColor>52a257</infoFavorableHighlightColor>
     <backgroundColor>121212</backgroundColor>
     <menuUneditableColor>7f7f7f</menuUneditableColor>
     <editColor>ffffff</editColor>
     <editBackgroundColor>121212</editBackgroundColor>
     <eventHighlightBackColor>0f0f0f</eventHighlightBackColor>
-    <eventHighlightTextColor>48b1e7</eventHighlightTextColor>
+    <eventHighlightTextColor>c0ff95</eventHighlightTextColor>
     <menuItemIndicationColor>000000</menuItemIndicationColor>
     <menuItemIndicationBackgroundColor>e67300</menuItemIndicationBackgroundColor>
     <pictureColor>000000</pictureColor>
@@ -32,7 +32,7 @@
     <plasmaPickupPointColor>1cc5f9</plasmaPickupPointColor>
     <plasmaJogOffPointColor>fc0000</plasmaJogOffPointColor>
     <plasmaInterruptPointColor>ff12ea</plasmaInterruptPointColor>
-    <messageTextColor>48b1e7</messageTextColor>
+    <messageTextColor>85bd53</messageTextColor>
     <messageBackgroundColor>0f0f0f</messageBackgroundColor>
     <panCrosshairColor>ffffff</panCrosshairColor>
     <radialSectorFGColor>ffffff</radialSectorFGColor>
@@ -41,13 +41,13 @@
     <radialSectorDashColor>d00000</radialSectorDashColor>
     <radialSectorProbeColor>dd00ff</radialSectorProbeColor>
     <statusBGNDColor>121212</statusBGNDColor>
-    <statusFontColor>48b1e7</statusFontColor>
+    <statusFontColor>85bd53</statusFontColor>
     <statusOutlineColor>ffffff</statusOutlineColor>
-    <loadMeterOKColor>03dac6</loadMeterOKColor>
+    <loadMeterOKColor>00ff00</loadMeterOKColor>
     <loadMeterWarnColor>3700b3</loadMeterWarnColor>
     <loadMeterBackgroundColor>121212</loadMeterBackgroundColor>
     <loadMeterOutlineColor>ffffff</loadMeterOutlineColor>
-    <loadMeterStopColor>cf6679</loadMeterStopColor>
+    <loadMeterStopColor>ff0000</loadMeterStopColor>
     <mathHelpBackgroundColor>ffffff</mathHelpBackgroundColor>
     <mathHelpForegroundColor>000000</mathHelpForegroundColor>
     <mathHelpDeemphasisColor>7f7f7f</mathHelpDeemphasisColor>
@@ -60,7 +60,7 @@
     <mathHelpCalcKeyOutlineColor>0f0f0f</mathHelpCalcKeyOutlineColor>
     <mathHelpCalcKeyBackgroundColor>000000</mathHelpCalcKeyBackgroundColor>
     <mathHelpCalcKeyForegroundColor>000000</mathHelpCalcKeyForegroundColor>
-    <fkeybuttontextcolor>48b1e7</fkeybuttontextcolor>
+    <fkeybuttontextcolor>88c153</fkeybuttontextcolor>
     <fkeybuttonsubtextcolor>ffffff</fkeybuttonsubtextcolor>
     <fkeybuttonbackgroundcolor>121212</fkeybuttonbackgroundcolor>
     <fkeybuttonoutlinecolor>333333</fkeybuttonoutlinecolor>
