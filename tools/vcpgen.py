@@ -166,12 +166,12 @@ ICONS = {
               'stroke-width="3.5"/>'
               '<circle cx="CX" cy="58" r="3" fill="FILL"/>'
               '<circle cx="CX" cy="45" r="4" fill="FILL"/>'),
-    'pump':  ('<g transform="matrix(1 0 0 1 3 -12)">'
+    'pump':  ('<g transform="matrix(1 0 0 1 -2 18)">'
               '<rect x="42" y="52" width="22" height="18" rx="2" fill="none" '
-              'stroke="FILL" stroke-width="3"/>'
+              'stroke="FILL" stroke-width="2"/>'
               '<circle cx="53" cy="61" r="4.5" fill="FILL"/>'
               '<path d="M64 56 h8 v-8" fill="none" stroke="FILL" '
-              'stroke-width="3"/>'
+              'stroke-width="2"/>'
               '<path d="M76 38 c-4 6 -4 9 0 9 c4 0 4 -3 0 -9 z" fill="FILL"/>'
               '</g>'),
     # stock CNC12 flood_coolant line-art (black outline paths), recolored
@@ -378,7 +378,7 @@ BUTTONS = [
     dict(name='flood_coolant', row=5, col=2, lines=['FLOOD', 'M8'], fs=13,
          icon='flood', text_y=[48, 74], text_x=[None, 42]),
     dict(name='coolant_pump', row=5, col=3, lines=['PUMP'], fs=13,
-         icon='pump', text_y=[76]),
+         icon='pump', text_y=[48]),
     dict(name='incr_cont', row=6, col=1, lines=['INCR'], lines_on=['CONT']),
     dict(name='x1', row=6, col=2, lines=['X1']),
     dict(name='x10', row=6, col=3, lines=['X10']),
