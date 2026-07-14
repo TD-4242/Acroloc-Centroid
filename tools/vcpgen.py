@@ -166,13 +166,13 @@ ICONS = {
               'stroke-width="3.5"/>'
               '<circle cx="CX" cy="58" r="3" fill="FILL"/>'
               '<circle cx="CX" cy="45" r="4" fill="FILL"/>'),
-    'pump':  ('<g transform="matrix(1 0 0 1 -2 18)">'
+    'pump':  ('<g transform="matrix(1 0 0 1 -2 11)">'
               '<rect x="42" y="52" width="22" height="18" rx="2" fill="none" '
-              'stroke="FILL" stroke-width="2"/>'
-              '<circle cx="53" cy="61" r="4.5" fill="FILL"/>'
+              'stroke="FILL" stroke-width="1.5"/>'
+              '<circle cx="53" cy="61" r="4" fill="FILL"/>'
               '<path d="M64 56 h8 v-8" fill="none" stroke="FILL" '
-              'stroke-width="2"/>'
-              '<path d="M76 38 c-4 6 -4 9 0 9 c4 0 4 -3 0 -9 z" fill="FILL"/>'
+              'stroke-width="1.5"/>'
+              '<path d="M74 54 c-4 6 -4 9 0 9 c4 0 4 -3 0 -9 z" fill="FILL"/>'
               '</g>'),
     # stock CNC12 flood_coolant line-art (black outline paths), recolored
     'flood': ('<g transform="matrix(0.4 0 0 0.4 52.4 45.2)">' + '<path d="M60.12,38.62H35.79V32.19H60.12ZM37.24,37.17H58.67V33.64H37.24Z" fill="FILL"/><path d="M51.56,42.59h-7.2V37.17h7.2Zm-5.75-1.45h4.3V38.62h-4.3Z" fill="FILL"/><path d="M77.17,67.19H65.32V60H59.58a13,13,0,0,1-23.25,0H19.18V48.13h3.68c.85,0,1.7,0,2.54,0,3.64,0,7.29,0,10.93,0a13,13,0,0,1,23.24,0h2.28a30.42,30.42,0,0,1,4.26.17c5.28.73,11,4,11.07,9.42,0,.8,0,1.61,0,2.41v1.11c0,1.2,0,2.41,0,3.61Zm-10.4-1.45h9v-.92c0-1.2,0-2.41,0-3.62V60.09c0-.8,0-1.59,0-2.38-.06-4.58-5.13-7.35-9.82-8h0a28.64,28.64,0,0,0-4-.16h-3.2l-.19-.42a11.59,11.59,0,0,0-21,0l-.2.42h-.46c-3.83,0-7.6,0-11.37,0H20.62v9H37.24l.2.42a11.6,11.6,0,0,0,21,0l.19-.42h8.1Z" fill="FILL"/><path d="M85,92H58l9.63-25.11h7.88ZM60.14,90.54H82.93L74.54,68.33H68.66Z" fill="FILL"/>' + '</g>'),
