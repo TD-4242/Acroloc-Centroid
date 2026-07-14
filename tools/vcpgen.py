@@ -421,14 +421,15 @@ def render_knob_svg(on, title, labels):
         + _grad('base', 'radial',
                 (('0', '#3a3733'), ('0.55', '#211f1c'), ('1', '#0f0e0d')),
                 dict(cx=kcx - 16, cy=kcy - 20, r=base_r * 1.6)) + '</defs>'
-        + '<rect x="4" y="4" width="%d" height="%d" rx="8" fill="url(#bz)" '
-          'stroke="#100f0d" stroke-width="1.5"/>' % (W - 8, H - 8)
-        + '<rect x="10" y="10" width="%d" height="%d" rx="5" fill="none" '
+        + '<rect x="13" y="16" width="%d" height="%d" rx="8" '
+          'fill="url(#bz)" stroke="#100f0d" stroke-width="1.5"/>'
+          % (W - 26, H - 32)
+        + '<rect x="19" y="22" width="%d" height="%d" rx="5" fill="none" '
           'stroke="#c9c5be" stroke-width="0.8" opacity="0.35"/>'
-          % (W - 20, H - 20)
-        + '<rect x="15" y="15" width="%d" height="%d" rx="5" fill="#141210" '
-          'stroke="#000000" stroke-width="1.5"/>' % (W - 30, H - 30)
-        + text_el(title, kcx, 42, 16, '#b0a898')
+          % (W - 38, H - 44)
+        + '<rect x="24" y="27" width="%d" height="%d" rx="5" fill="#141210" '
+          'stroke="#000000" stroke-width="1.5"/>' % (W - 48, H - 54)
+        + text_el(title, kcx, 52, 16, '#b0a898')
         + ''.join(ticks)
         + '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="#000000" '
           'opacity="0.4"/>' % (kcx, kcy + 2, base_r + 4)
