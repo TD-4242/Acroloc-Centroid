@@ -18,6 +18,7 @@
 !/Centroid-Acroloc-ALLIN1DC.src
 !/compile.sh
 !/tools/
+/tools/__pycache__/
 !/mfunc*.mac
 !/mpucomp.exe
 !/plcmsg.txt
