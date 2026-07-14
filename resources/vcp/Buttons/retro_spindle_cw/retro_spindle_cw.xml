@@ -1,0 +1,8 @@
+<vcp_button>
+	<skin_event_num>7</skin_event_num>
+	<plc_output>
+		<number>1063</number>
+		<image_on>retro_spindle_cw_on.svg</image_on>
+		<image_off>retro_spindle_cw.svg</image_off>
+	</plc_output>
+</vcp_button>

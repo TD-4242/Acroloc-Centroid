@@ -1,0 +1,150 @@
+<vcp_skin>
+	<background>#141210</background>
+	<border>
+		<column_span>4</column_span>
+		<column_start>2</column_start>
+		<fill>Transparent</fill>
+		<row_span>2</row_span>
+		<row_start>3</row_start>
+		<outline_color>#6a645c</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<text>
+			<content>SPINDLE</content>
+			<fontsize>11</fontsize>
+			<color>#b0a898</color>
+			<font>Arial Narrow</font>
+			<fontstyle>bold</fontstyle>
+			<horizontalalignment>center</horizontalalignment>
+			<verticalalignment>top</verticalalignment>
+			<margintop>-8</margintop>
+		</text>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>2</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>5</row_start>
+		<outline_color>#6a645c</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<text>
+			<content>COOLANT</content>
+			<fontsize>11</fontsize>
+			<color>#b0a898</color>
+			<font>Arial Narrow</font>
+			<fontstyle>bold</fontstyle>
+			<horizontalalignment>center</horizontalalignment>
+			<verticalalignment>top</verticalalignment>
+			<margintop>-8</margintop>
+		</text>
+	</border>
+	<border>
+		<column_span>5</column_span>
+		<column_start>2</column_start>
+		<fill>Transparent</fill>
+		<row_span>5</row_span>
+		<row_start>6</row_start>
+		<outline_color>#6a645c</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<text>
+			<content>AXIS JOG</content>
+			<fontsize>11</fontsize>
+			<color>#b0a898</color>
+			<font>Arial Narrow</font>
+			<fontstyle>bold</fontstyle>
+			<horizontalalignment>center</horizontalalignment>
+			<verticalalignment>top</verticalalignment>
+			<margintop>-8</margintop>
+		</text>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>4</column_start>
+		<fill>Transparent</fill>
+		<row_span>2</row_span>
+		<row_start>12</row_start>
+		<outline_color>#6a645c</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<text>
+			<content>FEEDRATE</content>
+			<fontsize>11</fontsize>
+			<color>#b0a898</color>
+			<font>Arial Narrow</font>
+			<fontstyle>bold</fontstyle>
+			<horizontalalignment>center</horizontalalignment>
+			<verticalalignment>top</verticalalignment>
+			<margintop>-8</margintop>
+		</text>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>4</column_start>
+		<fill>#1a0000</fill>
+		<row_span>1</row_span>
+		<row_start>11</row_start>
+		<outline_color>#3a3630</outline_color>
+		<outline_thickness>2</outline_thickness>
+		<plc_word>
+			<number>4</number>
+			<color>#ff3333</color>
+			<fontsize>26</fontsize>
+			<font>Consolas</font>
+			<fontstyle>bold</fontstyle>
+			<verticalalignment>center</verticalalignment>
+			<horizontalalignment>center</horizontalalignment>
+			<percentage>true</percentage>
+		</plc_word>
+	</border>
+	<image>
+		<column_span>6</column_span>
+		<column_start>1</column_start>
+		<row_span>1</row_span>
+		<row_start>1</row_start>
+		<path>resources\vcp\images\acroloc_nameplate.svg</path>
+	</image>
+	<on_click>
+		<opacity>100</opacity>
+		<outline_color>#000000</outline_color>
+	</on_click>
+	<on_hover>
+		<opacity>100</opacity>
+		<outline_color>#ffffff</outline_color>
+	</on_hover>
+	<button row="3" column="2">retro_spindle_plus</button>
+	<button row="3" column="3">retro_spindle_100</button>
+	<button row="3" column="4">retro_spindle_minus</button>
+	<button row="3" column="5">retro_spindle_auto_man</button>
+	<button row="4" column="2">retro_spindle_cw</button>
+	<button row="4" column="3">retro_spindle_ccw</button>
+	<button row="4" column="4">retro_spindle_start</button>
+	<button row="4" column="5">retro_spindle_cancel</button>
+	<button row="5" column="2">retro_coolant_auto_man</button>
+	<button row="5" column="3">retro_flood_coolant</button>
+	<button row="5" column="4">retro_coolant_pump</button>
+	<button row="6" column="2">retro_incr_cont</button>
+	<button row="6" column="3">retro_x1</button>
+	<button row="6" column="4">retro_x10</button>
+	<button row="6" column="5">retro_x100</button>
+	<button row="6" column="6">retro_mpg</button>
+	<button row="7" column="4">retro_y_positive</button>
+	<button row="7" column="6">retro_z_positive</button>
+	<button row="8" column="3">retro_x_negative</button>
+	<button row="8" column="4">retro_tortoise_hare</button>
+	<button row="8" column="5">retro_x_positive</button>
+	<button row="9" column="4">retro_y_negative</button>
+	<button row="9" column="6">retro_z_negative</button>
+	<button row="10" column="2">retro_cycle_start</button>
+	<button row="10" column="3">retro_cycle_cancel</button>
+	<button row="10" column="4">retro_single_block</button>
+	<button row="10" column="5">retro_tool_check</button>
+	<button row="10" column="6">retro_feed_hold</button>
+	<button row="12" column="1" column_span="3" row_span="3">retro_reset</button>
+	<button row="12" column="4">retro_feedrate_negative</button>
+	<button row="12" column="5">retro_feedrate_100</button>
+	<button row="12" column="6">retro_feedrate_positive</button>
+	<button row="13" column="4">retro_feedrate_25</button>
+	<button row="13" column="5">retro_feedrate_50</button>
+	<button row="13" column="6">retro_feedrate_75</button>
+	<button row="14" column="4">retro_vcp_options</button>
+	<button row="14" column="5">retro_push_free</button>
+</vcp_skin>
