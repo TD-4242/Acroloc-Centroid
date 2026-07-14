@@ -343,8 +343,6 @@ def render_reset_svg(tripped):
     p.append('<rect x="19" y="19" width="%d" height="%d" rx="6" '
              'fill="url(#well)" stroke="#000000" stroke-width="2"/>'
              % (W - 38, H - 38))
-    p.append('<rect x="19" y="19" width="%d" height="18" rx="5" '
-             'fill="#000000" opacity="0.45"/>' % (W - 38))
     if tripped:
         # fake halo: layered translucent circles (no <filter> support)
         p.append('<circle cx="%.0f" cy="%.0f" r="140" fill="#ff2020" '
