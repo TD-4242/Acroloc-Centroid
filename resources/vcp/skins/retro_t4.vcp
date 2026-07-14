@@ -1,0 +1,54 @@
+<vcp_skin>
+	<background>#141210</background>
+	<border>
+		<column_span>4</column_span>
+		<column_start>2</column_start>
+		<fill>Transparent</fill>
+		<row_span>2</row_span>
+		<row_start>3</row_start>
+		<outline_color>#6a645c</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<text>
+			<content>SPINDLE</content>
+			<fontsize>11</fontsize>
+			<color>#b0a898</color>
+			<font>Arial Narrow</font>
+			<fontstyle>bold</fontstyle>
+			<horizontalalignment>center</horizontalalignment>
+			<verticalalignment>top</verticalalignment>
+			<margintop>-8</margintop>
+		</text>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>4</column_start>
+		<fill>#1a0000</fill>
+		<row_span>1</row_span>
+		<row_start>11</row_start>
+		<outline_color>#3a3630</outline_color>
+		<outline_thickness>2</outline_thickness>
+		<plc_word>
+			<number>4</number>
+			<color>#ff3333</color>
+			<fontsize>26</fontsize>
+			<font>Consolas</font>
+			<fontstyle>bold</fontstyle>
+			<verticalalignment>center</verticalalignment>
+			<horizontalalignment>center</horizontalalignment>
+			<percentage>true</percentage>
+		</plc_word>
+	</border>
+	<on_click>
+		<opacity>100</opacity>
+		<outline_color>#000000</outline_color>
+	</on_click>
+	<on_hover>
+		<opacity>100</opacity>
+		<outline_color>#ffffff</outline_color>
+	</on_hover>
+	<button row="3" column="2">retro_spindle_plus</button>
+	<button row="7" column="4">retro_y_positive</button>
+	<button row="8" column="5">retro_x_positive</button>
+	<button row="10" column="2">retro_cycle_start</button>
+	<button row="14" column="4">retro_vcp_options</button>
+</vcp_skin>
