@@ -412,7 +412,7 @@ def render_knob_svg(on, title, labels):
         + '<rect x="0" y="0" width="%d" height="%d" fill="#141210"/>' % (W, H)
         + '<defs>' + _bezel_grad('bz', W, H)
         + _grad('base', 'radial',
-                (('0', '#b8b4ae'), ('0.6', '#8a867f'), ('1', '#4a4740')),
+                (('0', '#3a3733'), ('0.55', '#211f1c'), ('1', '#0f0e0d')),
                 dict(cx=kcx - 16, cy=kcy - 20, r=base_r * 1.6)) + '</defs>'
         + '<rect x="4" y="4" width="%d" height="%d" rx="8" fill="url(#bz)" '
           'stroke="#100f0d" stroke-width="1.5"/>' % (W - 8, H - 8)
@@ -423,19 +423,31 @@ def render_knob_svg(on, title, labels):
           'stroke="#000000" stroke-width="1.5"/>' % (W - 30, H - 30)
         + text_el(title, kcx, 42, 16, '#b0a898')
         + ''.join(ticks)
+        + '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="#000000" '
+          'opacity="0.4"/>' % (kcx, kcy + 2, base_r + 4)
         + '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="url(#base)" '
-          'stroke="#100f0d" stroke-width="2"/>' % (kcx, kcy, base_r)
+          'stroke="#000000" stroke-width="2"/>' % (kcx, kcy, base_r)
         + '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="none" '
-          'stroke="#c9c5be" stroke-width="1" opacity="0.3"/>'
-          % (kcx, kcy, base_r - 5)
+          'stroke="#5a554e" stroke-width="1" opacity="0.5"/>'
+          % (kcx, kcy, base_r - 4)
         + '<g transform="matrix(%.4f %.4f %.4f %.4f %.2f %.2f)">'
           % (c, s, -s, c, tx, ty)
-        + '<rect x="%.1f" y="%.1f" width="26" height="116" rx="12" '
-          'fill="#3a76d4" stroke="#142c5c" stroke-width="2"/>'
-          % (kcx - 13, kcy - 84)
-        + '<rect x="%.1f" y="%.1f" width="10" height="54" rx="5" '
-          'fill="#ffffff" opacity="0.18"/>' % (kcx - 6, kcy - 76)
-        + '<circle cx="%.1f" cy="%.1f" r="5" fill="#1c1c1c"/>' % (kcx, kcy)
+        # bakelite pointer ridge: pointed at the indicating end, rounded tail
+        + '<path d="M%.1f,%.1f C %.1f,%.1f %.1f,%.1f %.1f,%.1f '
+          'C %.1f,%.1f %.1f,%.1f %.1f,%.1f '
+          'C %.1f,%.1f %.1f,%.1f %.1f,%.1f '
+          'C %.1f,%.1f %.1f,%.1f %.1f,%.1f Z" '
+          'fill="#2a2724" stroke="#0c0b0a" stroke-width="1.5"/>'
+          % (kcx, kcy - base_r - 12,
+             kcx + 10, kcy - base_r + 10, kcx + 16, kcy - 20, kcx + 16, kcy,
+             kcx + 16, kcy + 26, kcx + 10, kcy + 42, kcx, kcy + 50,
+             kcx - 10, kcy + 42, kcx - 16, kcy + 26, kcx - 16, kcy,
+             kcx - 16, kcy - 20, kcx - 10, kcy - base_r + 10,
+             kcx, kcy - base_r - 12)
+        + '<path d="M%.1f,%.1f C %.1f,%.1f %.1f,%.1f %.1f,%.1f" fill="none" '
+          'stroke="#55504a" stroke-width="1.5" opacity="0.7"/>'
+          % (kcx - 2, kcy - base_r - 6,
+             kcx - 9, kcy - base_r + 14, kcx - 11, kcy - 16, kcx - 11, kcy + 20)
         + '</g></svg>\n')
 
 
