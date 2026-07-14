@@ -52,12 +52,17 @@ _SUFFIX = [
 # I/O and helpers
 # --------------------------------------------------------------------------- #
 def read_src(path):
-    """Read a .src file as bytes, assert 7-bit ASCII, return decoded text."""
+    """Read a .src file as bytes; assert 7-bit ASCII and CRLF-only endings."""
     with open(path, "rb") as f:
         data = f.read()
     bad = [i for i, b in enumerate(data) if b > 0x7F]
     if bad:
         raise ValueError("non-ASCII byte(s) at offset(s): %s" % bad[:10])
+    stray = data.replace(b"\r\n", b"")
+    if b"\n" in stray or b"\r" in stray:
+        raise ValueError(
+            "bare LF or CR line ending found; %s must be CRLF-only "
+            "(.gitattributes pins eol=crlf)" % path)
     return data.decode("ascii")
 
 
@@ -88,7 +93,11 @@ def align_is(line):
 
 
 def fix_comment_space(line):
-    """Rule 5: ensure exactly one space after ';', except banners and blanks."""
+    """Rule 5: ensure at least one space after ';', except banners and blanks.
+
+    Existing wider spacing is preserved on purpose: many comments align
+    continuation text well past the ';' and collapsing would destroy it.
+    """
     code, comment = split_comment(line)
     if not comment:
         return line
@@ -220,8 +229,11 @@ def plc_fingerprint(plc_path):
 
 
 def _compile(cwd, out_plc):
-    subprocess.run(["./compile.sh", "-o", out_plc],
-                   cwd=cwd, check=True, capture_output=True)
+    r = subprocess.run(["./compile.sh", "-o", out_plc],
+                       cwd=cwd, capture_output=True, text=True)
+    if r.returncode != 0:
+        tail = (r.stdout + r.stderr).strip().splitlines()[-8:]
+        raise RuntimeError("compile.sh failed:\n  " + "\n  ".join(tail))
 
 
 def verify_compile_identical(path, original, formatted):
@@ -250,12 +262,14 @@ def verify_compile_identical(path, original, formatted):
         with open(path, "wb") as f:                 # write candidate
             f.write(formatted.encode("ascii"))
         try:
+            # revert on ANY failure once the candidate is on disk -- compile
+            # error, fingerprint extraction, anything.
             _compile(cwd, after)
-        except subprocess.CalledProcessError:
+            fp_after = plc_fingerprint(after)
+        except Exception:
             with open(path, "wb") as f:
                 f.write(original.encode("ascii"))
-            raise RuntimeError("formatted source failed to compile; reverted")
-        fp_after = plc_fingerprint(after)
+            raise
         if fp_before != fp_after:
             with open(path, "wb") as f:
                 f.write(original.encode("ascii"))

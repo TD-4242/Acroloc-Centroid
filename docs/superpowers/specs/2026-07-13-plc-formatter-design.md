@@ -131,7 +131,9 @@ dry-run default is the safe choice, and `--fix` is a single flag.
 
 - `tools/plcfmt.py` -- CLI entry point plus the rule functions (each rule a small pure
   function; the pipeline composes them).
-- `tools/test_plcfmt.py` -- pytest suite: one focused before/after test per rule, an
+- `tools/test_plcfmt.py` -- dependency-free test suite (plain asserts + a tiny stdlib
+  runner, `python3 tools/test_plcfmt.py`; pytest is not installable on the dev box):
+  one focused before/after test per rule, an
   idempotency test, and an integration test exercising the compile-identical gate against
   the real `.src`.
 - `tools/README.md` -- short usage note.

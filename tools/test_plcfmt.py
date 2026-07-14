@@ -58,6 +58,19 @@ def test_read_src_rejects_non_ascii():
         _raises(ValueError, plcfmt.read_src, p)
 
 
+def test_read_src_rejects_bare_lf_or_cr():
+    # lone LF input would otherwise flow through format_text and emit mixed
+    # newlines, violating the CRLF-only contract
+    with tempfile.TemporaryDirectory() as td:
+        p = os.path.join(td, "x.src")
+        with open(p, "wb") as f:
+            f.write(b"a\nb\r\n")
+        _raises(ValueError, plcfmt.read_src, p)
+        with open(p, "wb") as f:
+            f.write(b"a\rb\r\n")
+        _raises(ValueError, plcfmt.read_src, p)
+
+
 # --------------------------------------------------------------------------- #
 # Task 2: Rule 1 -- tabs
 # --------------------------------------------------------------------------- #
@@ -241,6 +254,37 @@ def test_verify_refuses_non_canonical_filename():
             f.write(b"if a then b\r\n")
         _raises(RuntimeError, plcfmt.verify_compile_identical,
                 p, "if a then b\r\n", "IF a THEN b\r\n")
+
+
+def test_gate_reverts_when_fingerprint_extraction_fails():
+    # If plc_fingerprint raises AFTER the candidate is written (bad .plc
+    # header), the original bytes must be restored (monkeypatched, no compiler)
+    orig_compile, orig_fp = plcfmt._compile, plcfmt.plc_fingerprint
+    calls = []
+
+    def fake_compile(cwd, out):
+        with open(out, "wb") as f:
+            f.write(b"dummy")
+
+    def fake_fp(p):
+        calls.append(p)
+        if len(calls) == 1:
+            return (("w",), "2", "4")
+        raise RuntimeError("no checksum header found")
+
+    plcfmt._compile, plcfmt.plc_fingerprint = fake_compile, fake_fp
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            p = os.path.join(td, plcfmt.SRC)          # canonical name
+            with open(os.path.join(td, "compile.sh"), "wb") as f:
+                f.write(b"#!/bin/sh\n")               # satisfies the guard
+            with open(p, "wb") as f:
+                f.write(b"if a then b\r\n")
+            _raises(RuntimeError, plcfmt.verify_compile_identical,
+                    p, "if a then b\r\n", "IF a THEN b\r\n")
+            assert open(p, "rb").read() == b"if a then b\r\n"   # reverted
+    finally:
+        plcfmt._compile, plcfmt.plc_fingerprint = orig_compile, orig_fp
 
 
 def test_main_reports_gate_error_cleanly():

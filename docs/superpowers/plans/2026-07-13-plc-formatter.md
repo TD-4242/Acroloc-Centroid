@@ -6,7 +6,7 @@
 
 **Architecture:** A pipeline of small, pure rule functions over the file content (each unit-testable in isolation), composed in a fixed order. Autofix rules rewrite text; report-only rules (naming, non-ASCII) emit findings. On `--fix`, a compile-identical gate proves the reformat did not change the compiled `.plc` binary before the change is kept.
 
-**Tech Stack:** Python 3 standard library only (no third-party runtime deps). Tests use pytest. The compile gate shells out to the repo's existing `./compile.sh`.
+**Tech Stack:** Python 3 standard library only (no third-party runtime deps). Tests are dependency-free (plain asserts + a tiny stdlib runner, `python3 tools/test_plcfmt.py`) because pytest is not installable on the dev box -- the per-task `python3 -m pytest ...` commands below are the plan's original wording and were executed with the stdlib runner instead. The compile gate shells out to the repo's existing `./compile.sh`.
 
 ## Global Constraints
 
