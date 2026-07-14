@@ -139,6 +139,7 @@
 	<button row="3" column="2">retro_spindle_100</button>
 	<button row="3" column="3">retro_spindle_minus</button>
 	<button row="3" column="4">retro_spindle_auto_man</button>
+	<button row="3" column="5" column_span="1" row_span="2">retro_gear_range</button>
 	<button row="4" column="1">retro_spindle_cw</button>
 	<button row="4" column="2">retro_spindle_ccw</button>
 	<button row="4" column="3">retro_spindle_start</button>

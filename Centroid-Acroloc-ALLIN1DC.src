@@ -535,6 +535,7 @@ OtherFault_M                    IS MEM57
 ; Axis8FiberOk_M                IS MEM77
 
 ProbeMsgSent_M                  IS MEM78
+GearRangeHigh_M                 IS MEM79 ; Acroloc high gear engaged (VCP gear-range knob display)
 True_M                          IS MEM81
 SpinRangeReversed_M             IS MEM82
 SpindleDirection_M              IS MEM83
@@ -2225,6 +2226,10 @@ IF (SV_MACHINE_PARAMETER_860 > 0.0) &&
 ; engaged clutch so the ratio/DAC math below reflects reality. In neutral
 ; (EngagedRange_W = 0, e.g. at power-up) SpindleRange_W keeps its default (spindle off).
 IF !GearShiftStage && (EngagedRange_W != 0) THEN SpindleRange_W = EngagedRange_W
+
+; Acroloc: mirror "high gear engaged" into a MEM bit so the VCP gear-range knob
+; (retro skin, plc_memory 79) can display it. Coil form: true only while high.
+IF EngagedRange_W == 4 THEN (GearRangeHigh_M)
 
 ; Kick off a shift when the desired gear differs from the engaged gear, the spindle is
 ; enabled (SpindleEnableOut_O -- so the machine stays in NEUTRAL while stopped, e.g. at

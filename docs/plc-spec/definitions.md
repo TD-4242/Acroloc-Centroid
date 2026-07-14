@@ -178,6 +178,7 @@ writes the same formula with reversed field names, `msgNumber + 256*msgFile`, wh
 | `SpindleFault_M` | MEM56 | 505 | | 0 = okay, 1 = spindle drive fault. [faults-and-messages.md](faults-and-messages.md) |
 | `OtherFault_M` | MEM57 | 506 | | Other fault catch-all. [faults-and-messages.md](faults-and-messages.md) |
 | `ProbeMsgSent_M` | MEM78 | 517 | | Probe message sent latch. [faults-and-messages.md](faults-and-messages.md) |
+| `GearRangeHigh_M` | MEM79 | (added after pin) | Acroloc | Coil mirror of `EngagedRange_W == 4` so the retro-VCP gear-range knob (`plc_memory` 79) can display HIGH/LOW. [gear-shift.md](gear-shift.md) |
 | `True_M` | MEM81 | 518 | | Always-true bit. [scan-model.md](scan-model.md) |
 | `SpinRangeReversed_M` | MEM82 | 519 | | Set when `SpinRangeAdjust_FW` is negative (reversed range ratio). [main-stage.md](main-stage.md) |
 | `SpindleDirection_M` | MEM83 | 520 | | Commanded spindle direction. [main-stage.md](main-stage.md) |

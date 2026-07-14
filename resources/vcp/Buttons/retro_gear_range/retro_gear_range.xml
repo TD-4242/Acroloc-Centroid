@@ -1,0 +1,7 @@
+<vcp_button>
+	<plc_memory>
+		<number>79</number>
+		<image_on>retro_gear_range_on.svg</image_on>
+		<image_off>retro_gear_range.svg</image_off>
+	</plc_memory>
+</vcp_button>

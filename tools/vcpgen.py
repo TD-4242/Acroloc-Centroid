@@ -9,6 +9,7 @@ Stdlib-only and deterministic. Emits ASCII-only files:
 Usage: python3 tools/vcpgen.py            # writes into the repo tree
 Design: docs/superpowers/specs/2026-07-13-retro-vcp-theme-design.md
 """
+import math
 import os
 import re
 
@@ -359,6 +360,60 @@ def render_reset_svg(tripped):
     return ''.join(p) + '\n'
 
 
+# --------------------------------------------------- gear-range knob ------
+def render_knob_svg(high):
+    """Two-position paddle selector (1 col x 2 rows): LOW / HIGH gear."""
+    kcx, kcy, base_r = 58.0, 118.0, 36.0
+    ang = math.radians(40.0 if high else -40.0)
+    c, s = math.cos(ang), math.sin(ang)
+    # rotation about the knob center as a single matrix() transform
+    tx = kcx - c * kcx + s * kcy
+    ty = kcy - s * kcx - c * kcy
+    ticks = []
+    for a, label, lx in ((-40.0, 'LOW', 27.0), (40.0, 'HIGH', 89.0)):
+        r = math.radians(a)
+        x1 = kcx + math.sin(r) * (base_r + 4)
+        y1 = kcy - math.cos(r) * (base_r + 4)
+        x2 = kcx + math.sin(r) * (base_r + 12)
+        y2 = kcy - math.cos(r) * (base_r + 12)
+        on = (a > 0) == high
+        col = '#e3ac5c' if on else '#6a645c'
+        ticks.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" '
+                     'stroke="%s" stroke-width="2"/>' % (x1, y1, x2, y2, col))
+        ticks.append(text_el(label, lx, 62, 11, col))
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="167" '
+        'viewBox="0 0 116 194">'
+        '<defs>' + _bezel_grad('bz', 116, 194)
+        + _grad('base', 'radial',
+                (('0', '#b8b4ae'), ('0.6', '#8a867f'), ('1', '#4a4740')),
+                dict(cx=kcx - 10, cy=kcy - 12, r=base_r * 1.6)) + '</defs>'
+        '<rect x="2" y="2" width="112" height="190" rx="5" fill="url(#bz)" '
+        'stroke="#100f0d" stroke-width="1"/>'
+        '<rect x="6" y="6" width="104" height="182" rx="3" fill="none" '
+        'stroke="#c9c5be" stroke-width="0.6" opacity="0.35"/>'
+        '<rect x="9" y="9" width="98" height="176" rx="3" fill="#141210" '
+        'stroke="#000000" stroke-width="1"/>'
+        '<rect x="9" y="9" width="98" height="8" rx="2" fill="#000000" '
+        'opacity="0.45"/>'
+        + text_el('GEAR', kcx, 34, 14, '#b0a898')
+        + ''.join(ticks)
+        + '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="url(#base)" '
+          'stroke="#100f0d" stroke-width="2"/>' % (kcx, kcy, base_r)
+        + '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="none" '
+          'stroke="#c9c5be" stroke-width="0.8" opacity="0.3"/>'
+          % (kcx, kcy, base_r - 3)
+        + '<g transform="matrix(%.4f %.4f %.4f %.4f %.2f %.2f)">'
+          % (c, s, -s, c, tx, ty)
+        + '<rect x="%.1f" y="%.1f" width="18" height="74" rx="8" '
+          'fill="#3a76d4" stroke="#142c5c" stroke-width="1.5"/>'
+          % (kcx - 9, kcy - 54)
+        + '<rect x="%.1f" y="%.1f" width="8" height="34" rx="4" '
+          'fill="#ffffff" opacity="0.18"/>' % (kcx - 5, kcy - 48)
+        + '<circle cx="%.1f" cy="%.1f" r="4" fill="#1c1c1c"/>' % (kcx, kcy)
+        + '</g></svg>\n')
+
+
 # ------------------------------------------------------- buttons table ----
 # text_y values are in content coordinates (mockup center-58 system).
 BUTTONS = [
@@ -416,6 +471,8 @@ BUTTONS = [
     dict(name='feedrate_25', row=13, col=4, lines=['25%']),
     dict(name='feedrate_50', row=13, col=5, lines=['50%']),
     dict(name='feedrate_75', row=13, col=6, lines=['75%']),
+    dict(name='gear_range', row=3, col=5, row_span=2,
+         special='knob'),
     dict(name='reset', row=12, col=1, row_span=3, col_span=3,
          special='reset'),
     dict(name='vcp_options', row=14, col=4, lines=['VCP', 'OPTIONS'], fs=13),
@@ -456,6 +513,18 @@ def emit_buttons(out_dir):
         rn = 'retro_' + name
         d = os.path.join(out_dir, 'resources', 'vcp', 'Buttons', rn)
         os.makedirs(d, exist_ok=True)
+        if b.get('special') == 'knob':
+            _write(os.path.join(d, rn + '.xml'),
+                   '<vcp_button>\n'
+                   '\t<plc_memory>\n'
+                   '\t\t<number>79</number>\n'
+                   '\t\t<image_on>%s_on.svg</image_on>\n'
+                   '\t\t<image_off>%s.svg</image_off>\n'
+                   '\t</plc_memory>\n'
+                   '</vcp_button>\n' % (rn, rn))
+            _write(os.path.join(d, rn + '.svg'), render_knob_svg(False))
+            _write(os.path.join(d, rn + '_on.svg'), render_knob_svg(True))
+            continue
         xml = stock_xml(name)
         _write(os.path.join(d, rn + '.xml'), _retro_xml(name, xml))
         if b.get('special') == 'reset':
