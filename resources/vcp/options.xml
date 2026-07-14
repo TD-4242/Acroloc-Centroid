@@ -2,7 +2,7 @@
 <ArrayOfVcpOption xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <VcpOption>
     <Name>Skin</Name>
-    <Value>servo_mill_vcp_skin</Value>
+    <Value>acroloc_retro_vcp_skin</Value>
   </VcpOption>
   <VcpOption>
     <Name>KeepOnTop</Name>

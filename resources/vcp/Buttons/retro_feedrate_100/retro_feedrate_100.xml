@@ -1,0 +1,8 @@
+<vcp_button>
+	<skin_event_num>53</skin_event_num>
+	<plc_output>
+		<number>1137</number>
+		<image_on>retro_feedrate_100_on.svg</image_on>
+		<image_off>retro_feedrate_100.svg</image_off>
+	</plc_output>
+</vcp_button>

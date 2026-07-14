@@ -1,0 +1,8 @@
+<vcp_button>
+	<skin_event_num>47</skin_event_num>
+	<plc_output>
+		<number>1103</number>
+		<image_on>retro_single_block_on.svg</image_on>
+		<image_off>retro_single_block.svg</image_off>
+	</plc_output>
+</vcp_button>

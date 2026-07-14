@@ -1,0 +1,8 @@
+<vcp_button>
+	<skin_event_num>22</skin_event_num>
+	<plc_output>
+		<number>1078</number>
+		<image_on>retro_flood_coolant_on.svg</image_on>
+		<image_off>retro_flood_coolant.svg</image_off>
+	</plc_output>
+</vcp_button>

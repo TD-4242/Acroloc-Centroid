@@ -38,3 +38,18 @@ for how this was reverse-engineered.
 
 Dependency-free (no pytest needed). The compile-gate integration tests self-skip when the
 Centroid compiler / Wine is unavailable.
+
+## vcpgen.py - retro VCP theme generator
+
+Regenerates the `acroloc_retro_vcp_skin` VCP theme (all `retro_*` button
+folders, the ACROLOC nameplate SVG, and the skin file) from the declarative
+table in the script. Stdlib-only and deterministic - edit `tools/vcpgen.py`
+(styles, `BUTTONS` table, icons), rerun, and commit the diff.
+
+    python3 tools/vcpgen.py        # regenerate into the repo tree
+    python3 tools/test_vcpgen.py   # structural checks
+
+Behavior (skin events / PLC bits) is copied from the stock button XMLs at
+generation time; never edit `retro_*` files by hand. Design spec:
+docs/superpowers/specs/2026-07-13-retro-vcp-theme-design.md. Rollback: set
+`Skin` back to `servo_mill_vcp_skin` in `resources/vcp/options.xml`.
