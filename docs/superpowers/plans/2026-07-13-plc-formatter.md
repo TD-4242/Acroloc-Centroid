@@ -718,6 +718,13 @@ git commit -m "feat(plcfmt): CLI check/fix output, diff, exit codes"
 
 ### Task 9: Compile-identical safety gate + integration test on the real .src
 
+> **Implementation note (supersedes the md5 approach below).** Empirically, the `.plc` is
+> not byte-stable (build timestamp) and embeds a copy of the source, so md5 of the whole
+> binary is not a valid gate. The implemented gate compares a **fingerprint**
+> `(program_words, C2, C4)` -- the 8-hex-digit compiled MPU words plus the line-structure and
+> I/O-map checksums -- which is invariant to formatting but moves on any real program change.
+> See the design spec's "Gate mechanism" table and `tools/plcfmt.py:plc_fingerprint`.
+
 **Files:**
 - Modify: `tools/plcfmt.py`
 - Test: `tools/test_plcfmt.py`

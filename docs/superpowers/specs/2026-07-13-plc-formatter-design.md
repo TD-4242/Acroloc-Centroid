@@ -32,8 +32,29 @@ Measured inconsistencies in the current source:
 
 One Python tool, `plcfmt`, that normalizes the `.src` to a single canonical style. Its
 correctness rests on a structural fact: the rules only touch **whitespace, comments, and
-keyword casing** -- none of which affect the compiled output. A correct reformat therefore
-compiles to a **byte-identical `.plc` binary**, and the tool verifies this itself.
+keyword casing** -- none of which change the compiled program. A correct reformat therefore
+produces the **same program checksum**, and the tool verifies this itself.
+
+**Gate mechanism (reverse-engineered empirically).** The `.plc` is NOT byte-stable and cannot
+be diffed directly: its header carries a build timestamp, and the body embeds a full copy of
+the source plus an indentation-mirroring listing, so harmless formatting changes ~160 KB of
+the binary. The header also carries **four** checksums, e.g.
+`; Checksums   : 93643F0F 9A038E97 2F8C7480 F1F9B1FF`. Testing each field against formatting
+vs real edits showed no single checksum is a clean semantic gate:
+
+| Field | formatting | logic edit (SET->RST) | I/O rebind | line add | role |
+|-------|-----------|-----------------------|-----------|----------|------|
+| C1    | changes   | changes               | changes   | changes  | raw source-text hash |
+| C2    | same      | same                  | same      | changes  | source line structure |
+| C3    | changes   | same                  | same      | same     | listing/text hash |
+| C4    | same      | same                  | changes   | same     | I/O resource map |
+| program words (8-hex lines) | same | changes | same | changes | compiled MPU logic |
+
+The **semantic fingerprint** is therefore `(program_words, C2, C4)`: all three are invariant
+under whitespace/comment/case reformatting, while a logic edit moves the words, an I/O rebind
+moves C4, and a line add/remove moves C2 (and the words). C1 and C3 move under formatting and
+are ignored. `program_words` are the lines of exactly eight hex digits in the `.plc` (the
+compiled MPU program words).
 
 Non-goals (v1): formatting the `.mac` macros (different language), auto-renaming symbols,
 any change that alters compiled semantics.
@@ -78,14 +99,15 @@ applied in the numeric order above, with report-only rules run against the final
 
 ## Safety gate and idempotency
 
-**Compile-identical gate (the trust anchor).** On `--fix`:
+**Fingerprint gate (the trust anchor).** On `--fix`:
 
-1. Compile the original to a temp binary via `compile.sh -o <before.plc>`.
-2. Apply the formatter to a working copy.
-3. Compile the formatted copy to `<after.plc>`.
-4. Assert `md5(before.plc) == md5(after.plc)`.
-5. If equal: write the formatted file in place. If not equal: **revert, write nothing, and
-   fail loudly** -- a mismatch means a formatter bug changed semantics.
+1. Compile the original via `compile.sh -o <before.plc>`; take its fingerprint
+   `(program_words, C2, C4)`.
+2. Apply the formatter to the file in place.
+3. Compile the formatted file to `<after.plc>`; take its fingerprint.
+4. Assert the two fingerprints are equal.
+5. If equal: keep the formatted file. If not equal (or it fails to compile): **restore the
+   original bytes and fail loudly** -- a mismatch means the reformat changed the program.
 
 A `--no-verify` escape hatch skips the gate (for environments without the compiler), with a
 clear warning printed.
@@ -120,9 +142,10 @@ dry-run default is the safe choice, and `--fix` is a single flag.
 - **Per-rule unit tests:** small before/after string fixtures for rules 1-7; finding-list
   assertions for rules 8-9. Each rule tested in isolation.
 - **Idempotency test:** `format(format(x)) == format(x)` on a representative fixture.
-- **Compile-identical integration test:** run `--fix` against the real `.src` in a temp
-  copy and assert the compiled binary is unchanged (skipped automatically if the compiler /
-  Wine is unavailable in the environment).
+- **Fingerprint integration test:** run `--fix` against the real `.src` in a temp copy and
+  assert the `(program_words, C2, C4)` fingerprint is unchanged; plus revert tests for a
+  logic edit (moves the words) and an I/O rebind (moves C4). Skipped automatically if the
+  compiler / Wine is unavailable in the environment.
 - **CRLF preservation test:** output bytes still use `\r\n` and end with exactly one.
 
 ## Risks and mitigations

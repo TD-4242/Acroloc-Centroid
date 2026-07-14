@@ -34,6 +34,13 @@ installed by **Centroid CNC12 on the control PC**:
   (`mfuncN.mac` runs on `MN`).
 - Validation is done on the machine/simulator — there are no automated tests.
 
+Local helper scripts (run on the dev box; they shell out to the vendor compiler via Wine):
+- `./compile.sh` — syntax/lint-check the `.src` with Centroid `mpucomp` (reports errors +
+  a warning count).
+- `tools/plcfmt.py` — reformat the `.src` to canonical style (`--fix`), guarded by a
+  fingerprint check that the compiled program is unchanged. See `tools/README.md`. Run
+  `./compile.sh` after `--fix`. Tests: `python3 tools/test_plcfmt.py`.
+
 ## PLC architecture (how the .src is organized)
 
 The file has two halves:
