@@ -39,5 +39,16 @@ class TestButtonSvg(unittest.TestCase):
         self.assertAlmostEqual(vcpgen.text_width('', 15), 0.0)
 
 
+class TestIcons(unittest.TestCase):
+    def test_all_icons_render(self):
+        for key in ('up', 'down', 'left', 'right', 'cw', 'ccw', 'wheel',
+                    'pump', 'flood', 'hare', 'tortoise'):
+            svg = vcpgen.render_button_svg([], 'amber', icon=vcpgen.ICONS[key])
+            svg.encode('ascii')
+            ET.fromstring(svg)
+            self.assertNotIn('FILL', svg)
+            self.assertNotIn('CX', svg)
+
+
 if __name__ == '__main__':
     unittest.main()
