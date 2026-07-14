@@ -147,17 +147,17 @@
 	<button row="5" column="2">retro_flood_coolant</button>
 	<button row="5" column="3">retro_coolant_pump</button>
 	<button row="6" column="1">retro_incr_cont</button>
-	<button row="6" column="3">retro_y_positive</button>
-	<button row="6" column="5">retro_z_positive</button>
-	<button row="7" column="1">retro_x1</button>
-	<button row="7" column="2">retro_x_negative</button>
-	<button row="7" column="3">retro_tortoise_hare</button>
-	<button row="7" column="4">retro_x_positive</button>
-	<button row="8" column="1">retro_x10</button>
-	<button row="8" column="3">retro_y_negative</button>
-	<button row="8" column="5">retro_z_negative</button>
-	<button row="9" column="1">retro_x100</button>
-	<button row="10" column="1">retro_mpg</button>
+	<button row="7" column="3">retro_y_positive</button>
+	<button row="7" column="5">retro_z_positive</button>
+	<button row="8" column="1">retro_x1</button>
+	<button row="8" column="2">retro_x_negative</button>
+	<button row="8" column="3">retro_tortoise_hare</button>
+	<button row="8" column="4">retro_x_positive</button>
+	<button row="9" column="1">retro_x10</button>
+	<button row="9" column="3">retro_y_negative</button>
+	<button row="9" column="5">retro_z_negative</button>
+	<button row="10" column="1">retro_x100</button>
+	<button row="10" column="2">retro_mpg</button>
 	<button row="10" column="3">retro_single_block</button>
 	<button row="10" column="4">retro_tool_check</button>
 	<button row="10" column="5">retro_feed_hold</button>
