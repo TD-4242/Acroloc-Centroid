@@ -128,7 +128,7 @@ def render_button_svg(lines, style, icon='', fs=15, text_y=None, text_x=None,
              % (capx, capw, st['stroke']))
     p.append('<rect x="%d" y="18" width="%d" height="14" rx="2" '
              'fill="#ffffff" opacity="0.18"/>' % (capx + 3, capw - 6))
-    p.append('<g transform="translate(0,-10)">' + ic + texts + '</g>')
+    p.append('<g transform="matrix(1 0 0 1 0 -10)">' + ic + texts + '</g>')
     p.append('</svg>')
     return ''.join(p) + '\n'
 
@@ -144,11 +144,11 @@ ICONS = {
     'down':  '<polygon points="CX,80 44,62 72,62" fill="FILL"/>',
     'left':  '<polygon points="38,45 56,34 56,56" fill="FILL"/>',
     'right': '<polygon points="78,45 60,34 60,56" fill="FILL"/>',
-    'cw':    ('<g transform="translate(-1.7,20.3) scale(0.65)">'
+    'cw':    ('<g transform="matrix(0.65 0 0 0.65 -1.7 20.3)">'
               '<path d="M 58 40 a 18 18 0 1 1 -15 8" fill="none" stroke="FILL" '
               'stroke-width="5"/>'
               '<polygon points="34,44 46,53 31,59" fill="FILL"/></g>'),
-    'ccw':   ('<g transform="translate(-1.7,20.3) scale(0.65)">'
+    'ccw':   ('<g transform="matrix(0.65 0 0 0.65 -1.7 20.3)">'
               '<path d="M 58 40 a 18 18 0 1 0 15 8" fill="none" stroke="FILL" '
               'stroke-width="5"/>'
               '<polygon points="82,44 70,53 85,59" fill="FILL"/></g>'),
@@ -156,7 +156,7 @@ ICONS = {
               'stroke-width="3.5"/>'
               '<circle cx="CX" cy="58" r="3" fill="FILL"/>'
               '<circle cx="CX" cy="45" r="4" fill="FILL"/>'),
-    'pump':  ('<g transform="translate(3,-12)">'
+    'pump':  ('<g transform="matrix(1 0 0 1 3 -12)">'
               '<rect x="42" y="52" width="22" height="18" rx="2" fill="none" '
               'stroke="FILL" stroke-width="3"/>'
               '<circle cx="53" cy="61" r="4.5" fill="FILL"/>'
@@ -165,12 +165,12 @@ ICONS = {
               '<path d="M76 38 c-4 6 -4 9 0 9 c4 0 4 -3 0 -9 z" fill="FILL"/>'
               '</g>'),
     # stock CNC12 flood_coolant line-art (black outline paths), recolored
-    'flood': ('<g transform="translate(34,10) scale(0.48)">' + '<path d="M60.12,38.62H35.79V32.19H60.12ZM37.24,37.17H58.67V33.64H37.24Z" fill="FILL"/><path d="M51.56,42.59h-7.2V37.17h7.2Zm-5.75-1.45h4.3V38.62h-4.3Z" fill="FILL"/><path d="M77.17,67.19H65.32V60H59.58a13,13,0,0,1-23.25,0H19.18V48.13h3.68c.85,0,1.7,0,2.54,0,3.64,0,7.29,0,10.93,0a13,13,0,0,1,23.24,0h2.28a30.42,30.42,0,0,1,4.26.17c5.28.73,11,4,11.07,9.42,0,.8,0,1.61,0,2.41v1.11c0,1.2,0,2.41,0,3.61Zm-10.4-1.45h9v-.92c0-1.2,0-2.41,0-3.62V60.09c0-.8,0-1.59,0-2.38-.06-4.58-5.13-7.35-9.82-8h0a28.64,28.64,0,0,0-4-.16h-3.2l-.19-.42a11.59,11.59,0,0,0-21,0l-.2.42h-.46c-3.83,0-7.6,0-11.37,0H20.62v9H37.24l.2.42a11.6,11.6,0,0,0,21,0l.19-.42h8.1Z" fill="FILL"/><path d="M85,92H58l9.63-25.11h7.88ZM60.14,90.54H82.93L74.54,68.33H68.66Z" fill="FILL"/>' + '</g>'),
-    'hare':  ('<g transform="translate(20.5,39) scale(0.75)">'
+    'flood': ('<g transform="matrix(0.48 0 0 0.48 34 10)">' + '<path d="M60.12,38.62H35.79V32.19H60.12ZM37.24,37.17H58.67V33.64H37.24Z" fill="FILL"/><path d="M51.56,42.59h-7.2V37.17h7.2Zm-5.75-1.45h4.3V38.62h-4.3Z" fill="FILL"/><path d="M77.17,67.19H65.32V60H59.58a13,13,0,0,1-23.25,0H19.18V48.13h3.68c.85,0,1.7,0,2.54,0,3.64,0,7.29,0,10.93,0a13,13,0,0,1,23.24,0h2.28a30.42,30.42,0,0,1,4.26.17c5.28.73,11,4,11.07,9.42,0,.8,0,1.61,0,2.41v1.11c0,1.2,0,2.41,0,3.61Zm-10.4-1.45h9v-.92c0-1.2,0-2.41,0-3.62V60.09c0-.8,0-1.59,0-2.38-.06-4.58-5.13-7.35-9.82-8h0a28.64,28.64,0,0,0-4-.16h-3.2l-.19-.42a11.59,11.59,0,0,0-21,0l-.2.42h-.46c-3.83,0-7.6,0-11.37,0H20.62v9H37.24l.2.42a11.6,11.6,0,0,0,21,0l.19-.42h8.1Z" fill="FILL"/><path d="M85,92H58l9.63-25.11h7.88ZM60.14,90.54H82.93L74.54,68.33H68.66Z" fill="FILL"/>' + '</g>'),
+    'hare':  ('<g transform="matrix(0.75 0 0 0.75 20.5 39)">'
               '<path d="' + HARE_PATH + '" fill="FILL"/>'
               '<ellipse cx="86.4" cy="23.98" rx="1.01" ry="0.61" fill="#ffffff" '
               'opacity="0.85"/></g>'),
-    'tortoise': ('<g transform="translate(20.5,0.3) scale(0.75)">'
+    'tortoise': ('<g transform="matrix(0.75 0 0 0.75 20.5 0.3)">'
               '<path d="' + TORT_PATH + '" fill="FILL"/>'
               '<circle cx="79.41" cy="71.04" r="1.41" fill="#ffffff" '
               'opacity="0.85"/></g>'),
@@ -192,6 +192,20 @@ NAME_GLYPHS = {
 }
 
 
+def _xform_path(d, s, tx, ty):
+    """Bake scale+translate into absolute M/L/H/V path data (no transform
+    attribute -- Svg2Xaml stacks transformed glyphs at the origin)."""
+    def repl(m):
+        cmd, rest = m.group(1), m.group(2)
+        if cmd == 'H':
+            return 'H%.1f' % (float(rest) * s + tx)
+        if cmd == 'V':
+            return 'V%.1f' % (float(rest) * s + ty)
+        x, y = rest.split(',')
+        return '%s%.1f,%.1f' % (cmd, float(x) * s + tx, float(y) * s + ty)
+    return re.sub(r'([MLHV])(-?[\d.]+(?:,-?[\d.]+)?)', repl, d)
+
+
 def render_nameplate_svg():
     word, gap, cell = 'ACROLOC', 10, 64
     scale = cell / 90.0
@@ -199,11 +213,10 @@ def render_nameplate_svg():
     x = (634 - total) / 2.0
     glyphs = []
     for ch in word:
-        glyphs.append('<path d="%s" transform="translate(%.1f,18) '
-                      'scale(%.3f)" fill="#4a2028" fill-rule="evenodd" '
+        glyphs.append('<path d="%s" fill="#4a2028" fill-rule="evenodd" '
                       'stroke="#3a1820" stroke-width="2" '
                       'stroke-linejoin="round"/>'
-                      % (NAME_GLYPHS[ch], x, scale))
+                      % _xform_path(NAME_GLYPHS[ch], scale, x, 18))
         x += cell + gap
     streaks = []
     for y in range(8, 96, 7):

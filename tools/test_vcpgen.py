@@ -43,6 +43,10 @@ class TestButtonSvg(unittest.TestCase):
                         vcpgen.render_nameplate_svg()):
                 self.assertNotIn('<filter', svg)
                 self.assertNotIn('feMerge', svg)
+                # transform function lists stack glyphs at the origin on the
+                # machine; only single matrix() transforms are proven safe
+                self.assertNotIn('translate(', svg)
+                self.assertNotIn('scale(', svg)
                 for g in _re.findall(r'<(?:linear|radial)Gradient[^>]*>', svg):
                     self.assertIn('userSpaceOnUse', g)
                     self.assertNotIn('%', g)
