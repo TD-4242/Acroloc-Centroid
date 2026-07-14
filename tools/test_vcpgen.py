@@ -60,5 +60,17 @@ class TestNameplate(unittest.TestCase):
         self.assertEqual(svg.count('fill-rule="evenodd"'), 7)
 
 
+class TestReset(unittest.TestCase):
+    def test_reset_states(self):
+        normal = vcpgen.render_reset_svg(False)
+        tripped = vcpgen.render_reset_svg(True)
+        for svg in (normal, tripped):
+            svg.encode('ascii')
+            ET.fromstring(svg)
+        self.assertIn('RESET', normal)
+        self.assertNotIn('TRIPPED', normal)
+        self.assertIn('TRIPPED', tripped)
+
+
 if __name__ == '__main__':
     unittest.main()

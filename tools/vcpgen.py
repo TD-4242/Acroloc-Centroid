@@ -214,3 +214,64 @@ def render_nameplate_svg():
         '<rect x="6" y="6" width="622" height="88" rx="2" fill="none" '
         'stroke="#ffffff" stroke-width="0.8" opacity="0.4"/>'
         + ''.join(streaks) + ''.join(glyphs) + '</svg>\n')
+
+
+# ------------------------------------------------------- round RESET ------
+def render_reset_svg(tripped):
+    cx, cy = 174, 138            # button center in the 348x268 artboard
+    dome_r = 82 if tripped else 94
+    dome_y = cy + 12 if tripped else cy - 8
+    dome = ('<radialGradient id="dome" cx="38%%" cy="30%%" r="75%%">'
+            '<stop offset="0" stop-color="%s"/>'
+            '<stop offset="0.35" stop-color="%s"/>'
+            '<stop offset="0.8" stop-color="%s"/>'
+            '<stop offset="1" stop-color="%s"/></radialGradient>'
+            % (('#ffb0b0', '#ff3838', '#c40f0f', '#7a0505') if tripped
+               else ('#f26b6b', '#d42a2a', '#8c0f0f', '#5c0505')))
+    p = []
+    p.append('<svg xmlns="http://www.w3.org/2000/svg" width="300" '
+             'height="252" viewBox="0 0 348 268">')
+    p.append('<defs>' + BEZEL_GRAD.replace('id="bz"', 'id="rbz"') + dome +
+             '<radialGradient id="skirt" cx="50%" cy="35%" r="70%">'
+             '<stop offset="0" stop-color="#a81c1c"/>'
+             '<stop offset="0.7" stop-color="#6e0c0c"/>'
+             '<stop offset="1" stop-color="#3d0404"/></radialGradient>'
+             '<radialGradient id="well" cx="50%" cy="40%" r="70%">'
+             '<stop offset="0" stop-color="#1c1916"/>'
+             '<stop offset="1" stop-color="#0a0908"/></radialGradient>'
+             '<filter id="halo" x="-50%" y="-50%" width="200%" height="200%">'
+             '<feGaussianBlur stdDeviation="14"/></filter>'
+             '<filter id="txtglow" x="-40%" y="-40%" width="180%" '
+             'height="180%"><feGaussianBlur stdDeviation="1.6" result="b"/>'
+             '<feMerge><feMergeNode in="b"/>'
+             '<feMergeNode in="SourceGraphic"/></feMerge></filter></defs>')
+    p.append('<rect x="4" y="4" width="340" height="260" rx="8" '
+             'fill="url(#rbz)" stroke="#100f0d" stroke-width="1.5"/>')
+    p.append('<rect x="10" y="10" width="328" height="248" rx="5" fill="none" '
+             'stroke="#c9c5be" stroke-width="0.8" opacity="0.35"/>')
+    p.append('<rect x="15" y="15" width="318" height="238" rx="5" '
+             'fill="url(#well)" stroke="#000000" stroke-width="1.5"/>')
+    p.append('<rect x="15" y="15" width="318" height="16" rx="4" '
+             'fill="#000000" opacity="0.45"/>')
+    if tripped:
+        p.append('<circle cx="%d" cy="%d" r="112" fill="#ff2020" '
+                 'opacity="0.22" filter="url(#halo)"/>' % (cx, cy + 8))
+    p.append('<circle cx="%d" cy="%d" r="106" fill="url(#skirt)" '
+             'stroke="#2a0505" stroke-width="2"/>' % (cx, cy + 8))
+    p.append('<circle cx="%d" cy="%d" r="%d" fill="url(#dome)" '
+             'stroke="#4a0808" stroke-width="1.5"/>' % (cx, dome_y, dome_r))
+    if tripped:
+        p.append('<ellipse cx="%d" cy="%d" rx="%d" ry="16" fill="#000000" '
+                 'opacity="0.35"/>' % (cx, dome_y - dome_r + 14, dome_r - 6))
+        p.append('<ellipse cx="%d" cy="%d" rx="28" ry="14" fill="#ffffff" '
+                 'opacity="0.14"/>' % (cx - 18, dome_y - 30))
+        p.append(text_el('RESET', cx, 42, 26, '#ff5555')
+                 .replace('<text ', '<text filter="url(#txtglow)" '))
+        p.append(text_el('TRIPPED', cx, 246, 26, '#ff5555')
+                 .replace('<text ', '<text filter="url(#txtglow)" '))
+    else:
+        p.append('<ellipse cx="%d" cy="%d" rx="40" ry="24" fill="#ffffff" '
+                 'opacity="0.22"/>' % (cx - 24, dome_y - 30))
+        p.append(text_el('RESET', cx, dome_y + 10, 32, '#ffd9d9'))
+    p.append('</svg>')
+    return ''.join(p) + '\n'
