@@ -370,19 +370,19 @@ def render_reset_svg(tripped):
 
 
 # ------------------------------------------------- spindle mode knob ------
-def render_knob_svg(auto_on):
-    """2x2 paddle selector for spindle MAN/AUTO. Clickable: it keeps the
-    stock spindle_auto_man skin event; the paddle position tracks the PLC
-    bit (on = AUTO). Artboard is 2/3 of the stock 3x3 reset (126.667/cell)
-    so the graphic fills its 2x2 span."""
+def render_knob_svg(on, title, labels):
+    """2x2 paddle selector (e.g. spindle MAN/AUTO, jog INCR/CONT).
+    Clickable: the button keeps its stock skin event; the paddle position
+    tracks the PLC bit - labels = (off_label, on_label), left/right.
+    Artboard is 2/3 of the stock 3x3 reset so it fills a 2x2 span."""
     W, H = 252, 233
     kcx, kcy, base_r = 126.0, 148.0, 58.0
-    ang = math.radians(40.0 if auto_on else -40.0)
+    ang = math.radians(40.0 if on else -40.0)
     c, s = math.cos(ang), math.sin(ang)
     tx = kcx - c * kcx + s * kcy
     ty = kcy - s * kcx - c * kcy
     ticks = []
-    for a, label in ((-40.0, 'MAN'), (40.0, 'AUTO')):
+    for a, label in ((-40.0, labels[0]), (40.0, labels[1])):
         r = math.radians(a)
         x1 = kcx + math.sin(r) * (base_r + 6)
         y1 = kcy - math.cos(r) * (base_r + 6)
@@ -390,8 +390,8 @@ def render_knob_svg(auto_on):
         y2 = kcy - math.cos(r) * (base_r + 16)
         lx = kcx + math.sin(r) * (base_r + 30)
         ly = kcy - math.cos(r) * (base_r + 26)
-        on = (a > 0) == auto_on
-        col = '#e3ac5c' if on else '#6a645c'
+        active = (a > 0) == on
+        col = '#e3ac5c' if active else '#6a645c'
         ticks.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" '
                      'stroke="%s" stroke-width="3"/>' % (x1, y1, x2, y2, col))
         ticks.append(text_el(label, lx, ly, 14, col))
@@ -410,7 +410,7 @@ def render_knob_svg(auto_on):
           % (W - 20, H - 20)
         + '<rect x="15" y="15" width="%d" height="%d" rx="5" fill="#141210" '
           'stroke="#000000" stroke-width="1.5"/>' % (W - 30, H - 30)
-        + text_el('SPIN MODE', kcx, 42, 16, '#b0a898')
+        + text_el(title, kcx, 42, 16, '#b0a898')
         + ''.join(ticks)
         + '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="url(#base)" '
           'stroke="#100f0d" stroke-width="2"/>' % (kcx, kcy, base_r)
@@ -437,7 +437,8 @@ BUTTONS = [
     dict(name='spindle_minus', row=2, col=6, lines=['-'], fs=20, icon='down',
          text_y=[52]),
     dict(name='spindle_auto_man', row=2, col=1, row_span=2, col_span=2,
-         special='knob'),
+         special='knob', knob_title='SPIN MODE',
+         knob_labels=('MAN', 'AUTO')),
     dict(name='spindle_cw', row=3, col=3, lines=['CW'], fs=14, icon='cw',
          text_x=78),
     dict(name='spindle_ccw', row=3, col=4, lines=['CCW'], fs=13, icon='ccw',
@@ -450,7 +451,9 @@ BUTTONS = [
          icon='flood', text_y=[48, 74], text_x=[None, 42]),
     dict(name='coolant_pump', row=5, col=3, lines=['PUMP'], fs=13,
          icon='pump', text_y=[48]),
-    dict(name='incr_cont', row=6, col=1, lines=['INCR'], lines_on=['CONT']),
+    dict(name='incr_cont', row=6, col=1, row_span=2, col_span=2,
+         special='knob', knob_title='JOG MODE',
+         knob_labels=('INCR', 'CONT')),
     dict(name='x1', row=8, col=1, lines=['X1']),
     dict(name='x10', row=9, col=1, lines=['X10']),
     dict(name='x100', row=10, col=1, lines=['X100']),
@@ -528,8 +531,12 @@ def emit_buttons(out_dir):
         if b.get('special') == 'knob':
             _write(os.path.join(d, rn + '.xml'),
                    _retro_xml(name, stock_xml(name)))
-            _write(os.path.join(d, rn + '.svg'), render_knob_svg(False))
-            _write(os.path.join(d, rn + '_on.svg'), render_knob_svg(True))
+            title = b['knob_title']
+            labels = b['knob_labels']
+            _write(os.path.join(d, rn + '.svg'),
+                   render_knob_svg(False, title, labels))
+            _write(os.path.join(d, rn + '_on.svg'),
+                   render_knob_svg(True, title, labels))
             continue
         xml = stock_xml(name)
         _write(os.path.join(d, rn + '.xml'), _retro_xml(name, xml))
