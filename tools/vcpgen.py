@@ -43,7 +43,9 @@ CHAR_W = {
     'M': 0.833, 'N': 0.722, 'O': 0.778, 'P': 0.667, 'Q': 0.778, 'R': 0.722,
     'S': 0.667, 'T': 0.611, 'U': 0.722, 'V': 0.667, 'W': 0.944, 'X': 0.667,
     'Y': 0.667, 'Z': 0.611,
-    'h': 0.611, 'i': 0.278, 't': 0.333, 'w': 0.778,
+    'b': 0.611, 'c': 0.556, 'd': 0.611, 'e': 0.556, 'h': 0.611, 'i': 0.278,
+    'l': 0.278, 'n': 0.611, 'o': 0.611, 'r': 0.389, 't': 0.333, 'w': 0.778,
+    'y': 0.556,
     '+': 0.584, '-': 0.333, '%': 0.889, ' ': 0.278, '/': 0.278, '.': 0.278,
 }
 CHAR_W_DIGIT = 0.556
@@ -291,12 +293,12 @@ def render_nameplate_svg():
     logo_scale = 0.24                           # 560x100 -> 134.4x24
     logo_x = acroloc_right - 560 * logo_scale   # right edges align
     logo_y = 70.0                               # small gap under ACROLOC
-    with_cx = logo_x - 8 - text_width('with', 14) / 2.0
+    with_cx = logo_x - 8 - text_width('controlled by', 14) / 2.0
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" width="634" height="100" '
         'viewBox="0 0 634 100">'
         + ''.join(glyphs)
-        + text_el('with', with_cx, 87, 14, '#b0a898')
+        + text_el('controlled by', with_cx, 87, 14, '#b0a898')
         + '<g transform="matrix(%g 0 0 %g %g %g)">%s</g>'
           % (logo_scale, logo_scale, logo_x, logo_y, CENTROID_LOGO)
         + '</svg>\n')
