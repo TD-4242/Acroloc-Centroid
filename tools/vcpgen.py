@@ -95,12 +95,20 @@ def _bezel_grad(gid, vbw, vbh):
 
 
 def render_button_svg(lines, style, icon='', fs=15, text_y=None, text_x=None,
-                      span=1):
-    """Render one button state as a complete SVG document string."""
+                      span=1, rows=1):
+    """Render one button state as a complete SVG document string.
+
+    rows > 1 stretches the same 1x1 styling over a vertical span: the row
+    pitch is ~116.5 render units (from the stock 3x3 reset artboard), so
+    each extra row adds 116.5 render / 135 viewBox units of cap height.
+    Content stays centered as a block."""
     st = STYLES[style]
     vbw = VB_W * span
+    vbh = VB_H + (rows - 1) * 135
     w = RENDER_W * span
+    h = RENDER_H + (rows - 1) * 116
     capx, capw = 14, vbw - 28
+    cap_h = vbh - 31
     if text_y is None:
         text_y = [63] if len(lines) == 1 else [51, 69]
     if not isinstance(text_x, (list, tuple)):
@@ -110,38 +118,41 @@ def render_button_svg(lines, style, icon='', fs=15, text_y=None, text_x=None,
         for t, y, x in zip(lines, text_y, text_x))
     ic = icon.replace('FILL', st['text']).replace('CX', '%.0f' % (vbw / 2.0))
     kind, stops = st['grad']
-    # cap occupies x[capx..capx+capw] y[15..81]; gradient coords are absolute
+    # cap occupies x[capx..capx+capw] y[15..15+cap_h]; absolute gradient coords
     if kind == 'radial':
-        cap_geom = dict(cx=vbw / 2.0, cy=15 + 0.35 * 66, r=0.75 * capw)
+        cap_geom = dict(cx=vbw / 2.0, cy=15 + 0.35 * cap_h,
+                        r=0.75 * max(capw, cap_h))
     else:
-        cap_geom = dict(x1=vbw / 2.0, y1=15, x2=vbw / 2.0, y2=81)
+        cap_geom = dict(x1=vbw / 2.0, y1=15, x2=vbw / 2.0, y2=15 + cap_h)
     p = []
     p.append('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
-             'viewBox="0 0 %d %d">' % (w, RENDER_H, vbw, VB_H))
-    p.append('<defs>' + _bezel_grad('bz', vbw, VB_H)
+             'viewBox="0 0 %d %d">' % (w, h, vbw, vbh))
+    p.append('<defs>' + _bezel_grad('bz', vbw, vbh)
              + _grad('cap', kind, stops, cap_geom) + '</defs>')
-    p.append('<rect x="2" y="2" width="%d" height="93" rx="5" fill="url(#bz)" '
-             'stroke="#100f0d" stroke-width="1"/>' % (vbw - 4))
-    p.append('<rect x="6" y="6" width="%d" height="85" rx="3" fill="none" '
-             'stroke="#c9c5be" stroke-width="0.6" opacity="0.35"/>' % (vbw - 12))
-    p.append('<rect x="9" y="9" width="%d" height="79" rx="3" fill="#141210" '
-             'stroke="#000000" stroke-width="1"/>' % (vbw - 18))
+    p.append('<rect x="2" y="2" width="%d" height="%d" rx="5" fill="url(#bz)" '
+             'stroke="#100f0d" stroke-width="1"/>' % (vbw - 4, vbh - 4))
+    p.append('<rect x="6" y="6" width="%d" height="%d" rx="3" fill="none" '
+             'stroke="#c9c5be" stroke-width="0.6" opacity="0.35"/>'
+             % (vbw - 12, vbh - 12))
+    p.append('<rect x="9" y="9" width="%d" height="%d" rx="3" fill="#141210" '
+             'stroke="#000000" stroke-width="1"/>' % (vbw - 18, vbh - 18))
     p.append('<rect x="9" y="9" width="%d" height="8" rx="2" fill="#000000" '
              'opacity="0.45"/>' % (vbw - 18))
     if st['glow']:
         # fake bloom: layered translucent halo rects (no <filter> support)
-        p.append('<rect x="%d" y="10" width="%d" height="76" rx="8" '
+        p.append('<rect x="%d" y="10" width="%d" height="%d" rx="8" '
                  'fill="%s" opacity="0.18"/>'
-                 % (capx - 5, capw + 10, st['stroke']))
-        p.append('<rect x="%d" y="12" width="%d" height="72" rx="6" '
+                 % (capx - 5, capw + 10, cap_h + 10, st['stroke']))
+        p.append('<rect x="%d" y="12" width="%d" height="%d" rx="6" '
                  'fill="%s" opacity="0.30"/>'
-                 % (capx - 3, capw + 6, st['stroke']))
-    p.append('<rect x="%d" y="15" width="%d" height="66" rx="4" '
+                 % (capx - 3, capw + 6, cap_h + 6, st['stroke']))
+    p.append('<rect x="%d" y="15" width="%d" height="%d" rx="4" '
              'fill="url(#cap)" stroke="%s" stroke-width="1.4"/>'
-             % (capx, capw, st['stroke']))
+             % (capx, capw, cap_h, st['stroke']))
     p.append('<rect x="%d" y="18" width="%d" height="14" rx="2" '
              'fill="#ffffff" opacity="0.18"/>' % (capx + 3, capw - 6))
-    p.append('<g transform="matrix(1 0 0 1 0 -10)">' + ic + texts + '</g>')
+    p.append('<g transform="matrix(1 0 0 1 0 %.1f)">' % (-10 + (vbh - VB_H) / 2.0)
+             + ic + texts + '</g>')
     p.append('</svg>')
     return ''.join(p) + '\n'
 
@@ -445,12 +456,14 @@ BUTTONS = [
          text_x=80),
     dict(name='spindle_start', row=3, col=5, lines=['SPIN', 'START']),
     dict(name='spindle_cancel', row=3, col=6, lines=['SPIN', 'STOP']),
-    dict(name='coolant_auto_man', row=5, col=1, lines=['CLNT', 'MAN'],
-         lines_on=['CLNT', 'AUTO']),
-    dict(name='flood_coolant', row=5, col=2, lines=['FLOOD', 'M8'], fs=13,
-         icon='flood', text_y=[48, 74], text_x=[None, 42]),
-    dict(name='coolant_pump', row=5, col=3, lines=['PUMP'], fs=13,
-         icon='pump', text_y=[48]),
+    dict(name='coolant_auto_man', row=4, col=1, row_span=2, col_span=2,
+         special='knob', knob_title='CLNT MODE',
+         knob_labels=('MAN', 'AUTO')),
+    dict(name='flood_coolant', row=4, col=3, row_span=2, rows=2,
+         lines=['FLOOD', 'M8'], fs=13, icon='flood',
+         text_y=[48, 74], text_x=[None, 42]),
+    dict(name='coolant_pump', row=4, col=4, row_span=2, rows=2,
+         lines=['PUMP'], fs=13, icon='pump', text_y=[48]),
     dict(name='incr_cont', row=6, col=1, row_span=2, col_span=2,
          special='knob', knob_title='JOG MODE',
          knob_labels=('INCR', 'CONT')),
@@ -547,7 +560,7 @@ def emit_buttons(out_dir):
                    render_reset_svg(True))
             continue
         kw = dict(fs=b.get('fs', 15), text_y=b.get('text_y'),
-                  text_x=b.get('text_x'))
+                  text_x=b.get('text_x'), rows=b.get('rows', 1))
         _write(os.path.join(d, rn + '.svg'),
                render_button_svg(b.get('lines', []), b.get('style', 'amber'),
                                  ICONS.get(b.get('icon', ''), ''), **kw))
@@ -631,7 +644,7 @@ def render_skin():
     p = ['<vcp_skin>\n']
     p.append('\t<background>#141210</background>\n')
     p.append(_border(1, 6, 2, 2, label='SPINDLE'))
-    p.append(_border(1, 3, 5, 1, label='COOLANT'))
+    p.append(_border(1, 4, 4, 2, label='COOLANT'))
     p.append(_border(1, 5, 6, 5, label='AXIS JOG'))
     p.append(_border(4, 3, 12, 2, label='FEEDRATE'))
     # readout: drawn bezel image (smaller than the cell span) under two

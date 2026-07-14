@@ -20,11 +20,11 @@
 		</text>
 	</border>
 	<border>
-		<column_span>3</column_span>
+		<column_span>4</column_span>
 		<column_start>1</column_start>
 		<fill>Transparent</fill>
-		<row_span>1</row_span>
-		<row_start>5</row_start>
+		<row_span>2</row_span>
+		<row_start>4</row_start>
 		<outline_color>#6a645c</outline_color>
 		<outline_thickness>1</outline_thickness>
 		<text>
@@ -143,9 +143,9 @@
 	<button row="3" column="4">retro_spindle_ccw</button>
 	<button row="3" column="5">retro_spindle_start</button>
 	<button row="3" column="6">retro_spindle_cancel</button>
-	<button row="5" column="1">retro_coolant_auto_man</button>
-	<button row="5" column="2">retro_flood_coolant</button>
-	<button row="5" column="3">retro_coolant_pump</button>
+	<button row="4" column="1" column_span="2" row_span="2">retro_coolant_auto_man</button>
+	<button row="4" column="3" column_span="1" row_span="2">retro_flood_coolant</button>
+	<button row="4" column="4" column_span="1" row_span="2">retro_coolant_pump</button>
 	<button row="6" column="1" column_span="2" row_span="2">retro_incr_cont</button>
 	<button row="7" column="3">retro_y_positive</button>
 	<button row="7" column="5">retro_z_positive</button>
