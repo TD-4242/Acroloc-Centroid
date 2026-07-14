@@ -526,7 +526,7 @@ FEEDRATE_PCT = ('\n\t\t<text>\n'
                 '\t\t\t<fontstyle>bold</fontstyle>\n'
                 '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
                 '\t\t\t<verticalalignment>center</verticalalignment>\n'
-                '\t\t\t<marginright>92</marginright>\n'
+                '\t\t\t<marginright>68</marginright>\n'
                 '\t\t</text>')
 
 
