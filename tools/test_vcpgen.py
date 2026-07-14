@@ -50,5 +50,15 @@ class TestIcons(unittest.TestCase):
             self.assertNotIn('CX', svg)
 
 
+class TestNameplate(unittest.TestCase):
+    def test_nameplate_parses(self):
+        svg = vcpgen.render_nameplate_svg()
+        svg.encode('ascii')
+        root = ET.fromstring(svg)
+        self.assertEqual(root.get('viewBox'), '0 0 634 100')
+        # ACROLOC = 7 glyph paths
+        self.assertEqual(svg.count('fill-rule="evenodd"'), 7)
+
+
 if __name__ == '__main__':
     unittest.main()
