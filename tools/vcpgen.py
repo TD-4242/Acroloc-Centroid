@@ -281,8 +281,8 @@ def render_reset_svg(tripped):
     p.append('<circle cx="%d" cy="%d" r="%d" fill="url(#dome)" '
              'stroke="#4a0808" stroke-width="1.5"/>' % (cx, dome_y, dome_r))
     if tripped:
-        p.append('<ellipse cx="%d" cy="%d" rx="%d" ry="16" fill="#000000" '
-                 'opacity="0.35"/>' % (cx, dome_y - dome_r + 14, dome_r - 6))
+        # depression reads from the smaller, lower, darker dome + banners;
+        # a hard-edged lip-shadow ellipse looked like an artifact on-machine
         p.append('<ellipse cx="%d" cy="%d" rx="28" ry="14" fill="#ffffff" '
                  'opacity="0.14"/>' % (cx - 18, dome_y - 30))
         p.append(text_el('RESET', cx, 42, 26, '#ff5555'))
