@@ -336,14 +336,14 @@ BUTTONS = [
          text_y=[52]),
     dict(name='z_negative', row=9, col=5, lines=['-Z'], icon='down',
          text_y=[52]),
-    dict(name='cycle_start', row=10, col=2, lines=['CYCLE', 'START'],
+    dict(name='cycle_start', row=10, col=1, lines=['CYCLE', 'START'],
          style='green', style_on='grnlit'),
-    dict(name='cycle_cancel', row=10, col=3, lines=['CYCLE', 'CANCEL'],
+    dict(name='cycle_cancel', row=10, col=2, lines=['CYCLE', 'CANCEL'],
          fs=13, style='red', style_on='lit'),
-    dict(name='single_block', row=10, col=4, lines=['SINGLE', 'BLOCK'],
+    dict(name='single_block', row=10, col=3, lines=['SINGLE', 'BLOCK'],
          fs=13),
-    dict(name='tool_check', row=10, col=5, lines=['TOOL', 'CHECK']),
-    dict(name='feed_hold', row=10, col=6, lines=['FEED', 'HOLD']),
+    dict(name='tool_check', row=10, col=4, lines=['TOOL', 'CHECK']),
+    dict(name='feed_hold', row=10, col=5, lines=['FEED', 'HOLD']),
     dict(name='feedrate_negative', row=12, col=4, lines=['-'], fs=20,
          icon='down', text_y=[52]),
     dict(name='feedrate_100', row=12, col=5, lines=['FEED', '100%']),
@@ -459,7 +459,7 @@ def render_skin():
     p.append('\t<background>#141210</background>\n')
     p.append(_border(1, 4, 3, 2, label='SPINDLE'))
     p.append(_border(1, 3, 5, 1, label='COOLANT'))
-    p.append(_border(1, 5, 6, 4, label='AXIS JOG'))
+    p.append(_border(1, 5, 6, 5, label='AXIS JOG'))
     p.append(_border(4, 3, 12, 2, label='FEEDRATE'))
     p.append(_border(4, 3, 11, 1, fill='#1a0000', outline='#3a3630',
                      thickness=2, extra=FEEDRATE_WORD))

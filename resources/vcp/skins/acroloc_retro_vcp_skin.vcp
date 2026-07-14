@@ -42,7 +42,7 @@
 		<column_span>5</column_span>
 		<column_start>1</column_start>
 		<fill>Transparent</fill>
-		<row_span>4</row_span>
+		<row_span>5</row_span>
 		<row_start>6</row_start>
 		<outline_color>#6a645c</outline_color>
 		<outline_thickness>1</outline_thickness>
@@ -133,11 +133,11 @@
 	<button row="8" column="4">retro_x_positive</button>
 	<button row="9" column="3">retro_y_negative</button>
 	<button row="9" column="5">retro_z_negative</button>
-	<button row="10" column="2">retro_cycle_start</button>
-	<button row="10" column="3">retro_cycle_cancel</button>
-	<button row="10" column="4">retro_single_block</button>
-	<button row="10" column="5">retro_tool_check</button>
-	<button row="10" column="6">retro_feed_hold</button>
+	<button row="10" column="1">retro_cycle_start</button>
+	<button row="10" column="2">retro_cycle_cancel</button>
+	<button row="10" column="3">retro_single_block</button>
+	<button row="10" column="4">retro_tool_check</button>
+	<button row="10" column="5">retro_feed_hold</button>
 	<button row="12" column="1" column_span="3" row_span="3">retro_reset</button>
 	<button row="12" column="4">retro_feedrate_negative</button>
 	<button row="12" column="5">retro_feedrate_100</button>
