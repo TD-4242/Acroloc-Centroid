@@ -298,43 +298,43 @@ def render_reset_svg(tripped):
 # ------------------------------------------------------- buttons table ----
 # text_y values are in content coordinates (mockup center-58 system).
 BUTTONS = [
-    dict(name='spindle_plus', row=3, col=2, lines=['+'], fs=20, icon='up',
+    dict(name='spindle_plus', row=3, col=1, lines=['+'], fs=20, icon='up',
          text_y=[79]),
-    dict(name='spindle_100', row=3, col=3, lines=['SPIN', '100%']),
-    dict(name='spindle_minus', row=3, col=4, lines=['-'], fs=20, icon='down',
+    dict(name='spindle_100', row=3, col=2, lines=['SPIN', '100%']),
+    dict(name='spindle_minus', row=3, col=3, lines=['-'], fs=20, icon='down',
          text_y=[52]),
-    dict(name='spindle_auto_man', row=3, col=5, lines=['SPIN', 'AUTO'],
+    dict(name='spindle_auto_man', row=3, col=4, lines=['SPIN', 'AUTO'],
          lines_on=['SPIN', 'MAN']),
-    dict(name='spindle_cw', row=4, col=2, lines=['CW'], fs=14, icon='cw',
+    dict(name='spindle_cw', row=4, col=1, lines=['CW'], fs=14, icon='cw',
          text_x=78),
-    dict(name='spindle_ccw', row=4, col=3, lines=['CCW'], fs=13, icon='ccw',
+    dict(name='spindle_ccw', row=4, col=2, lines=['CCW'], fs=13, icon='ccw',
          text_x=80),
-    dict(name='spindle_start', row=4, col=4, lines=['SPIN', 'START']),
-    dict(name='spindle_cancel', row=4, col=5, lines=['SPIN', 'STOP']),
-    dict(name='coolant_auto_man', row=5, col=2, lines=['CLNT', 'AUTO'],
+    dict(name='spindle_start', row=4, col=3, lines=['SPIN', 'START']),
+    dict(name='spindle_cancel', row=4, col=4, lines=['SPIN', 'STOP']),
+    dict(name='coolant_auto_man', row=5, col=1, lines=['CLNT', 'AUTO'],
          lines_on=['CLNT', 'MAN']),
-    dict(name='flood_coolant', row=5, col=3, lines=['FLOOD', 'M8'], fs=13,
+    dict(name='flood_coolant', row=5, col=2, lines=['FLOOD', 'M8'], fs=13,
          icon='flood', text_y=[66, 82]),
-    dict(name='coolant_pump', row=5, col=4, lines=['PUMP'], fs=13,
+    dict(name='coolant_pump', row=5, col=3, lines=['PUMP'], fs=13,
          icon='pump', text_y=[76]),
-    dict(name='incr_cont', row=6, col=2, lines=['INCR'], lines_on=['CONT']),
-    dict(name='x1', row=6, col=3, lines=['X1']),
-    dict(name='x10', row=6, col=4, lines=['X10']),
-    dict(name='x100', row=6, col=5, lines=['X100']),
-    dict(name='mpg', row=6, col=6, lines=[], icon='wheel'),
-    dict(name='y_positive', row=7, col=4, lines=['+Y'], icon='up',
+    dict(name='incr_cont', row=6, col=1, lines=['INCR'], lines_on=['CONT']),
+    dict(name='x1', row=6, col=2, lines=['X1']),
+    dict(name='x10', row=6, col=3, lines=['X10']),
+    dict(name='x100', row=6, col=4, lines=['X100']),
+    dict(name='mpg', row=6, col=5, lines=[], icon='wheel'),
+    dict(name='y_positive', row=7, col=3, lines=['+Y'], icon='up',
          text_y=[79]),
-    dict(name='z_positive', row=7, col=6, lines=['+Z'], icon='up',
+    dict(name='z_positive', row=7, col=5, lines=['+Z'], icon='up',
          text_y=[79]),
-    dict(name='x_negative', row=8, col=3, lines=['-X'], icon='left',
+    dict(name='x_negative', row=8, col=2, lines=['-X'], icon='left',
          text_y=[79]),
-    dict(name='tortoise_hare', row=8, col=4, lines=[], icon='hare',
+    dict(name='tortoise_hare', row=8, col=3, lines=[], icon='hare',
          icon_on='tortoise'),
-    dict(name='x_positive', row=8, col=5, lines=['+X'], icon='right',
+    dict(name='x_positive', row=8, col=4, lines=['+X'], icon='right',
          text_y=[79]),
-    dict(name='y_negative', row=9, col=4, lines=['-Y'], icon='down',
+    dict(name='y_negative', row=9, col=3, lines=['-Y'], icon='down',
          text_y=[52]),
-    dict(name='z_negative', row=9, col=6, lines=['-Z'], icon='down',
+    dict(name='z_negative', row=9, col=5, lines=['-Z'], icon='down',
          text_y=[52]),
     dict(name='cycle_start', row=10, col=2, lines=['CYCLE', 'START'],
          style='green', style_on='grnlit'),
@@ -457,9 +457,9 @@ FEEDRATE_WORD = ('\n\t\t<plc_word>\n'
 def render_skin():
     p = ['<vcp_skin>\n']
     p.append('\t<background>#141210</background>\n')
-    p.append(_border(2, 4, 3, 2, label='SPINDLE'))
-    p.append(_border(2, 3, 5, 1, label='COOLANT'))
-    p.append(_border(2, 5, 6, 5, label='AXIS JOG'))
+    p.append(_border(1, 4, 3, 2, label='SPINDLE'))
+    p.append(_border(1, 3, 5, 1, label='COOLANT'))
+    p.append(_border(1, 5, 6, 4, label='AXIS JOG'))
     p.append(_border(4, 3, 12, 2, label='FEEDRATE'))
     p.append(_border(4, 3, 11, 1, fill='#1a0000', outline='#3a3630',
                      thickness=2, extra=FEEDRATE_WORD))
