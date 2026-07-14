@@ -130,5 +130,58 @@ class TestEmitButtons(unittest.TestCase):
                                 'non-ASCII byte in %s' % f)
 
 
+class TestSkin(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.out = tempfile.mkdtemp(prefix='vcpgen_full_')
+        vcpgen.generate(cls.out)
+
+    def test_skin_parses_and_references_existing_buttons(self):
+        skin_path = os.path.join(self.out, 'resources', 'vcp', 'skins',
+                                 'acroloc_retro_vcp_skin.vcp')
+        with open(skin_path) as f:
+            skin = f.read()
+        skin.encode('ascii')
+        root = ET.fromstring(skin)
+        names = [el.text for el in root.iter('button')]
+        self.assertEqual(len(names), len(vcpgen.BUTTONS))
+        for n in names:
+            self.assertTrue(os.path.exists(os.path.join(
+                self.out, 'resources', 'vcp', 'Buttons', n, n + '.xml')),
+                'skin references missing button ' + str(n))
+
+    def test_grid_positions_in_range(self):
+        for b in vcpgen.BUTTONS:
+            self.assertTrue(1 <= b['row'] <= 14 and 1 <= b['col'] <= 6)
+            self.assertTrue(b['row'] + b.get('row_span', 1) - 1 <= 14)
+            self.assertTrue(b['col'] + b.get('col_span', 1) - 1 <= 6)
+
+    def test_no_duplicate_cells(self):
+        seen = set()
+        for b in vcpgen.BUTTONS:
+            for r in range(b['row'], b['row'] + b.get('row_span', 1)):
+                for c in range(b['col'], b['col'] + b.get('col_span', 1)):
+                    self.assertNotIn((r, c), seen,
+                                     'cell collision at %s' % ((r, c),))
+                    seen.add((r, c))
+
+    def test_nameplate_emitted(self):
+        self.assertTrue(os.path.exists(os.path.join(
+            self.out, 'resources', 'vcp', 'images',
+            'acroloc_nameplate.svg')))
+
+    def test_deterministic(self):
+        out2 = tempfile.mkdtemp(prefix='vcpgen_det_')
+        vcpgen.generate(out2)
+        for root_dir, _dirs, files in os.walk(self.out):
+            rel = os.path.relpath(root_dir, self.out)
+            for f in files:
+                a = os.path.join(root_dir, f)
+                b = os.path.join(out2, rel, f)
+                with open(a, 'rb') as fa, open(b, 'rb') as fb:
+                    self.assertEqual(fa.read(), fb.read(),
+                                     'nondeterministic: %s' % f)
+
+
 if __name__ == '__main__':
     unittest.main()
