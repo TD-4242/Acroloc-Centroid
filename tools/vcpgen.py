@@ -369,76 +369,81 @@ def render_reset_svg(tripped):
     return ''.join(p) + '\n'
 
 
-# --------------------------------------------------- gear-range knob ------
-def render_knob_svg(high):
-    """Two-position paddle selector (1 col x 2 rows): LOW / HIGH gear."""
-    kcx, kcy, base_r = 58.0, 118.0, 36.0
-    ang = math.radians(40.0 if high else -40.0)
+# ------------------------------------------------- spindle mode knob ------
+def render_knob_svg(auto_on):
+    """2x2 paddle selector for spindle MAN/AUTO. Clickable: it keeps the
+    stock spindle_auto_man skin event; the paddle position tracks the PLC
+    bit (on = AUTO). Artboard is 2/3 of the stock 3x3 reset (126.667/cell)
+    so the graphic fills its 2x2 span."""
+    W, H = 252, 233
+    kcx, kcy, base_r = 126.0, 148.0, 58.0
+    ang = math.radians(40.0 if auto_on else -40.0)
     c, s = math.cos(ang), math.sin(ang)
-    # rotation about the knob center as a single matrix() transform
     tx = kcx - c * kcx + s * kcy
     ty = kcy - s * kcx - c * kcy
     ticks = []
-    for a, label, lx in ((-40.0, 'LOW', 27.0), (40.0, 'HIGH', 89.0)):
+    for a, label in ((-40.0, 'MAN'), (40.0, 'AUTO')):
         r = math.radians(a)
-        x1 = kcx + math.sin(r) * (base_r + 4)
-        y1 = kcy - math.cos(r) * (base_r + 4)
-        x2 = kcx + math.sin(r) * (base_r + 12)
-        y2 = kcy - math.cos(r) * (base_r + 12)
-        on = (a > 0) == high
+        x1 = kcx + math.sin(r) * (base_r + 6)
+        y1 = kcy - math.cos(r) * (base_r + 6)
+        x2 = kcx + math.sin(r) * (base_r + 16)
+        y2 = kcy - math.cos(r) * (base_r + 16)
+        lx = kcx + math.sin(r) * (base_r + 30)
+        ly = kcy - math.cos(r) * (base_r + 26)
+        on = (a > 0) == auto_on
         col = '#e3ac5c' if on else '#6a645c'
         ticks.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" '
-                     'stroke="%s" stroke-width="2"/>' % (x1, y1, x2, y2, col))
-        ticks.append(text_el(label, lx, 62, 11, col))
+                     'stroke="%s" stroke-width="3"/>' % (x1, y1, x2, y2, col))
+        ticks.append(text_el(label, lx, ly, 14, col))
     return (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="167" '
-        'viewBox="0 0 116 194">'
-        '<defs>' + _bezel_grad('bz', 116, 194)
+        '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
+        'viewBox="0 0 %d %d">' % (W, H, W, H)
+        + '<rect x="0" y="0" width="%d" height="%d" fill="#141210"/>' % (W, H)
+        + '<defs>' + _bezel_grad('bz', W, H)
         + _grad('base', 'radial',
                 (('0', '#b8b4ae'), ('0.6', '#8a867f'), ('1', '#4a4740')),
-                dict(cx=kcx - 10, cy=kcy - 12, r=base_r * 1.6)) + '</defs>'
-        '<rect x="2" y="2" width="112" height="190" rx="5" fill="url(#bz)" '
-        'stroke="#100f0d" stroke-width="1"/>'
-        '<rect x="6" y="6" width="104" height="182" rx="3" fill="none" '
-        'stroke="#c9c5be" stroke-width="0.6" opacity="0.35"/>'
-        '<rect x="9" y="9" width="98" height="176" rx="3" fill="#141210" '
-        'stroke="#000000" stroke-width="1"/>'
-        '<rect x="9" y="9" width="98" height="8" rx="2" fill="#000000" '
-        'opacity="0.45"/>'
-        + text_el('GEAR', kcx, 34, 14, '#b0a898')
+                dict(cx=kcx - 16, cy=kcy - 20, r=base_r * 1.6)) + '</defs>'
+        + '<rect x="4" y="4" width="%d" height="%d" rx="8" fill="url(#bz)" '
+          'stroke="#100f0d" stroke-width="1.5"/>' % (W - 8, H - 8)
+        + '<rect x="10" y="10" width="%d" height="%d" rx="5" fill="none" '
+          'stroke="#c9c5be" stroke-width="0.8" opacity="0.35"/>'
+          % (W - 20, H - 20)
+        + '<rect x="15" y="15" width="%d" height="%d" rx="5" fill="#141210" '
+          'stroke="#000000" stroke-width="1.5"/>' % (W - 30, H - 30)
+        + text_el('SPIN MODE', kcx, 42, 16, '#b0a898')
         + ''.join(ticks)
         + '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="url(#base)" '
           'stroke="#100f0d" stroke-width="2"/>' % (kcx, kcy, base_r)
         + '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="none" '
-          'stroke="#c9c5be" stroke-width="0.8" opacity="0.3"/>'
-          % (kcx, kcy, base_r - 3)
+          'stroke="#c9c5be" stroke-width="1" opacity="0.3"/>'
+          % (kcx, kcy, base_r - 5)
         + '<g transform="matrix(%.4f %.4f %.4f %.4f %.2f %.2f)">'
           % (c, s, -s, c, tx, ty)
-        + '<rect x="%.1f" y="%.1f" width="18" height="74" rx="8" '
-          'fill="#3a76d4" stroke="#142c5c" stroke-width="1.5"/>'
-          % (kcx - 9, kcy - 54)
-        + '<rect x="%.1f" y="%.1f" width="8" height="34" rx="4" '
-          'fill="#ffffff" opacity="0.18"/>' % (kcx - 5, kcy - 48)
-        + '<circle cx="%.1f" cy="%.1f" r="4" fill="#1c1c1c"/>' % (kcx, kcy)
+        + '<rect x="%.1f" y="%.1f" width="26" height="116" rx="12" '
+          'fill="#3a76d4" stroke="#142c5c" stroke-width="2"/>'
+          % (kcx - 13, kcy - 84)
+        + '<rect x="%.1f" y="%.1f" width="10" height="54" rx="5" '
+          'fill="#ffffff" opacity="0.18"/>' % (kcx - 6, kcy - 76)
+        + '<circle cx="%.1f" cy="%.1f" r="5" fill="#1c1c1c"/>' % (kcx, kcy)
         + '</g></svg>\n')
 
 
 # ------------------------------------------------------- buttons table ----
 # text_y values are in content coordinates (mockup center-58 system).
 BUTTONS = [
-    dict(name='spindle_plus', row=2, col=1, lines=['+'], fs=20, icon='up',
+    dict(name='spindle_plus', row=2, col=4, lines=['+'], fs=20, icon='up',
          text_y=[79]),
-    dict(name='spindle_100', row=2, col=2, lines=['SPIN', '100%']),
-    dict(name='spindle_minus', row=2, col=3, lines=['-'], fs=20, icon='down',
+    dict(name='spindle_100', row=2, col=5, lines=['SPIN', '100%']),
+    dict(name='spindle_minus', row=2, col=6, lines=['-'], fs=20, icon='down',
          text_y=[52]),
-    dict(name='spindle_auto_man', row=2, col=4, lines=['SPIN', 'MAN'],
-         lines_on=['SPIN', 'AUTO']),
-    dict(name='spindle_cw', row=3, col=1, lines=['CW'], fs=14, icon='cw',
+    dict(name='spindle_auto_man', row=2, col=1, row_span=2, col_span=2,
+         special='knob'),
+    dict(name='spindle_cw', row=3, col=3, lines=['CW'], fs=14, icon='cw',
          text_x=78),
-    dict(name='spindle_ccw', row=3, col=2, lines=['CCW'], fs=13, icon='ccw',
+    dict(name='spindle_ccw', row=3, col=4, lines=['CCW'], fs=13, icon='ccw',
          text_x=80),
-    dict(name='spindle_start', row=3, col=3, lines=['SPIN', 'START']),
-    dict(name='spindle_cancel', row=3, col=4, lines=['SPIN', 'STOP']),
+    dict(name='spindle_start', row=3, col=5, lines=['SPIN', 'START']),
+    dict(name='spindle_cancel', row=3, col=6, lines=['SPIN', 'STOP']),
     dict(name='coolant_auto_man', row=5, col=1, lines=['CLNT', 'MAN'],
          lines_on=['CLNT', 'AUTO']),
     dict(name='flood_coolant', row=5, col=2, lines=['FLOOD', 'M8'], fs=13,
@@ -480,8 +485,6 @@ BUTTONS = [
     dict(name='feedrate_25', row=13, col=4, lines=['25%']),
     dict(name='feedrate_50', row=13, col=5, lines=['50%']),
     dict(name='feedrate_75', row=13, col=6, lines=['75%']),
-    dict(name='gear_range', row=2, col=5, row_span=2,
-         special='knob'),
     dict(name='reset', row=12, col=1, row_span=3, col_span=3,
          special='reset'),
     dict(name='vcp_options', row=14, col=4, lines=['VCP', 'OPTIONS'], fs=13),
@@ -524,13 +527,7 @@ def emit_buttons(out_dir):
         os.makedirs(d, exist_ok=True)
         if b.get('special') == 'knob':
             _write(os.path.join(d, rn + '.xml'),
-                   '<vcp_button>\n'
-                   '\t<plc_memory>\n'
-                   '\t\t<number>79</number>\n'
-                   '\t\t<image_on>%s_on.svg</image_on>\n'
-                   '\t\t<image_off>%s.svg</image_off>\n'
-                   '\t</plc_memory>\n'
-                   '</vcp_button>\n' % (rn, rn))
+                   _retro_xml(name, stock_xml(name)))
             _write(os.path.join(d, rn + '.svg'), render_knob_svg(False))
             _write(os.path.join(d, rn + '_on.svg'), render_knob_svg(True))
             continue
@@ -626,7 +623,7 @@ def render_feedrate_bezel_svg():
 def render_skin():
     p = ['<vcp_skin>\n']
     p.append('\t<background>#141210</background>\n')
-    p.append(_border(1, 4, 2, 2, label='SPINDLE'))
+    p.append(_border(1, 6, 2, 2, label='SPINDLE'))
     p.append(_border(1, 3, 5, 1, label='COOLANT'))
     p.append(_border(1, 5, 6, 5, label='AXIS JOG'))
     p.append(_border(4, 3, 12, 2, label='FEEDRATE'))

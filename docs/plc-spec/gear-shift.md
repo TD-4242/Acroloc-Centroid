@@ -62,12 +62,6 @@ see [main-stage.md#gear-decision](main-stage.md#gear-decision)) always reflects 
 engaged clutch, not the desired one. `GearShiftStage` itself overrides `SpindleRange_W` during
 a shift (Step A, below).
 
-Directly after this rung (added after the line pin): `IF EngagedRange_W == 4 THEN
-(GearRangeHigh_M)` — a coil that mirrors "high gear engaged" into MEM79 purely for
-display; the retro VCP's gear-range knob (`retro_gear_range`, `plc_memory` 79) shows
-HIGH while it is true and LOW otherwise (neutral displays as LOW). No control logic
-reads it.
-
 ### Kickoff rung (src:2296-2307)
 
 ```
