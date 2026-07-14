@@ -59,25 +59,28 @@ def text_el(s, cx, y, fs, fill):
             % (x, y, fs, fill, s))
 
 
-def _grad(gid, kind, stops):
+# The VCP's SVG converter (Svg2Xaml) only proves out a narrow feature set in
+# the stock skins: paths/shapes/polygons/text, gradients with ABSOLUTE
+# userSpaceOnUse coordinates, and NO <filter> primitives. Percentage
+# gradient coordinates and feGaussianBlur/feMerge crash the panel silently,
+# so everything below sticks to the proven subset.
+def _grad(gid, kind, stops, geom):
     body = ''.join('<stop offset="%s" stop-color="%s"/>' % st for st in stops)
     if kind == 'radial':
-        return ('<radialGradient id="%s" cx="50%%" cy="35%%" r="75%%">%s'
-                '</radialGradient>' % (gid, body))
-    return ('<linearGradient id="%s" x1="0" y1="0" x2="0" y2="1">%s'
-            '</linearGradient>' % (gid, body))
+        return ('<radialGradient id="%s" cx="%.1f" cy="%.1f" r="%.1f" '
+                'gradientUnits="userSpaceOnUse">%s</radialGradient>'
+                % (gid, geom['cx'], geom['cy'], geom['r'], body))
+    return ('<linearGradient id="%s" x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" '
+            'gradientUnits="userSpaceOnUse">%s</linearGradient>'
+            % (gid, geom['x1'], geom['y1'], geom['x2'], geom['y2'], body))
 
 
-BEZEL_GRAD = ('<radialGradient id="bz" cx="30%" cy="20%" r="80%">'
-              '<stop offset="0" stop-color="#9a958e"/>'
-              '<stop offset="0.55" stop-color="#615c56"/>'
-              '<stop offset="1" stop-color="#26231f"/></radialGradient>')
-GLOW_FILTERS = ('<filter id="sg" x="-60%" y="-60%" width="220%" height="220%">'
-                '<feGaussianBlur stdDeviation="2.2" result="b"/>'
-                '<feMerge><feMergeNode in="b"/>'
-                '<feMergeNode in="SourceGraphic"/></feMerge></filter>'
-                '<filter id="bg" x="-100%" y="-100%" width="300%" height="300%">'
-                '<feGaussianBlur stdDeviation="8"/></filter>')
+BEZEL_STOPS = (('0', '#9a958e'), ('0.55', '#615c56'), ('1', '#26231f'))
+
+
+def _bezel_grad(gid, vbw, vbh):
+    return _grad(gid, 'radial', BEZEL_STOPS,
+                 dict(cx=0.3 * vbw, cy=0.2 * vbh, r=0.8 * vbw))
 
 
 def render_button_svg(lines, style, icon='', fs=15, text_y=None, text_x=None,
@@ -94,11 +97,16 @@ def render_button_svg(lines, style, icon='', fs=15, text_y=None, text_x=None,
                     for t, y in zip(lines, text_y))
     ic = icon.replace('FILL', st['text']).replace('CX', '%.0f' % (vbw / 2.0))
     kind, stops = st['grad']
+    # cap occupies x[capx..capx+capw] y[15..81]; gradient coords are absolute
+    if kind == 'radial':
+        cap_geom = dict(cx=vbw / 2.0, cy=15 + 0.35 * 66, r=0.75 * capw)
+    else:
+        cap_geom = dict(x1=vbw / 2.0, y1=15, x2=vbw / 2.0, y2=81)
     p = []
     p.append('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
              'viewBox="0 0 %d %d">' % (w, RENDER_H, vbw, VB_H))
-    p.append('<defs>' + BEZEL_GRAD + _grad('cap', kind, stops)
-             + (GLOW_FILTERS if st['glow'] else '') + '</defs>')
+    p.append('<defs>' + _bezel_grad('bz', vbw, VB_H)
+             + _grad('cap', kind, stops, cap_geom) + '</defs>')
     p.append('<rect x="2" y="2" width="%d" height="93" rx="5" fill="url(#bz)" '
              'stroke="#100f0d" stroke-width="1"/>' % (vbw - 4))
     p.append('<rect x="6" y="6" width="%d" height="85" rx="3" fill="none" '
@@ -107,15 +115,17 @@ def render_button_svg(lines, style, icon='', fs=15, text_y=None, text_x=None,
              'stroke="#000000" stroke-width="1"/>' % (vbw - 18))
     p.append('<rect x="9" y="9" width="%d" height="8" rx="2" fill="#000000" '
              'opacity="0.45"/>' % (vbw - 18))
-    cap_extra = ''
     if st['glow']:
-        p.append('<rect x="%d" y="13" width="%d" height="70" rx="6" '
-                 'fill="url(#cap)" opacity="0.55" filter="url(#bg)"/>'
-                 % (capx - 2, capw + 4))
-        cap_extra = ' filter="url(#sg)"'
+        # fake bloom: layered translucent halo rects (no <filter> support)
+        p.append('<rect x="%d" y="10" width="%d" height="76" rx="8" '
+                 'fill="%s" opacity="0.18"/>'
+                 % (capx - 5, capw + 10, st['stroke']))
+        p.append('<rect x="%d" y="12" width="%d" height="72" rx="6" '
+                 'fill="%s" opacity="0.30"/>'
+                 % (capx - 3, capw + 6, st['stroke']))
     p.append('<rect x="%d" y="15" width="%d" height="66" rx="4" '
-             'fill="url(#cap)" stroke="%s" stroke-width="1.4"%s/>'
-             % (capx, capw, st['stroke'], cap_extra))
+             'fill="url(#cap)" stroke="%s" stroke-width="1.4"/>'
+             % (capx, capw, st['stroke']))
     p.append('<rect x="%d" y="18" width="%d" height="14" rx="2" '
              'fill="#ffffff" opacity="0.18"/>' % (capx + 3, capw - 6))
     p.append('<g transform="translate(0,-10)">' + ic + texts + '</g>')
@@ -204,7 +214,8 @@ def render_nameplate_svg():
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" width="634" height="100" '
         'viewBox="0 0 634 100">'
-        '<defs><linearGradient id="alum" x1="0" y1="0" x2="0" y2="1">'
+        '<defs><linearGradient id="alum" x1="317" y1="0" x2="317" y2="100" '
+        'gradientUnits="userSpaceOnUse">'
         '<stop offset="0" stop-color="#d8d5d0"/>'
         '<stop offset="0.3" stop-color="#b8b4ae"/>'
         '<stop offset="0.6" stop-color="#cac6c0"/>'
@@ -221,30 +232,23 @@ def render_reset_svg(tripped):
     cx, cy = 174, 138            # button center in the 348x268 artboard
     dome_r = 82 if tripped else 94
     dome_y = cy + 12 if tripped else cy - 8
-    dome = ('<radialGradient id="dome" cx="38%%" cy="30%%" r="75%%">'
-            '<stop offset="0" stop-color="%s"/>'
-            '<stop offset="0.35" stop-color="%s"/>'
-            '<stop offset="0.8" stop-color="%s"/>'
-            '<stop offset="1" stop-color="%s"/></radialGradient>'
-            % (('#ffb0b0', '#ff3838', '#c40f0f', '#7a0505') if tripped
-               else ('#f26b6b', '#d42a2a', '#8c0f0f', '#5c0505')))
+    stops = (('#ffb0b0', '#ff3838', '#c40f0f', '#7a0505') if tripped
+             else ('#f26b6b', '#d42a2a', '#8c0f0f', '#5c0505'))
+    dome = _grad('dome', 'radial',
+                 (('0', stops[0]), ('0.35', stops[1]), ('0.8', stops[2]),
+                  ('1', stops[3])),
+                 dict(cx=cx - 0.24 * dome_r, cy=dome_y - 0.4 * dome_r,
+                      r=1.5 * dome_r))
     p = []
     p.append('<svg xmlns="http://www.w3.org/2000/svg" width="300" '
              'height="252" viewBox="0 0 348 268">')
-    p.append('<defs>' + BEZEL_GRAD.replace('id="bz"', 'id="rbz"') + dome +
-             '<radialGradient id="skirt" cx="50%" cy="35%" r="70%">'
-             '<stop offset="0" stop-color="#a81c1c"/>'
-             '<stop offset="0.7" stop-color="#6e0c0c"/>'
-             '<stop offset="1" stop-color="#3d0404"/></radialGradient>'
-             '<radialGradient id="well" cx="50%" cy="40%" r="70%">'
-             '<stop offset="0" stop-color="#1c1916"/>'
-             '<stop offset="1" stop-color="#0a0908"/></radialGradient>'
-             '<filter id="halo" x="-50%" y="-50%" width="200%" height="200%">'
-             '<feGaussianBlur stdDeviation="14"/></filter>'
-             '<filter id="txtglow" x="-40%" y="-40%" width="180%" '
-             'height="180%"><feGaussianBlur stdDeviation="1.6" result="b"/>'
-             '<feMerge><feMergeNode in="b"/>'
-             '<feMergeNode in="SourceGraphic"/></feMerge></filter></defs>')
+    p.append('<defs>' + _bezel_grad('rbz', 348, 268) + dome +
+             _grad('skirt', 'radial',
+                   (('0', '#a81c1c'), ('0.7', '#6e0c0c'), ('1', '#3d0404')),
+                   dict(cx=cx, cy=cy - 24, r=148)) +
+             _grad('well', 'radial',
+                   (('0', '#1c1916'), ('1', '#0a0908')),
+                   dict(cx=cx, cy=cy - 27, r=244)) + '</defs>')
     p.append('<rect x="4" y="4" width="340" height="260" rx="8" '
              'fill="url(#rbz)" stroke="#100f0d" stroke-width="1.5"/>')
     p.append('<rect x="10" y="10" width="328" height="248" rx="5" fill="none" '
@@ -254,8 +258,11 @@ def render_reset_svg(tripped):
     p.append('<rect x="15" y="15" width="318" height="16" rx="4" '
              'fill="#000000" opacity="0.45"/>')
     if tripped:
+        # fake halo: layered translucent circles (no <filter> support)
+        p.append('<circle cx="%d" cy="%d" r="122" fill="#ff2020" '
+                 'opacity="0.10"/>' % (cx, cy + 8))
         p.append('<circle cx="%d" cy="%d" r="112" fill="#ff2020" '
-                 'opacity="0.22" filter="url(#halo)"/>' % (cx, cy + 8))
+                 'opacity="0.16"/>' % (cx, cy + 8))
     p.append('<circle cx="%d" cy="%d" r="106" fill="url(#skirt)" '
              'stroke="#2a0505" stroke-width="2"/>' % (cx, cy + 8))
     p.append('<circle cx="%d" cy="%d" r="%d" fill="url(#dome)" '
@@ -265,10 +272,8 @@ def render_reset_svg(tripped):
                  'opacity="0.35"/>' % (cx, dome_y - dome_r + 14, dome_r - 6))
         p.append('<ellipse cx="%d" cy="%d" rx="28" ry="14" fill="#ffffff" '
                  'opacity="0.14"/>' % (cx - 18, dome_y - 30))
-        p.append(text_el('RESET', cx, 42, 26, '#ff5555')
-                 .replace('<text ', '<text filter="url(#txtglow)" '))
-        p.append(text_el('TRIPPED', cx, 246, 26, '#ff5555')
-                 .replace('<text ', '<text filter="url(#txtglow)" '))
+        p.append(text_el('RESET', cx, 42, 26, '#ff5555'))
+        p.append(text_el('TRIPPED', cx, 246, 26, '#ff5555'))
     else:
         p.append('<ellipse cx="%d" cy="%d" rx="40" ry="24" fill="#ffffff" '
                  'opacity="0.22"/>' % (cx - 24, dome_y - 30))

@@ -23,11 +23,29 @@ class TestButtonSvg(unittest.TestCase):
         self.assertNotIn('text-anchor', svg)
         self.assertIn('<text x="', svg)
 
-    def test_lit_style_has_glow(self):
+    def test_lit_style_has_halo_but_no_filter(self):
         svg = vcpgen.render_button_svg(['X1'], 'lit')
-        self.assertIn('feGaussianBlur', svg)
         off = vcpgen.render_button_svg(['X1'], 'amber')
-        self.assertNotIn('feGaussianBlur', off)
+        # glow = two extra halo rects, never SVG filters
+        self.assertEqual(svg.count('<rect'), off.count('<rect') + 2)
+        for s in (svg, off):
+            self.assertNotIn('<filter', s)
+            self.assertNotIn('feGaussianBlur', s)
+
+    def test_svg_safe_subset(self):
+        # Svg2Xaml on the control PC only proves out absolute userSpaceOnUse
+        # gradient coordinates and no filter primitives (see spec).
+        import re as _re
+        for style in vcpgen.STYLES:
+            for svg in (vcpgen.render_button_svg(['A'], style),
+                        vcpgen.render_reset_svg(False),
+                        vcpgen.render_reset_svg(True),
+                        vcpgen.render_nameplate_svg()):
+                self.assertNotIn('<filter', svg)
+                self.assertNotIn('feMerge', svg)
+                for g in _re.findall(r'<(?:linear|radial)Gradient[^>]*>', svg):
+                    self.assertIn('userSpaceOnUse', g)
+                    self.assertNotIn('%', g)
 
     def test_span_widens_artboard(self):
         svg = vcpgen.render_button_svg(['RESET'], 'red', span=3)
