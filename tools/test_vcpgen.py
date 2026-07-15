@@ -138,10 +138,21 @@ class TestEmitButtons(unittest.TestCase):
                 os.path.join(self.bdir, 'retro_reset', f)))
 
     def test_legend_swap_pairs(self):
+        # knob SVGs contain BOTH labels in both states; the active position
+        # is amber (#e3ac5c), the inactive dim (#6a645c) - assert per state
+        def label_fill(svg, label):
+            import re as _re
+            m = _re.search(r'fill="(#[0-9a-f]{6})"[^>]*>%s<' % label, svg)
+            self.assertIsNotNone(m, 'label %s not found' % label)
+            return m.group(1)
+
         on = self._read('retro_incr_cont', 'retro_incr_cont_on.svg')
         off = self._read('retro_incr_cont', 'retro_incr_cont.svg')
-        self.assertIn('CONT', on)
-        self.assertIn('INCR', off)
+        # jog bit ON = INCR (verified on-machine); labels: (CONT, INCR)
+        self.assertEqual(label_fill(on, 'INCR'), '#e3ac5c')
+        self.assertEqual(label_fill(on, 'CONT'), '#6a645c')
+        self.assertEqual(label_fill(off, 'CONT'), '#e3ac5c')
+        self.assertEqual(label_fill(off, 'INCR'), '#6a645c')
 
     def test_all_emitted_files_ascii_and_crlf(self):
         for root, _dirs, files in os.walk(self.bdir):

@@ -79,7 +79,7 @@ color or image - use a dark hex, optionally a pre-rendered dark PNG later).
 | CLNT AUTO/MAN | amber "CLNT AUTO" | lit red "CLNT MAN" |
 | SPIN AUTO/MAN | amber "SPIN AUTO" | lit red "SPIN MAN" |
 | INCR/CONT | amber "INCR" | lit red "CONT" (verify on/off polarity against the real `incr_cont` PLC bit during on-machine testing; flip legends if backwards) |
-| hare/tortoise | amber cap + hare | lit red cap + tortoise (PLC output 1094) |
+| hare/tortoise | lit red cap + hare | amber cap + tortoise (PLC output 1094; bit is ON in tortoise/slow mode — verified on-machine 2026-07-14. Cap color is deliberately decoupled from bit state here so the hare stays red) |
 | CYCLE START | solid green cap | glowing green cap |
 | CYCLE CANCEL | solid red cap | glowing red cap |
 | RESET | round red mushroom on square bezel, "RESET" on dome | depressed dome (lower, flatter, lip shadow, faint glow) + glowing "RESET" above / "TRIPPED" below (PLC output 1107, like stock) |
