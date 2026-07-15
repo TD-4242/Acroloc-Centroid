@@ -486,7 +486,7 @@ BUTTONS = [
          lines=['PUMP'], fs=13, icon='pump', text_y=[48]),
     dict(name='incr_cont', row=6, col=1, row_span=2, col_span=2,
          special='knob', knob_title='JOG MODE',
-         knob_labels=('INCR', 'CONT')),
+         knob_labels=('CONT', 'INCR')),
     dict(name='x1', row=8, col=1, lines=['X1']),
     dict(name='x10', row=9, col=1, lines=['X10']),
     dict(name='x100', row=10, col=1, lines=['X100']),
