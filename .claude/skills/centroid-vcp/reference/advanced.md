@@ -14,8 +14,9 @@ cells. Make room by deleting the buttons it will cover.
 <button row="3" column="4" row_span="2" column_span="2">m55</button>
 ```
 
-The button's SVG artboard scales to the spanned area, so the SVG `width`/`height`/`viewBox` must
-be correct (see the sizing note in [button-anatomy.md](button-anatomy.md)).
+The SVG does **not** scale to the spanned area -- it renders at its declared
+`width`/`height`/artboard, so the SVG itself must be drawn at full-span size (measured span
+sizes and the pad-don't-stretch technique are in [button-anatomy.md](button-anatomy.md)).
 
 ## Display live data with PLC words
 
@@ -52,6 +53,18 @@ stock words:
 Displaying a custom value means defining a new `W` and feeding it in the PLC program, then
 referencing its number here -- see
 [centroid-plc-programming](../../centroid-plc-programming/SKILL.md).
+
+Field notes (retro-skin work, 2026-07):
+
+- `<font>` accepts any font installed on the Windows control PC -- e.g. **DSEG7 Classic** gives
+  a true 7-segment readout. The font must be installed **for all users** (right-click ->
+  "Install for all users") or the VCP process will not see it and will silently substitute.
+- `<percentage>true</percentage>` can overlap the digits with some fonts/sizes. Workaround:
+  leave it off and place the `%` as a separate `<text>` in the same `<border>`, nudged with
+  margins (this repo's feedrate readout uses a DSEG7 `plc_word` + Arial `%` text with
+  `marginright`).
+- A `<border>` with `Transparent` fill layered over a skin `<image>` (a drawn bezel SVG) makes
+  a convincing recessed LED window.
 
 ## Static text without an image
 

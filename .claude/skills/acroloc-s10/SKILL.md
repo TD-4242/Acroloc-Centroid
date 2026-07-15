@@ -151,9 +151,13 @@ This machine's on-screen operator panel (jog keys, spindle/coolant, custom butto
 `coolant_pump`) is the Centroid VCP under `resources/vcp/`. For the skin/button format and
 how-to -- moving/creating buttons, graphics and LED states, wiring a button to a
 function/macro/PLC bit, big buttons, live PLC-word displays, and why the VCP will not load --
-use the **[centroid-vcp](../centroid-vcp/SKILL.md)** skill. This machine's specific skin
-(`servo_mill_vcp_skin`), custom buttons, and the PLC bits they drive are documented here and in
-the PLC source; the format knowledge is generic and lives in `centroid-vcp`.
+use the **[centroid-vcp](../centroid-vcp/SKILL.md)** skill. This machine's active skin is the
+generated retro theme `acroloc_retro_vcp_skin` -- the skin and all `retro_*` buttons are
+emitted by `tools/vcpgen.py` (edit the generator + `BUTTONS` table, run it, check with
+`python3 tools/test_vcpgen.py`; never hand-edit the emitted files). The stock
+`servo_mill_vcp_skin` remains selectable as a fallback. Custom buttons and the PLC bits they
+drive are documented here and in the PLC source; the format knowledge (including the
+field-learned Svg2Xaml SVG limits) is generic and lives in `centroid-vcp`.
 
 ---
 

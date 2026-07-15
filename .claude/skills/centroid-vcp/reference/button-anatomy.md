@@ -63,14 +63,25 @@ bitmaps and no live fonts (see [troubleshooting.md](troubleshooting.md) for the 
 
 Field-validated behavior (from on-machine work; consistent with the manual's SVG advice):
 
-- **Rendered size tracks the SVG `width`/`height`/artboard.** Keep the `width`, `height`, and
-  `viewBox` on the `<svg>` element. The manual's advice -- "open an existing button `.svg`,
-  rename it, and modify it, so the size/artboard is correct" -- is the same rule. Grid
-  `row_span`/`column_span` scale the *cell* ([advanced.md](advanced.md)); the SVG artboard must
-  still be right.
-- **`text-anchor` is effectively ignored.** Position button text with an explicit `x`, and
-  convert all fonts to paths ("Object to Path" in Inkscape) before saving. This is the root
-  cause the manual is getting at when it says convert fonts to lines and arcs.
+- **Rendered size tracks the SVG `width`/`height`/artboard -- the graphic is drawn at its
+  declared size, not stretched to fill the cell.** Keep the `width`, `height`, and `viewBox` on
+  the `<svg>` element. The manual's advice -- "open an existing button `.svg`, rename it, and
+  modify it, so the size/artboard is correct" -- is the same rule.
+- **Multi-cell buttons need a full-span artboard.** Grid `row_span`/`column_span` enlarge the
+  *cell*, but the SVG must declare the spanned size itself or it renders small in a big cell.
+  Measured on the stock 6x14 mill skin: one cell renders ~100x84 (retro buttons use
+  `width="100" height="84" viewBox="0 0 116 97"`); a span of N columns is ~126xN artboard units
+  wide and N rows ~116.5xN tall (2x2 knob = 252x233; the stock 3x3 `reset.svg` declares
+  378x349.9) -- copy a same-span stock SVG to get these right. To show a normal-size button
+  centered in a taller span, declare the full-span artboard and pad around the normal-size art
+  (do not stretch it).
+- **`text-anchor` is effectively ignored.** Position button text with an explicit `x`: either
+  convert fonts to paths ("Object to Path" in Inkscape), or keep live text and compute the
+  left-edge `x` from character advance widths for a font actually installed on the control PC
+  (see [troubleshooting.md](troubleshooting.md) "Text and fonts").
+- **Only a subset of SVG renders** (Svg2Xaml): no `<filter>`, gradients must be absolute
+  `userSpaceOnUse`, transforms limited to a single `matrix()`. Violations crash the whole VCP
+  silently -- full list in [troubleshooting.md](troubleshooting.md).
 
 Real in-repo SVG -- `resources/vcp/Buttons/coolant_pump/coolant_pump.svg` (note width/height 100,
 matching viewBox, and text placed by explicit `x` rather than centering):
