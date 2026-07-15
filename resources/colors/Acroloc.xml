@@ -10,10 +10,10 @@
     <infoWarningTextColor>f3ab3a</infoWarningTextColor>
     <infoWarningHighlightColor>e27531</infoWarningHighlightColor>
     <infoFavorableHighlightColor>52a257</infoFavorableHighlightColor>
-    <backgroundColor>121212</backgroundColor>
+    <backgroundColor>141210</backgroundColor>
     <menuUneditableColor>7f7f7f</menuUneditableColor>
     <editColor>ffffff</editColor>
-    <editBackgroundColor>121212</editBackgroundColor>
+    <editBackgroundColor>141210</editBackgroundColor>
     <eventHighlightBackColor>0f0f0f</eventHighlightBackColor>
     <eventHighlightTextColor>c0ff95</eventHighlightTextColor>
     <menuItemIndicationColor>000000</menuItemIndicationColor>
@@ -62,7 +62,7 @@
     <mathHelpCalcKeyForegroundColor>000000</mathHelpCalcKeyForegroundColor>
     <fkeybuttontextcolor>88c153</fkeybuttontextcolor>
     <fkeybuttonsubtextcolor>ffffff</fkeybuttonsubtextcolor>
-    <fkeybuttonbackgroundcolor>121212</fkeybuttonbackgroundcolor>
+    <fkeybuttonbackgroundcolor>111111</fkeybuttonbackgroundcolor>
     <fkeybuttonoutlinecolor>333333</fkeybuttonoutlinecolor>
     <vcpBackgroundColor>a6a5a5</vcpBackgroundColor>
     <dxfUnselectedColor>7f7f7f</dxfUnselectedColor>

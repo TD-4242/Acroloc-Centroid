@@ -1,0 +1,8 @@
+<vcp_button>
+	<skin_event_num>49</skin_event_num>
+	<plc_output>
+		<number>1104</number>
+		<image_on>retro_feed_hold_on.svg</image_on>
+		<image_off>retro_feed_hold.svg</image_off>
+	</plc_output>
+</vcp_button>

@@ -1,0 +1,16 @@
+<vcp_skin>
+	<background>#141210</background>
+	<on_click>
+		<opacity>100</opacity>
+		<outline_color>#000000</outline_color>
+	</on_click>
+	<on_hover>
+		<opacity>100</opacity>
+		<outline_color>#ffffff</outline_color>
+	</on_hover>
+	<button row="3" column="2">retro_spindle_plus</button>
+	<button row="7" column="4">retro_y_positive</button>
+	<button row="8" column="5">retro_x_positive</button>
+	<button row="10" column="2">retro_cycle_start</button>
+	<button row="14" column="4">retro_vcp_options</button>
+</vcp_skin>

@@ -1,0 +1,8 @@
+<vcp_button>
+	<skin_event_num>21</skin_event_num>
+	<plc_output>
+		<number>1077</number>
+		<image_on>retro_coolant_auto_man_on.svg</image_on>
+		<image_off>retro_coolant_auto_man.svg</image_off>
+	</plc_output>
+</vcp_button>
