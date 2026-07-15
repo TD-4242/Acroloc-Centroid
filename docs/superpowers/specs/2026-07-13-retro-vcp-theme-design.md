@@ -33,25 +33,24 @@ This retro skin becomes the **default** (selected in `options.xml`).
    declarative table; `tools/test_vcpgen.py` for basic checks.
 5. `options.xml` updated: `Skin` = `acroloc_retro_vcp_skin`.
 
-## Layout (14 rows x 6 columns)
+## Layout (14 rows x 6 columns, as built 2026-07-15)
 
 | Rows | Content |
 |------|---------|
 | 1 | ACROLOC nameplate `<image>`, cols 1-6 |
-| 2 | (open) |
-| 3-4 | SPINDLE group, cols 2-5. Row 3: `+` / SPIN 100% / `-` / SPIN AUTO<->MAN. Row 4: CW / CCW / SPIN START / SPIN STOP |
-| 5 | COOLANT group, cols 2-4: CLNT AUTO<->MAN / FLOOD M8 / PUMP |
-| 6 | INCR<->CONT, X1, X10, X100, MPG (cols 2-6) |
-| 7-9 | XYZ jog cluster: +Y (7,4), +Z (7,6), -X (8,3), hare/tortoise (8,4), +X (8,5), -Y (9,4), -Z (9,6) |
-| 10 | CYCLE START / CYCLE CANCEL / SINGLE BLOCK / TOOL CHECK / FEED HOLD (cols 2-6) |
-| 11 | Feedrate readout (`plc_word` 4, 7-seg style red on dark), cols 4-6 |
+| 2-3 | SPIN MODE knob (2x2, cols 1-2). Row 2: `+` (2,4) / SPIN 100% (2,5) / `-` (2,6). Row 3: CW (3,3) / CCW (3,4) / SPIN START (3,5) / SPIN STOP (3,6) |
+| 4-5 | CLNT MODE knob (2x2, cols 1-2); FLOOD M8 (4,3) and PUMP (4,4), each 2 rows tall (button art centered) |
+| 6-7 | JOG MODE knob (2x2, cols 1-2) |
+| 7-9 | Jog block (4 rows total incl. the knob): +Y (7,4), +Z (7,6), X1 (8,1), X100 (8,2), -X (8,3), hare/tortoise (8,4), +X (8,5), X10 (9,1), MPG (9,2), -Y (9,4), -Z (9,6) |
+| 10 | SINGLE BLOCK (10,3) / TOOL CHECK (10,4) / FEED HOLD (10,5) |
+| 11 | CYCLE START (11,1) / CYCLE CANCEL (11,2); feedrate readout (`plc_word` 4, DSEG7 7-seg red + separate `%` text over a bezel image), cols 4-6 |
+| 12-14 | Round RESET, cols 1-3 (3x3 `<button ... column_span/row_span>`) |
 | 12 | FEED `-` / FEED 100% / FEED `+` (cols 4-6) |
 | 13 | 25% / 50% / 75% (cols 4-6) |
-| 12-14 | Round RESET, cols 1-3 (3x3 `<button ... column_span/row_span>`) |
-| 14 | VCP OPTIONS / PUSH FREE (cols 4-5) |
+| 14 | VCP OPTIONS (14,4) / PUSH FREE (14,5) |
 
-Group boxes (skin `<border>`) with silkscreen-style labels: SPINDLE, COOLANT, AXIS JOG,
-FEEDRATE. Labels fit in the row-seam clearance created by the shorter buttons (below).
+Group boxes: only FEEDRATE keeps a labeled `<border>`; the SPINDLE/COOLANT/AXIS JOG boxes were
+dropped during on-machine testing (their labels straddled the row seams).
 Background: dark (near-black, like the mockup's radial panel; skin background is a hex
 color or image - use a dark hex, optionally a pre-rendered dark PNG later).
 
@@ -76,9 +75,9 @@ color or image - use a dark hex, optionally a pre-rendered dark PNG later).
 
 | Button | Off state | On state |
 |--------|-----------|----------|
-| CLNT AUTO/MAN | amber "CLNT AUTO" | lit red "CLNT MAN" |
-| SPIN AUTO/MAN | amber "SPIN AUTO" | lit red "SPIN MAN" |
-| INCR/CONT | amber "INCR" | lit red "CONT" (verify on/off polarity against the real `incr_cont` PLC bit during on-machine testing; flip legends if backwards) |
+| CLNT MODE knob (2x2 bakelite rotary) | pointer left, "MAN" highlighted | pointer right, "AUTO" highlighted |
+| SPIN MODE knob (2x2 bakelite rotary) | pointer left, "MAN" highlighted | pointer right, "AUTO" highlighted |
+| JOG MODE knob (2x2 bakelite rotary) | pointer left, "CONT" highlighted | pointer right, "INCR" highlighted (bit ON = incremental, verified on-machine) |
 | hare/tortoise | lit red cap + hare | amber cap + tortoise (PLC output 1094; bit is ON in tortoise/slow mode — verified on-machine 2026-07-14. Cap color is deliberately decoupled from bit state here so the hare stays red) |
 | CYCLE START | solid green cap | glowing green cap |
 | CYCLE CANCEL | solid red cap | glowing red cap |
