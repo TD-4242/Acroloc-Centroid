@@ -663,12 +663,14 @@ FEEDRATE_WORD = _seg_word(4)               # FinalFeedOverride_W, centered
 FEEDRATE_PCT = _seg_label('%', 16, 68)
 # spindle readout: [ XXX% XXXXRPM ] in one window, same 3-cell bezel as the
 # feedrate display; every element is right-aligned so the group keeps its
-# internal spacing (margins are right-edge offsets, per the feedrate %)
+# internal spacing (margins are right-edge offsets, per the feedrate %).
+# One element per <border>: the VCP renders a single plc_word/text per
+# border (stacking them in one border dropped the RPM half on-machine).
 SPIN_ELEMENTS = (
-    _seg_word(76, 18, 166)                 # SpinOverride_W  -> "XXX"
-    + _seg_label('%', 13, 152)             # "%" hugging the override digits
-    + _seg_word(77, 13, 98, font='Arial')  # SpinRPM_W: plain Arial like "%"
-    + _seg_label('RPM', 12, 68))
+    _seg_word(76, 18, 166),                # SpinOverride_W  -> "XXX"
+    _seg_label('%', 13, 152),              # "%" hugging the override digits
+    _seg_word(77, 13, 98, font='Arial'),   # SpinRPM_W: plain Arial like "%"
+    _seg_label('RPM', 12, 68))
 
 
 def render_readout_bezel_svg(w):
@@ -711,7 +713,8 @@ def render_skin():
              '\t\t<row_start>2</row_start>\n'
              '\t\t<path>resources\\vcp\\images\\feedrate_bezel.svg</path>\n'
              '\t</image>\n')
-    p.append(_border(4, 3, 2, 1, outline='Transparent', extra=SPIN_ELEMENTS))
+    for el in SPIN_ELEMENTS:
+        p.append(_border(4, 3, 2, 1, outline='Transparent', extra=el))
     p.append('\t<image>\n'
              '\t\t<column_span>6</column_span>\n'
              '\t\t<column_start>1</column_start>\n'

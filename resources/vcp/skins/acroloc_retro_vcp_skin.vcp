@@ -88,6 +88,15 @@
 			<horizontalalignment>right</horizontalalignment>
 			<marginright>166</marginright>
 		</plc_word>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>4</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
 		<text>
 			<content>%</content>
 			<fontsize>13</fontsize>
@@ -98,6 +107,15 @@
 			<verticalalignment>center</verticalalignment>
 			<marginright>152</marginright>
 		</text>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>4</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
 		<plc_word>
 			<number>77</number>
 			<color>#ff3333</color>
@@ -108,6 +126,15 @@
 			<horizontalalignment>right</horizontalalignment>
 			<marginright>98</marginright>
 		</plc_word>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>4</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
 		<text>
 			<content>RPM</content>
 			<fontsize>12</fontsize>
