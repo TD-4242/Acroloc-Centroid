@@ -721,16 +721,15 @@ DRO_ELEMENTS = (
 
 
 def render_dro_bezel_svg():
-    # three wide LED windows stacked in a 3-col x 2-row area
-    p = ['<svg xmlns="http://www.w3.org/2000/svg" width="318" height="168" '
-         'viewBox="0 0 318 168">']
-    for y in (13, 70, 127):
-        p.append('<rect x="20" y="%d" width="278" height="28" rx="5" '
-                 'fill="#1a0000" stroke="#3a3630" stroke-width="2"/>' % y)
-        p.append('<rect x="24" y="%d" width="270" height="5" rx="2" '
-                 'fill="#000000" opacity="0.5"/>' % (y + 3))
-    p.append('</svg>')
-    return ''.join(p) + '\n'
+    # one tall LED window holding all three axis rows (3-col x 2-row area)
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="318" height="168" '
+        'viewBox="0 0 318 168">'
+        '<rect x="20" y="8" width="278" height="152" rx="5" fill="#1a0000" '
+        'stroke="#3a3630" stroke-width="2"/>'
+        '<rect x="24" y="11" width="270" height="5" rx="2" fill="#000000" '
+        'opacity="0.5"/>'
+        '</svg>\n')
 
 
 def render_readout_bezel_svg(w):
