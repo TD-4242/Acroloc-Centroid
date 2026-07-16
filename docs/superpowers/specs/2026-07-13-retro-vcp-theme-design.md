@@ -38,8 +38,8 @@ This retro skin becomes the **default** (selected in `options.xml`).
 | Rows | Content |
 |------|---------|
 | 1 | ACROLOC nameplate `<image>`, cols 1-6 |
-| 2 | SPIN % readout (`plc_word` 76 = `SpinOverride_W`, same 7-seg face as feedrate), cols 1-2; `+` (2,4) / SPIN 100% (2,5) / `-` (2,6) |
-| 3-4 | SPIN MODE knob (2x2, cols 1-2). Row 3: CW (3,3) / CCW (3,4) / SPIN START (3,5) / SPIN STOP (3,6) |
+| 2 | Spindle readout `[ XXX% XXXXRPM ]` (`plc_word` 76 = `SpinOverride_W`, 77 = `SpinRPM_W`; same bezel/span as the feedrate display), cols 4-6 |
+| 3-4 | SPIN MODE knob (2x2, cols 1-2). Row 3: `+` (3,4) / SPIN 100% (3,5) / `-` (3,6). Row 4: CW (4,3) / CCW (4,4) / SPIN START (4,5) / SPIN STOP (4,6) |
 | 5-6 | CLNT MODE knob (2x2, cols 1-2); FLOOD M8 (5,3) and PUMP (5,4), each 2 rows tall (button art centered) |
 | 7-8 | JOG MODE knob (2x2, cols 1-2) |
 | 7-10 | Jog block: +Y (7,4), +Z (7,6), -X (8,3), hare/tortoise (8,4), +X (8,5), MPG (9,1), -Y (9,4), -Z (9,6), X1 (10,1), X10 (10,2), X100 (10,3) |

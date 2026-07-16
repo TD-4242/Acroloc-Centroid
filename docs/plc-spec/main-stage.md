@@ -326,10 +326,14 @@ with the gear ratio (`SpinRangeAdjust_FW`) factored in at src:2381; they are
 not repeated rung-by-rung here since none of it is part of the gear *decision* itself, only
 its downstream consumer.
 
-One Acroloc rung sits inside that stock-shaped block (src:2297, tagged `; Acroloc`):
-`IF True_M THEN SpinOverride_W = SV_PLC_SPINDLE_KNOB` mirrors the spindle override
-percentage into `SpinOverride_W` (W76) every scan so the retro VCP's seven-segment SPIN %
-readout (`plc_word` 76) can display it. Display-only; nothing reads the word back.
+Two Acroloc mirror rungs sit inside that stock-shaped block (tagged `; Acroloc`), feeding
+the retro VCP's seven-segment spindle readout. Display-only; nothing reads the words back:
+
+- (src:2297): `IF True_M THEN SpinOverride_W = SV_PLC_SPINDLE_KNOB` — the spindle override
+  percentage into `SpinOverride_W` (W76, VCP `plc_word` 76).
+- (src:2319, after the min/max clamp rungs so it captures the final value):
+  `IF True_M THEN SpinRPM_W = SpinSpeedCommand_FW` — the final commanded RPM into
+  `SpinRPM_W` (W77, VCP `plc_word` 77); reads 0 whenever the spindle is disabled.
 
 ### Coolant (mist/flood) — mfunc7/mfunc8 linkage (src:2086-2127)
 

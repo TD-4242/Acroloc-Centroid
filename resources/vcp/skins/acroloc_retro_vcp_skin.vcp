@@ -64,15 +64,15 @@
 		</text>
 	</border>
 	<image>
-		<column_span>2</column_span>
-		<column_start>1</column_start>
+		<column_span>3</column_span>
+		<column_start>4</column_start>
 		<row_span>1</row_span>
 		<row_start>2</row_start>
-		<path>resources\vcp\images\spin_bezel.svg</path>
+		<path>resources\vcp\images\feedrate_bezel.svg</path>
 	</image>
 	<border>
-		<column_span>2</column_span>
-		<column_start>1</column_start>
+		<column_span>3</column_span>
+		<column_start>4</column_start>
 		<fill>Transparent</fill>
 		<row_span>1</row_span>
 		<row_start>2</row_start>
@@ -81,30 +81,42 @@
 		<plc_word>
 			<number>76</number>
 			<color>#ff3333</color>
-			<fontsize>24</fontsize>
+			<fontsize>18</fontsize>
 			<font>DSEG7 Classic</font>
 			<fontstyle>bold</fontstyle>
 			<verticalalignment>center</verticalalignment>
-			<horizontalalignment>center</horizontalalignment>
+			<horizontalalignment>right</horizontalalignment>
+			<marginright>166</marginright>
 		</plc_word>
-	</border>
-	<border>
-		<column_span>2</column_span>
-		<column_start>1</column_start>
-		<fill>Transparent</fill>
-		<row_span>1</row_span>
-		<row_start>2</row_start>
-		<outline_color>Transparent</outline_color>
-		<outline_thickness>1</outline_thickness>
 		<text>
 			<content>%</content>
-			<fontsize>16</fontsize>
+			<fontsize>13</fontsize>
 			<color>#ff3333</color>
 			<font>Arial</font>
 			<fontstyle>bold</fontstyle>
 			<horizontalalignment>right</horizontalalignment>
 			<verticalalignment>center</verticalalignment>
-			<marginright>15</marginright>
+			<marginright>152</marginright>
+		</text>
+		<plc_word>
+			<number>77</number>
+			<color>#ff3333</color>
+			<fontsize>18</fontsize>
+			<font>DSEG7 Classic</font>
+			<fontstyle>bold</fontstyle>
+			<verticalalignment>center</verticalalignment>
+			<horizontalalignment>right</horizontalalignment>
+			<marginright>98</marginright>
+		</plc_word>
+		<text>
+			<content>RPM</content>
+			<fontsize>12</fontsize>
+			<color>#ff3333</color>
+			<font>Arial</font>
+			<fontstyle>bold</fontstyle>
+			<horizontalalignment>right</horizontalalignment>
+			<verticalalignment>center</verticalalignment>
+			<marginright>68</marginright>
 		</text>
 	</border>
 	<image>
@@ -122,14 +134,14 @@
 		<opacity>100</opacity>
 		<outline_color>#ffffff</outline_color>
 	</on_hover>
-	<button row="2" column="4">retro_spindle_plus</button>
-	<button row="2" column="5">retro_spindle_100</button>
-	<button row="2" column="6">retro_spindle_minus</button>
 	<button row="3" column="1" column_span="2" row_span="2">retro_spindle_auto_man</button>
-	<button row="3" column="3">retro_spindle_cw</button>
-	<button row="3" column="4">retro_spindle_ccw</button>
-	<button row="3" column="5">retro_spindle_start</button>
-	<button row="3" column="6">retro_spindle_cancel</button>
+	<button row="3" column="4">retro_spindle_plus</button>
+	<button row="3" column="5">retro_spindle_100</button>
+	<button row="3" column="6">retro_spindle_minus</button>
+	<button row="4" column="3">retro_spindle_cw</button>
+	<button row="4" column="4">retro_spindle_ccw</button>
+	<button row="4" column="5">retro_spindle_start</button>
+	<button row="4" column="6">retro_spindle_cancel</button>
 	<button row="5" column="1" column_span="2" row_span="2">retro_coolant_auto_man</button>
 	<button row="5" column="3" column_span="1" row_span="2">retro_flood_coolant</button>
 	<button row="5" column="4" column_span="1" row_span="2">retro_coolant_pump</button>

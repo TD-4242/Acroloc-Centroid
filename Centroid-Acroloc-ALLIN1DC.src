@@ -1112,6 +1112,7 @@ CarouselToolID_W                IS W71 ; Acroloc
 ChangeToTool_W                  IS W72 ; Acroloc
 InstToolID_W                    IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CarouselToolID_W
 SpinOverride_W                  IS W76 ; Acroloc spindle override % (mirror of SV_PLC_SPINDLE_KNOB) for the VCP readout
+SpinRPM_W                       IS W77 ; Acroloc commanded spindle RPM (final clamped SpinSpeedCommand_FW) for the VCP readout
 
 PValue_W                        IS W92
 
@@ -2312,6 +2313,10 @@ IF (SpinSpeedCommand_FW > 0.0) &&
 ;-------------------------------------------------------------------------------
 IF SpinSpeedCommand_FW > (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
    THEN SpinSpeedCommand_FW = (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
+
+; Acroloc: mirror the final clamped commanded RPM into a word so the VCP's
+; seven-segment spindle readout (plc_word 77) can display it.
+IF True_M THEN SpinRPM_W = SpinSpeedCommand_FW
 
 ;-------------------------------------------------------------------------------
 ; Convert Spindle "S" command to 12 bit value for output to DAC

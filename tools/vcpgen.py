@@ -465,20 +465,20 @@ def render_knob_svg(on, title, labels):
 # ------------------------------------------------------- buttons table ----
 # text_y values are in content coordinates (mockup center-58 system).
 BUTTONS = [
-    dict(name='spindle_plus', row=2, col=4, lines=['+'], fs=20, icon='up',
+    dict(name='spindle_plus', row=3, col=4, lines=['+'], fs=20, icon='up',
          text_y=[79]),
-    dict(name='spindle_100', row=2, col=5, lines=['SPIN', '100%']),
-    dict(name='spindle_minus', row=2, col=6, lines=['-'], fs=20, icon='down',
+    dict(name='spindle_100', row=3, col=5, lines=['SPIN', '100%']),
+    dict(name='spindle_minus', row=3, col=6, lines=['-'], fs=20, icon='down',
          text_y=[52]),
     dict(name='spindle_auto_man', row=3, col=1, row_span=2, col_span=2,
          special='knob', knob_title='SPIN MODE',
          knob_labels=('MAN', 'AUTO')),
-    dict(name='spindle_cw', row=3, col=3, lines=['CW'], fs=14, icon='cw',
+    dict(name='spindle_cw', row=4, col=3, lines=['CW'], fs=14, icon='cw',
          text_x=78),
-    dict(name='spindle_ccw', row=3, col=4, lines=['CCW'], fs=13, icon='ccw',
+    dict(name='spindle_ccw', row=4, col=4, lines=['CCW'], fs=13, icon='ccw',
          text_x=80),
-    dict(name='spindle_start', row=3, col=5, lines=['SPIN', 'START']),
-    dict(name='spindle_cancel', row=3, col=6, lines=['SPIN', 'STOP']),
+    dict(name='spindle_start', row=4, col=5, lines=['SPIN', 'START']),
+    dict(name='spindle_cancel', row=4, col=6, lines=['SPIN', 'STOP']),
     dict(name='coolant_auto_man', row=5, col=1, row_span=2, col_span=2,
          special='knob', knob_title='CLNT MODE',
          knob_labels=('MAN', 'AUTO')),
@@ -628,35 +628,47 @@ def _border(col, colspan, row, rowspan, label=None, fill='Transparent',
 # installed on the control PC; Windows falls back to the default font if
 # not). The % sign is a separate normal-font label - 7-seg fonts have no
 # percent glyph.
-def _readout_word(number):
+def _seg_word(number, fs=24, marginright=None):
+    # marginright None = centered; else right-aligned marginright units in
+    # from the border's right edge (same scheme the feedrate % label uses)
+    halign = ('\t\t\t<horizontalalignment>center</horizontalalignment>\n'
+              if marginright is None else
+              '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
+              '\t\t\t<marginright>%d</marginright>\n' % marginright)
     return ('\n\t\t<plc_word>\n'
             '\t\t\t<number>%d</number>\n'
             '\t\t\t<color>#ff3333</color>\n'
-            '\t\t\t<fontsize>24</fontsize>\n'
+            '\t\t\t<fontsize>%d</fontsize>\n'
             '\t\t\t<font>DSEG7 Classic</font>\n'
             '\t\t\t<fontstyle>bold</fontstyle>\n'
             '\t\t\t<verticalalignment>center</verticalalignment>\n'
-            '\t\t\t<horizontalalignment>center</horizontalalignment>\n'
-            '\t\t</plc_word>' % number)
+            '%s'
+            '\t\t</plc_word>' % (number, fs, halign))
 
 
-def _readout_pct(marginright):
+def _seg_label(content, fs, marginright):
     return ('\n\t\t<text>\n'
-            '\t\t\t<content>%%</content>\n'
-            '\t\t\t<fontsize>16</fontsize>\n'
+            '\t\t\t<content>%s</content>\n'
+            '\t\t\t<fontsize>%d</fontsize>\n'
             '\t\t\t<color>#ff3333</color>\n'
             '\t\t\t<font>Arial</font>\n'
             '\t\t\t<fontstyle>bold</fontstyle>\n'
             '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
             '\t\t\t<verticalalignment>center</verticalalignment>\n'
             '\t\t\t<marginright>%d</marginright>\n'
-            '\t\t</text>' % marginright)
+            '\t\t</text>' % (content, fs, marginright))
 
 
-FEEDRATE_WORD = _readout_word(4)    # FinalFeedOverride_W
-FEEDRATE_PCT = _readout_pct(68)
-SPIN_WORD = _readout_word(76)       # SpinOverride_W (Acroloc)
-SPIN_PCT = _readout_pct(15)
+FEEDRATE_WORD = _seg_word(4)               # FinalFeedOverride_W, centered
+FEEDRATE_PCT = _seg_label('%', 16, 68)
+# spindle readout: [ XXX% XXXXRPM ] in one window, same 3-cell bezel as the
+# feedrate display; every element is right-aligned so the group keeps its
+# internal spacing (margins are right-edge offsets, per the feedrate %)
+SPIN_ELEMENTS = (
+    _seg_word(76, 18, 166)                 # SpinOverride_W  -> "XXX"
+    + _seg_label('%', 13, 152)             # "%" hugging the override digits
+    + _seg_word(77, 18, 98)                # SpinRPM_W       -> "XXXX"
+    + _seg_label('RPM', 12, 68))
 
 
 def render_readout_bezel_svg(w):
@@ -690,16 +702,16 @@ def render_skin():
                      extra=FEEDRATE_WORD))
     p.append(_border(4, 3, 11, 1, outline='Transparent',
                      extra=FEEDRATE_PCT))
-    # spindle override readout above the SPIN MODE knob (same 7-seg face)
+    # spindle override % + commanded RPM readout, right-aligned on row 2
+    # (same bezel image and span as the feedrate display)
     p.append('\t<image>\n'
-             '\t\t<column_span>2</column_span>\n'
-             '\t\t<column_start>1</column_start>\n'
+             '\t\t<column_span>3</column_span>\n'
+             '\t\t<column_start>4</column_start>\n'
              '\t\t<row_span>1</row_span>\n'
              '\t\t<row_start>2</row_start>\n'
-             '\t\t<path>resources\\vcp\\images\\spin_bezel.svg</path>\n'
+             '\t\t<path>resources\\vcp\\images\\feedrate_bezel.svg</path>\n'
              '\t</image>\n')
-    p.append(_border(1, 2, 2, 1, outline='Transparent', extra=SPIN_WORD))
-    p.append(_border(1, 2, 2, 1, outline='Transparent', extra=SPIN_PCT))
+    p.append(_border(4, 3, 2, 1, outline='Transparent', extra=SPIN_ELEMENTS))
     p.append('\t<image>\n'
              '\t\t<column_span>6</column_span>\n'
              '\t\t<column_start>1</column_start>\n'
@@ -730,8 +742,6 @@ def generate(out_dir):
            render_nameplate_svg())
     _write(os.path.join(img_dir, 'feedrate_bezel.svg'),
            render_readout_bezel_svg(318))
-    _write(os.path.join(img_dir, 'spin_bezel.svg'),
-           render_readout_bezel_svg(212))
     skin_dir = os.path.join(out_dir, 'resources', 'vcp', 'skins')
     os.makedirs(skin_dir, exist_ok=True)
     _write(os.path.join(skin_dir, 'acroloc_retro_vcp_skin.vcp'),
