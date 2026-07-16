@@ -667,10 +667,10 @@ FEEDRATE_PCT = _seg_label('%', 16, 68)
 # One element per <border>: the VCP renders a single plc_word/text per
 # border (stacking them in one border dropped the RPM half on-machine).
 SPIN_ELEMENTS = (
-    _seg_word(76, 18, 144),                # SpinOverride_W  -> "XXX"
-    _seg_label('%', 13, 130),              # "%" hugging the override digits
-    _seg_word(77, 18, 76),                 # SpinRPM_W       -> "XXXX"
-    _seg_label('RPM', 12, 46))
+    _seg_word(76, 18, 154),                # SpinOverride_W  -> "XXX"
+    _seg_label('%', 13, 140),              # "%" hugging the override digits
+    _seg_word(77, 18, 62),                 # SpinRPM_W       -> "XXXX"
+    _seg_label('RPM', 12, 32))
 
 
 def render_readout_bezel_svg(w):
