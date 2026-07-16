@@ -101,8 +101,8 @@
 		<plc_word>
 			<number>77</number>
 			<color>#ff3333</color>
-			<fontsize>18</fontsize>
-			<font>DSEG7 Classic</font>
+			<fontsize>13</fontsize>
+			<font>Arial</font>
 			<fontstyle>bold</fontstyle>
 			<verticalalignment>center</verticalalignment>
 			<horizontalalignment>right</horizontalalignment>

@@ -628,7 +628,7 @@ def _border(col, colspan, row, rowspan, label=None, fill='Transparent',
 # installed on the control PC; Windows falls back to the default font if
 # not). The % sign is a separate normal-font label - 7-seg fonts have no
 # percent glyph.
-def _seg_word(number, fs=24, marginright=None):
+def _seg_word(number, fs=24, marginright=None, font='DSEG7 Classic'):
     # marginright None = centered; else right-aligned marginright units in
     # from the border's right edge (same scheme the feedrate % label uses)
     halign = ('\t\t\t<horizontalalignment>center</horizontalalignment>\n'
@@ -639,11 +639,11 @@ def _seg_word(number, fs=24, marginright=None):
             '\t\t\t<number>%d</number>\n'
             '\t\t\t<color>#ff3333</color>\n'
             '\t\t\t<fontsize>%d</fontsize>\n'
-            '\t\t\t<font>DSEG7 Classic</font>\n'
+            '\t\t\t<font>%s</font>\n'
             '\t\t\t<fontstyle>bold</fontstyle>\n'
             '\t\t\t<verticalalignment>center</verticalalignment>\n'
             '%s'
-            '\t\t</plc_word>' % (number, fs, halign))
+            '\t\t</plc_word>' % (number, fs, font, halign))
 
 
 def _seg_label(content, fs, marginright):
@@ -667,7 +667,7 @@ FEEDRATE_PCT = _seg_label('%', 16, 68)
 SPIN_ELEMENTS = (
     _seg_word(76, 18, 166)                 # SpinOverride_W  -> "XXX"
     + _seg_label('%', 13, 152)             # "%" hugging the override digits
-    + _seg_word(77, 18, 98)                # SpinRPM_W       -> "XXXX"
+    + _seg_word(77, 13, 98, font='Arial')  # SpinRPM_W: plain Arial like "%"
     + _seg_label('RPM', 12, 68))
 
 
