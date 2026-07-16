@@ -40,9 +40,11 @@ This retro skin becomes the **default** (selected in `options.xml`).
 | 1 | ACROLOC nameplate `<image>`, cols 1-6 |
 | 2-3 | SPIN MODE knob (2x2, cols 1-2). Row 2: `+` (2,4) / SPIN 100% (2,5) / `-` (2,6). Row 3: CW (3,3) / CCW (3,4) / SPIN START (3,5) / SPIN STOP (3,6) |
 | 4-5 | CLNT MODE knob (2x2, cols 1-2); FLOOD M8 (4,3) and PUMP (4,4), each 2 rows tall (button art centered) |
-| 6-7 | JOG MODE knob (2x2, cols 1-2) |
-| 7-9 | Jog block (4 rows total incl. the knob): +Y (7,4), +Z (7,6), X1 (8,1), X100 (8,2), -X (8,3), hare/tortoise (8,4), +X (8,5), X10 (9,1), MPG (9,2), -Y (9,4), -Z (9,6) |
-| 10 | SINGLE BLOCK (10,3) / TOOL CHECK (10,4) / FEED HOLD (10,5) |
+| 6 | (open) |
+| 7-8 | JOG MODE knob (2x2, cols 1-2) |
+| 7-10 | Jog block: +Y (7,4), +Z (7,6), -X (8,3), hare/tortoise (8,4), +X (8,5), MPG (9,1), -Y (9,4), -Z (9,6), X1 (10,1), X10 (10,2), X100 (10,3) |
+| 9 | SINGLE BLOCK (9,2) |
+| 10 | TOOL CHECK (10,4) / FEED HOLD (10,5) |
 | 11 | CYCLE START (11,1) / CYCLE CANCEL (11,2); feedrate readout (`plc_word` 4, DSEG7 7-seg red + separate `%` text over a bezel image), cols 4-6 |
 | 12-14 | Round RESET, cols 1-3 (3x3 `<button ... column_span/row_span>`) |
 | 12 | FEED `-` / FEED 100% / FEED `+` (cols 4-6) |
