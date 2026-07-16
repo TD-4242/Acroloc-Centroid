@@ -339,13 +339,20 @@ the retro VCP's seven-segment spindle readout. Display-only; nothing reads the w
 
 - (src:2089-2099): `CoolantAutoManualPD_PD` toggles `CoolAutoModeLED_O` (forced on at
   power-up, src:2091), which is mirrored to CNC12 via `SelectCoolAutoMan_SV`.
-- Coolant **mode selection**: the two coolant rungs are coils that toggle the *mode LEDs*
-  `CoolFloodLED_O` / `CoolMistLED_O` (each `LED XOR (!CoolAutoModeLED_O && CoolantXxxPD_PD)`
-  for a manual key press, OR `CoolAutoModeLED_O && M8_SV`/`M7_SV` for auto), ANDed against a
-  kill condition (`!(SV_STOP || CoolantAutoManualPD_PD || (CoolAutoModeLED_O && !M8_SV for flood / !M7_SV for wash) ||
-  ErrorFlag_M || DoToolCheck_SV)`) and report `SelectCoolantFlood_SV`/`SelectCoolantMist_SV`
-  to CNC12. They no longer drive the physical outputs directly, and the two panel buttons are
-  **independent** (not mutually exclusive) — both can be lit at once.
+- **Flood** selection keeps the stock coil shape: `CoolFloodLED_O` toggles on
+  `LED XOR (!CoolAutoModeLED_O && CoolantFloodPD_PD)` for a manual key press, OR
+  `CoolAutoModeLED_O && M8_SV` for auto, ANDed against a kill condition (`!(SV_STOP ||
+  CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M8_SV || ErrorFlag_M || DoToolCheck_SV)`),
+  and reports `SelectCoolantFlood_SV` to CNC12.
+- **Pump (mist channel)** was reworked (Acroloc, src:2045-2056): the PUMP button toggles a
+  dedicated manual-request latch `PumpManual_M` (MEM79) in **either** coolant mode (stock
+  only honored it in manual mode), and `CoolMistLED_O` runs on
+  `PumpManual_M || (CoolAutoModeLED_O && M7_SV)`. Consequences: `M9`/M7-off stops an
+  M7-started pump but never a manually requested one; switching coolant mode clears the
+  manual latch (stock rule, via `CoolantAutoManualPD_PD` in the latch's kill list); the LED
+  rung's own kill list is `SV_STOP || ErrorFlag_M || DoToolCheck_SV`.
+- The two panel buttons are **independent** (not mutually exclusive) — both can be lit at
+  once.
 - Coolant **outputs are derived** from the mode LEDs to match this machine's plumbing
   (OUT4 = coolant pump, OUT3 = flood valve): `IF CoolFloodLED_O THEN (FloodValve_O)` and
   `IF CoolFloodLED_O || CoolMistLED_O THEN (CoolantPump_O)` — the **mist button is the coolant

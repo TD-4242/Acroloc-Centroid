@@ -178,6 +178,7 @@ writes the same formula with reversed field names, `msgNumber + 256*msgFile`, wh
 | `SpindleFault_M` | MEM56 | 505 | | 0 = okay, 1 = spindle drive fault. [faults-and-messages.md](faults-and-messages.md) |
 | `OtherFault_M` | MEM57 | 506 | | Other fault catch-all. [faults-and-messages.md](faults-and-messages.md) |
 | `ProbeMsgSent_M` | MEM78 | 517 | | Probe message sent latch. [faults-and-messages.md](faults-and-messages.md) |
+| `PumpManual_M` | MEM79 | 538 | Acroloc | Manual coolant-pump request, toggled by the PUMP button in either coolant mode; ORed with auto-M7 to drive `CoolMistLED_O`. [main-stage.md](main-stage.md) |
 | `True_M` | MEM81 | 518 | | Always-true bit. [scan-model.md](scan-model.md) |
 | `SpinRangeReversed_M` | MEM82 | 519 | | Set when `SpinRangeAdjust_FW` is negative (reversed range ratio). [main-stage.md](main-stage.md) |
 | `SpindleDirection_M` | MEM83 | 520 | | Commanded spindle direction. [main-stage.md](main-stage.md) |

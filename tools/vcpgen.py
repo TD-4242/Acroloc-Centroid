@@ -482,10 +482,10 @@ BUTTONS = [
     dict(name='coolant_auto_man', row=5, col=1, row_span=2, col_span=2,
          special='knob', knob_title='CLNT MODE',
          knob_labels=('MAN', 'AUTO')),
-    dict(name='flood_coolant', row=5, col=3, row_span=2, rows=2,
+    dict(name='flood_coolant', row=5, col=3,
          lines=['FLOOD', 'M8'], fs=13, icon='flood',
          text_y=[48, 74], text_x=[None, 42]),
-    dict(name='coolant_pump', row=5, col=4, row_span=2, rows=2,
+    dict(name='coolant_pump', row=6, col=3, led=4,
          lines=['PUMP'], fs=13, icon='pump', text_y=[48]),
     dict(name='incr_cont', row=7, col=1, row_span=2, col_span=2,
          special='knob', knob_title='JOG MODE',
@@ -575,6 +575,12 @@ def emit_buttons(out_dir):
                    render_knob_svg(True, title, labels))
             continue
         xml = stock_xml(name)
+        if b.get('led'):
+            # watch a different PLC bit than the stock button (e.g. PUMP
+            # watches the real pump output OUT4, not the mist LED, so it
+            # lights whenever the pump runs for any reason)
+            xml = re.sub(r'<number>\d+</number>',
+                         '<number>%d</number>' % b['led'], xml, count=1)
         _write(os.path.join(d, rn + '.xml'), _retro_xml(name, xml))
         if b.get('special') == 'reset':
             _write(os.path.join(d, 'retro_reset.svg'),

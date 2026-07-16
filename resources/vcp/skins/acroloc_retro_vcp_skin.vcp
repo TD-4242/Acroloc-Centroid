@@ -170,8 +170,8 @@
 	<button row="4" column="5">retro_spindle_start</button>
 	<button row="4" column="6">retro_spindle_cancel</button>
 	<button row="5" column="1" column_span="2" row_span="2">retro_coolant_auto_man</button>
-	<button row="5" column="3" column_span="1" row_span="2">retro_flood_coolant</button>
-	<button row="5" column="4" column_span="1" row_span="2">retro_coolant_pump</button>
+	<button row="5" column="3">retro_flood_coolant</button>
+	<button row="6" column="3">retro_coolant_pump</button>
 	<button row="7" column="1" column_span="2" row_span="2">retro_incr_cont</button>
 	<button row="7" column="4">retro_y_positive</button>
 	<button row="7" column="6">retro_z_positive</button>

@@ -535,6 +535,7 @@ OtherFault_M                    IS MEM57
 ; Axis8FiberOk_M                IS MEM77
 
 ProbeMsgSent_M                  IS MEM78
+PumpManual_M                    IS MEM79 ; Acroloc manual coolant-pump request latched by the PUMP button (toggles in any mode)
 True_M                          IS MEM81
 SpinRangeReversed_M             IS MEM82
 SpindleDirection_M              IS MEM83
@@ -2041,11 +2042,17 @@ IF ((CoolFloodLED_O ^ (!CoolAutoModeLED_O && CoolantFloodPD_PD)) ||
    !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M8_SV || ErrorFlag_M || DoToolCheck_SV)
    THEN (CoolFloodLED_O), (SelectCoolantFlood_SV)
 
-;--Mist coolant on/off
+;--Mist coolant (pump channel) on/off
+; Acroloc: the PUMP button toggles a manual request in EITHER mode (stock only
+; honored it in manual mode). The pump channel runs on the manual latch OR
+; (auto && M7): M9/M7-off stops an M7-started pump but never a manually
+; requested one; switching coolant mode clears the manual latch (stock rule).
 IF (CoolMistKey_I || KbMistOnOff_M || SkinCoolMist_M_SV) THEN (CoolantMistPD_PD)
-IF ((CoolMistLED_O ^ (!CoolAutoModeLED_O && CoolantMistPD_PD)) ||
-   CoolAutoModeLED_O && M7_SV) &&
-   !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M7_SV || ErrorFlag_M || DoToolCheck_SV)
+IF (PumpManual_M ^ CoolantMistPD_PD) &&
+   !(SV_STOP || CoolantAutoManualPD_PD || ErrorFlag_M || DoToolCheck_SV)
+   THEN (PumpManual_M)
+IF (PumpManual_M || CoolAutoModeLED_O && M7_SV) &&
+   !(SV_STOP || ErrorFlag_M || DoToolCheck_SV)
    THEN (CoolMistLED_O), (SelectCoolantMist_SV)
 
 

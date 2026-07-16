@@ -1,7 +1,7 @@
 <vcp_button>
 	<skin_event_num>23</skin_event_num>
 	<plc_output>
-		<number>1079</number>
+		<number>4</number>
 		<image_on>retro_coolant_pump_on.svg</image_on>
 		<image_off>retro_coolant_pump.svg</image_off>
 	</plc_output>
