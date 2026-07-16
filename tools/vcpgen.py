@@ -679,6 +679,60 @@ SPIN_ELEMENTS = (
     _seg_label('RPM', 12, 18))
 
 
+# machine-coordinate readout: X/Y/Z stacked in a 3x2-cell bezel. plc_word
+# type Float reads the FW register of the same number (FW11/12/13 = machine
+# inches, fed by the PLC's HomeSync latch). One element per border.
+def _dro_word(number, valign, vmargin=0):
+    vm = ('\t\t\t<margin%s>%d</margin%s>\n' % (valign, vmargin, valign)
+          if vmargin else '')
+    return ('\n\t\t<plc_word>\n'
+            '\t\t\t<number>%d</number>\n'
+            '\t\t\t<type>Float</type>\n'
+            '\t\t\t<significant>4</significant>\n'
+            '\t\t\t<color>#ff3333</color>\n'
+            '\t\t\t<fontsize>18</fontsize>\n'
+            '\t\t\t<font>DSEG7 Classic</font>\n'
+            '\t\t\t<fontstyle>bold</fontstyle>\n'
+            '\t\t\t<verticalalignment>%s</verticalalignment>\n'
+            '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
+            '\t\t\t<marginright>40</marginright>\n%s'
+            '\t\t</plc_word>' % (number, valign, vm))
+
+
+def _dro_label(content, valign, vmargin=0):
+    vm = ('\t\t\t<margin%s>%d</margin%s>\n' % (valign, vmargin, valign)
+          if vmargin else '')
+    return ('\n\t\t<text>\n'
+            '\t\t\t<content>%s</content>\n'
+            '\t\t\t<fontsize>14</fontsize>\n'
+            '\t\t\t<color>#ff3333</color>\n'
+            '\t\t\t<font>Arial</font>\n'
+            '\t\t\t<fontstyle>bold</fontstyle>\n'
+            '\t\t\t<horizontalalignment>left</horizontalalignment>\n'
+            '\t\t\t<marginleft>30</marginleft>\n'
+            '\t\t\t<verticalalignment>%s</verticalalignment>\n%s'
+            '\t\t</text>' % (content, valign, vm))
+
+
+DRO_ELEMENTS = (
+    _dro_word(11, 'top', 14), _dro_label('X', 'top', 16),
+    _dro_word(12, 'center'), _dro_label('Y', 'center'),
+    _dro_word(13, 'bottom', 14), _dro_label('Z', 'bottom', 16))
+
+
+def render_dro_bezel_svg():
+    # three wide LED windows stacked in a 3-col x 2-row area
+    p = ['<svg xmlns="http://www.w3.org/2000/svg" width="318" height="168" '
+         'viewBox="0 0 318 168">']
+    for y in (13, 70, 127):
+        p.append('<rect x="20" y="%d" width="278" height="28" rx="5" '
+                 'fill="#1a0000" stroke="#3a3630" stroke-width="2"/>' % y)
+        p.append('<rect x="24" y="%d" width="270" height="5" rx="2" '
+                 'fill="#000000" opacity="0.5"/>' % (y + 3))
+    p.append('</svg>')
+    return ''.join(p) + '\n'
+
+
 def render_readout_bezel_svg(w):
     # LED window smaller than the cell span: transparent artboard with a
     # centered dark bezel; one cell renders ~106 units wide, 84 tall
@@ -721,6 +775,16 @@ def render_skin():
              '\t</image>\n')
     for el in SPIN_ELEMENTS:
         p.append(_border(4, 3, 2, 1, outline='Transparent', extra=el))
+    # X/Y/Z machine-coordinate readout right of FLOOD/PUMP (rows 5-6)
+    p.append('\t<image>\n'
+             '\t\t<column_span>3</column_span>\n'
+             '\t\t<column_start>4</column_start>\n'
+             '\t\t<row_span>2</row_span>\n'
+             '\t\t<row_start>5</row_start>\n'
+             '\t\t<path>resources\\vcp\\images\\dro_bezel.svg</path>\n'
+             '\t</image>\n')
+    for el in DRO_ELEMENTS:
+        p.append(_border(4, 3, 5, 2, outline='Transparent', extra=el))
     p.append('\t<image>\n'
              '\t\t<column_span>6</column_span>\n'
              '\t\t<column_start>1</column_start>\n'
@@ -751,6 +815,8 @@ def generate(out_dir):
            render_nameplate_svg())
     _write(os.path.join(img_dir, 'feedrate_bezel.svg'),
            render_readout_bezel_svg(318))
+    _write(os.path.join(img_dir, 'dro_bezel.svg'),
+           render_dro_bezel_svg())
     skin_dir = os.path.join(out_dir, 'resources', 'vcp', 'skins')
     os.makedirs(skin_dir, exist_ok=True)
     _write(os.path.join(skin_dir, 'acroloc_retro_vcp_skin.vcp'),

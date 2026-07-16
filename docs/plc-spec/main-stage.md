@@ -335,6 +335,17 @@ the retro VCP's seven-segment spindle readout. Display-only; nothing reads the w
   `IF True_M THEN SpinRPM_W = SpinSpeedCommand_FW` — the final commanded RPM into
   `SpinRPM_W` (W77, VCP `plc_word` 77); reads 0 whenever the spindle is disabled.
 
+### Machine-coordinate readout (Acroloc, src:2338-2360)
+
+Feeds the retro VCP's X/Y/Z seven-segment readout (`plc_word` 11/12/13, type Float =
+FW11-13). `cncm.hom` pulses `HomeSync_SV` (`M94 /6` .. `M95 /6`) right after its last `M26`,
+when every axis sits exactly at machine zero; the rungs latch the encoder counts there
+(`HomeAbsX/Y/Z_FW`) and set `MachHomed_M`. Every scan, `SV_MPU11_ABS_POS_0/1/2` (zero-indexed:
+X/Y/Z) are mirrored into `AbsX/Y/Z_FW` and converted to machine inches relative to the latch,
+scaled by the CNC12 axis config (8000 counts/turn x 5 turns/inch = 40000 counts/inch; X
+positive, Y and Z reversed, hence the swapped subtraction order). Displays 0.0 until homed;
+re-homing re-latches. Display-only — nothing reads the FWs back.
+
 ### Coolant (mist/flood) — mfunc7/mfunc8 linkage (src:2086-2127)
 
 - (src:2089-2099): `CoolantAutoManualPD_PD` toggles `CoolAutoModeLED_O` (forced on at

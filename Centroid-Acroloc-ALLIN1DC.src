@@ -536,6 +536,7 @@ OtherFault_M                    IS MEM57
 
 ProbeMsgSent_M                  IS MEM78
 PumpManual_M                    IS MEM79 ; Acroloc manual coolant-pump request latched by the PUMP button (toggles in any mode)
+MachHomed_M                     IS MEM80 ; Acroloc set once cncm.hom pulses HomeSync_SV; enables the VCP machine-coordinate readout
 True_M                          IS MEM81
 SpinRangeReversed_M             IS MEM82
 SpindleDirection_M              IS MEM83
@@ -1060,7 +1061,7 @@ M6_SV                           IS SV_M94_M95_8 ; Acroloc Tool change request
 M8_SV                           IS SV_M94_M95_3 ; (Flood mode: coolant pump + flood valve)
 M10_SV                          IS SV_M94_M95_4 ; Clamp
 M7_SV                           IS SV_M94_M95_5 ; (Mist/wash mode: coolant pump only)
-;                                IS SV_M94_M95_6 ;
+HomeSync_SV                     IS SV_M94_M95_6 ; Acroloc pulsed by cncm.hom (M94/6 .. M95/6) at machine zero to latch home encoder counts
 ;                                IS SV_M94_M95_7 ;
 
 ;------------------------------------------------------------------------------
@@ -1127,6 +1128,15 @@ CfgMaxSpeed_FW                  IS FW4
 TwelveBitSpeed_FW               IS FW5
 SpinSpeedCommand_FW             IS FW6
 GearBaseSpeed_FW                IS FW7 ; Acroloc un-overridden commanded S (override knob backed out)
+AbsX_FW                         IS FW8  ; Acroloc X encoder absolute counts (SV_MPU11_ABS_POS mirror)
+AbsY_FW                         IS FW9  ; Acroloc Y encoder absolute counts
+AbsZ_FW                         IS FW10 ; Acroloc Z encoder absolute counts
+MachX_FW                        IS FW11 ; Acroloc X machine coordinate (inches) for the VCP readout (plc_word 11, Float)
+MachY_FW                        IS FW12 ; Acroloc Y machine coordinate (inches) for the VCP readout (plc_word 12, Float)
+MachZ_FW                        IS FW13 ; Acroloc Z machine coordinate (inches) for the VCP readout (plc_word 13, Float)
+HomeAbsX_FW                     IS FW14 ; Acroloc X abs counts latched at machine zero by HomeSync_SV
+HomeAbsY_FW                     IS FW15 ; Acroloc Y abs counts latched at machine zero by HomeSync_SV
+HomeAbsZ_FW                     IS FW16 ; Acroloc Z abs counts latched at machine zero by HomeSync_SV
 
 ;------------------------------------------------------------------------------
 ;            One Shot Definitions
@@ -2324,6 +2334,28 @@ IF SpinSpeedCommand_FW > (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
 ; Acroloc: mirror the final clamped commanded RPM into a word so the VCP's
 ; seven-segment spindle readout (plc_word 77) can display it.
 IF True_M THEN SpinRPM_W = SpinSpeedCommand_FW
+
+;-------------------------------------------------------------------------------
+; Acroloc: VCP machine-coordinate readout (plc_word 11/12/13, type Float)
+; cncm.hom pulses HomeSync_SV (M94/6 .. M95/6) right after its last M26, when
+; every axis sits at machine zero; the encoder counts are latched there and
+; positions are counts relative to that, scaled by the CNC12 axis config:
+; 8000 counts/turn x 5 turns/inch = 40000 counts/inch, X +, Y/Z reversed (-).
+; Display-only; shows 0.0 until the machine is homed.
+;-------------------------------------------------------------------------------
+IF True_M THEN AbsX_FW = SV_MPU11_ABS_POS_0,
+               AbsY_FW = SV_MPU11_ABS_POS_1,
+               AbsZ_FW = SV_MPU11_ABS_POS_2
+IF HomeSync_SV THEN HomeAbsX_FW = AbsX_FW,
+                    HomeAbsY_FW = AbsY_FW,
+                    HomeAbsZ_FW = AbsZ_FW,
+                    SET MachHomed_M
+IF !MachHomed_M THEN MachX_FW = 0.0,
+                     MachY_FW = 0.0,
+                     MachZ_FW = 0.0
+IF MachHomed_M THEN MachX_FW = (AbsX_FW - HomeAbsX_FW) / 40000.0,
+                    MachY_FW = (HomeAbsY_FW - AbsY_FW) / 40000.0,
+                    MachZ_FW = (HomeAbsZ_FW - AbsZ_FW) / 40000.0
 
 ;-------------------------------------------------------------------------------
 ; Convert Spindle "S" command to 12 bit value for output to DAC

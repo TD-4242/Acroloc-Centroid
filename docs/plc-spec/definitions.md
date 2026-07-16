@@ -179,6 +179,7 @@ writes the same formula with reversed field names, `msgNumber + 256*msgFile`, wh
 | `OtherFault_M` | MEM57 | 506 | | Other fault catch-all. [faults-and-messages.md](faults-and-messages.md) |
 | `ProbeMsgSent_M` | MEM78 | 517 | | Probe message sent latch. [faults-and-messages.md](faults-and-messages.md) |
 | `PumpManual_M` | MEM79 | 538 | Acroloc | Manual coolant-pump request, toggled by the PUMP button in either coolant mode; ORed with auto-M7 to drive `CoolMistLED_O`. [main-stage.md](main-stage.md) |
+| `MachHomed_M` | MEM80 | 539 | Acroloc | Set when `cncm.hom` pulses `HomeSync_SV`; enables the VCP machine-coordinate readout. [main-stage.md](main-stage.md) |
 | `True_M` | MEM81 | 518 | | Always-true bit. [scan-model.md](scan-model.md) |
 | `SpinRangeReversed_M` | MEM82 | 519 | | Set when `SpinRangeAdjust_FW` is negative (reversed range ratio). [main-stage.md](main-stage.md) |
 | `SpindleDirection_M` | MEM83 | 520 | | Commanded spindle direction. [main-stage.md](main-stage.md) |
@@ -291,6 +292,9 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `TwelveBitSpeed_FW` | FW5 | 1105 | | 12-bit DAC speed value, float form. [main-stage.md](main-stage.md) |
 | `SpinSpeedCommand_FW` | FW6 | 1106 | | Commanded spindle speed, clamped to min/max. [main-stage.md](main-stage.md) |
 | `GearBaseSpeed_FW` | FW7 | 1107 | Acroloc | Un-overridden commanded S (override knob backed out); drives gear-shift crossover decision. [gear-shift.md](gear-shift.md) |
+| `AbsX_FW`/`AbsY_FW`/`AbsZ_FW` | FW8-10 | 1131-1133 | Acroloc | Per-scan mirrors of `SV_MPU11_ABS_POS_0/1/2` (X/Y/Z encoder absolute counts). [main-stage.md](main-stage.md) |
+| `MachX_FW`/`MachY_FW`/`MachZ_FW` | FW11-13 | 1134-1136 | Acroloc | Machine coordinates in inches for the VCP readout (`plc_word` 11/12/13, type Float); 0.0 until homed. [main-stage.md](main-stage.md) |
+| `HomeAbsX_FW`/`HomeAbsY_FW`/`HomeAbsZ_FW` | FW14-16 | 1137-1139 | Acroloc | Encoder counts latched at machine zero when `HomeSync_SV` pulses. [main-stage.md](main-stage.md) |
 
 ### One-shot bits (PD)
 
@@ -333,6 +337,7 @@ significance beyond "one-shot edge of the same-named key/event".
 | `M8_SV` | `SV_M94_M95_3` | 1037 | | Flood-on M-function trigger. [main-stage.md](main-stage.md) |
 | `M10_SV` | `SV_M94_M95_4` | 1038 | | Clamp M-function trigger. [main-stage.md](main-stage.md) |
 | `M7_SV` | `SV_M94_M95_5` | 1039 | | Mist M-function trigger. [main-stage.md](main-stage.md) |
+| `HomeSync_SV` | `SV_M94_M95_6` | 1064 | Acroloc | Pulsed by `cncm.hom` (`M94 /6` .. `M95 /6`) with every axis at machine zero; latches home encoder counts for the VCP machine-coordinate readout. [main-stage.md](main-stage.md) |
 
 `SV_M94_M95_6` and `SV_M94_M95_7` (src:1040-1041) are commented placeholders with no
 identifier bound — no name to cite.
