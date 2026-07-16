@@ -1111,6 +1111,7 @@ MiniPLCStatus_W                 IS W70
 CarouselToolID_W                IS W71 ; Acroloc
 ChangeToTool_W                  IS W72 ; Acroloc
 InstToolID_W                    IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CarouselToolID_W
+SpinOverride_W                  IS W76 ; Acroloc spindle override % (mirror of SV_PLC_SPINDLE_KNOB) for the VCP readout
 
 PValue_W                        IS W92
 
@@ -2290,6 +2291,10 @@ IF !SpinAutoModeLED_O THEN SpinSpeedCommand_FW = CfgMaxSpeed_FW *
                                                SV_PLC_SPINDLE_KNOB / 200.0 *
                                                SpinRangeAdjust_FW
 IF !SpindleEnableOut_O THEN SpinSpeedCommand_FW = 0.0
+
+; Acroloc: mirror the spindle override knob % into a word so the VCP's
+; seven-segment SPIN % readout (plc_word 76) can display it.
+IF True_M THEN SpinOverride_W = SV_PLC_SPINDLE_KNOB
 
 ;-------------------------------------------------------------------------------
 ; If commanded spindle speed is < Min Spin Speed * SpinRangeAdjust

@@ -624,43 +624,53 @@ def _border(col, colspan, row, rowspan, label=None, fill='Transparent',
                lab, extra))
 
 
-# Live feedrate digits in a seven-segment face (DSEG7 Classic must be
+# Live override digits in a seven-segment face (DSEG7 Classic must be
 # installed on the control PC; Windows falls back to the default font if
 # not). The % sign is a separate normal-font label - 7-seg fonts have no
 # percent glyph.
-FEEDRATE_WORD = ('\n\t\t<plc_word>\n'
-                 '\t\t\t<number>4</number>\n'
-                 '\t\t\t<color>#ff3333</color>\n'
-                 '\t\t\t<fontsize>24</fontsize>\n'
-                 '\t\t\t<font>DSEG7 Classic</font>\n'
-                 '\t\t\t<fontstyle>bold</fontstyle>\n'
-                 '\t\t\t<verticalalignment>center</verticalalignment>\n'
-                 '\t\t\t<horizontalalignment>center</horizontalalignment>\n'
-                 '\t\t</plc_word>')
-
-FEEDRATE_PCT = ('\n\t\t<text>\n'
-                '\t\t\t<content>%</content>\n'
-                '\t\t\t<fontsize>16</fontsize>\n'
-                '\t\t\t<color>#ff3333</color>\n'
-                '\t\t\t<font>Arial</font>\n'
-                '\t\t\t<fontstyle>bold</fontstyle>\n'
-                '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
-                '\t\t\t<verticalalignment>center</verticalalignment>\n'
-                '\t\t\t<marginright>68</marginright>\n'
-                '\t\t</text>')
+def _readout_word(number):
+    return ('\n\t\t<plc_word>\n'
+            '\t\t\t<number>%d</number>\n'
+            '\t\t\t<color>#ff3333</color>\n'
+            '\t\t\t<fontsize>24</fontsize>\n'
+            '\t\t\t<font>DSEG7 Classic</font>\n'
+            '\t\t\t<fontstyle>bold</fontstyle>\n'
+            '\t\t\t<verticalalignment>center</verticalalignment>\n'
+            '\t\t\t<horizontalalignment>center</horizontalalignment>\n'
+            '\t\t</plc_word>' % number)
 
 
-def render_feedrate_bezel_svg():
-    # LED window smaller than the 3-cell span: transparent artboard with a
-    # centered dark bezel (318x84 matches the spanned area's aspect)
+def _readout_pct(marginright):
+    return ('\n\t\t<text>\n'
+            '\t\t\t<content>%%</content>\n'
+            '\t\t\t<fontsize>16</fontsize>\n'
+            '\t\t\t<color>#ff3333</color>\n'
+            '\t\t\t<font>Arial</font>\n'
+            '\t\t\t<fontstyle>bold</fontstyle>\n'
+            '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
+            '\t\t\t<verticalalignment>center</verticalalignment>\n'
+            '\t\t\t<marginright>%d</marginright>\n'
+            '\t\t</text>' % marginright)
+
+
+FEEDRATE_WORD = _readout_word(4)    # FinalFeedOverride_W
+FEEDRATE_PCT = _readout_pct(68)
+SPIN_WORD = _readout_word(76)       # SpinOverride_W (Acroloc)
+SPIN_PCT = _readout_pct(15)
+
+
+def render_readout_bezel_svg(w):
+    # LED window smaller than the cell span: transparent artboard with a
+    # centered dark bezel; one cell renders ~106 units wide, 84 tall
+    x = (w - 146) / 2.0
     return (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="318" height="84" '
-        'viewBox="0 0 318 84">'
-        '<rect x="86" y="28" width="146" height="28" rx="5" fill="#1a0000" '
+        '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="84" '
+        'viewBox="0 0 %d 84">'
+        '<rect x="%.0f" y="28" width="146" height="28" rx="5" fill="#1a0000" '
         'stroke="#3a3630" stroke-width="2"/>'
-        '<rect x="90" y="31" width="138" height="5" rx="2" fill="#000000" '
+        '<rect x="%.0f" y="31" width="138" height="5" rx="2" fill="#000000" '
         'opacity="0.5"/>'
-        '</svg>\n')
+        '</svg>\n' % (w, w, x, x + 4))
 
 
 def render_skin():
@@ -680,6 +690,16 @@ def render_skin():
                      extra=FEEDRATE_WORD))
     p.append(_border(4, 3, 11, 1, outline='Transparent',
                      extra=FEEDRATE_PCT))
+    # spindle override readout above the SPIN MODE knob (same 7-seg face)
+    p.append('\t<image>\n'
+             '\t\t<column_span>2</column_span>\n'
+             '\t\t<column_start>1</column_start>\n'
+             '\t\t<row_span>1</row_span>\n'
+             '\t\t<row_start>2</row_start>\n'
+             '\t\t<path>resources\\vcp\\images\\spin_bezel.svg</path>\n'
+             '\t</image>\n')
+    p.append(_border(1, 2, 2, 1, outline='Transparent', extra=SPIN_WORD))
+    p.append(_border(1, 2, 2, 1, outline='Transparent', extra=SPIN_PCT))
     p.append('\t<image>\n'
              '\t\t<column_span>6</column_span>\n'
              '\t\t<column_start>1</column_start>\n'
@@ -709,7 +729,9 @@ def generate(out_dir):
     _write(os.path.join(img_dir, 'acroloc_nameplate.svg'),
            render_nameplate_svg())
     _write(os.path.join(img_dir, 'feedrate_bezel.svg'),
-           render_feedrate_bezel_svg())
+           render_readout_bezel_svg(318))
+    _write(os.path.join(img_dir, 'spin_bezel.svg'),
+           render_readout_bezel_svg(212))
     skin_dir = os.path.join(out_dir, 'resources', 'vcp', 'skins')
     os.makedirs(skin_dir, exist_ok=True)
     _write(os.path.join(skin_dir, 'acroloc_retro_vcp_skin.vcp'),

@@ -275,6 +275,7 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `CarouselToolID_W` | W71 | 1093 | Acroloc | Per-group **peak** of the position-switch sum = the settled tool ID (base-16 encoded as decimal across the 5 switches); compared to `ChangeToTool_W`. [atc.md](atc.md) |
 | `ChangeToTool_W` | W72 | 1094 | Acroloc | Target tool ID latched from `M6`. [atc.md](atc.md) |
 | `InstToolID_W` | W75 | 1113 | Acroloc | Instantaneous position-switch sum, rebuilt each scan; its per-group peak is latched into `CarouselToolID_W`. [atc.md](atc.md) |
+| `SpinOverride_W` | W76 | 1114 | Acroloc | Mirror of `SV_PLC_SPINDLE_KNOB` (spindle override %), refreshed every scan so the VCP's seven-segment SPIN % readout can display it as `plc_word` 76. [main-stage.md](main-stage.md) |
 | `PValue_W` | W92 | 1096 | | Scratch parameter value. [parameters.md](parameters.md) |
 
 ### Float words (FW)

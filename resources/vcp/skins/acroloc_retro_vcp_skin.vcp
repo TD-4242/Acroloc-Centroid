@@ -64,6 +64,50 @@
 		</text>
 	</border>
 	<image>
+		<column_span>2</column_span>
+		<column_start>1</column_start>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<path>resources\vcp\images\spin_bezel.svg</path>
+	</image>
+	<border>
+		<column_span>2</column_span>
+		<column_start>1</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<plc_word>
+			<number>76</number>
+			<color>#ff3333</color>
+			<fontsize>24</fontsize>
+			<font>DSEG7 Classic</font>
+			<fontstyle>bold</fontstyle>
+			<verticalalignment>center</verticalalignment>
+			<horizontalalignment>center</horizontalalignment>
+		</plc_word>
+	</border>
+	<border>
+		<column_span>2</column_span>
+		<column_start>1</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<text>
+			<content>%</content>
+			<fontsize>16</fontsize>
+			<color>#ff3333</color>
+			<font>Arial</font>
+			<fontstyle>bold</fontstyle>
+			<horizontalalignment>right</horizontalalignment>
+			<verticalalignment>center</verticalalignment>
+			<marginright>15</marginright>
+		</text>
+	</border>
+	<image>
 		<column_span>6</column_span>
 		<column_start>1</column_start>
 		<row_span>1</row_span>
