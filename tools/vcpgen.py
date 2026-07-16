@@ -715,9 +715,9 @@ def _dro_label(content, valign, vmargin=0):
 
 
 DRO_ELEMENTS = (
-    _dro_word(11, 'top', 14), _dro_label('X', 'top', 16),
+    _dro_word(11, 'top', 30), _dro_label('X', 'top', 32),
     _dro_word(12, 'center'), _dro_label('Y', 'center'),
-    _dro_word(13, 'bottom', 14), _dro_label('Z', 'bottom', 16))
+    _dro_word(13, 'bottom', 30), _dro_label('Z', 'bottom', 32))
 
 
 def render_dro_bezel_svg():

@@ -172,7 +172,7 @@
 			<verticalalignment>top</verticalalignment>
 			<horizontalalignment>right</horizontalalignment>
 			<marginright>40</marginright>
-			<margintop>14</margintop>
+			<margintop>30</margintop>
 		</plc_word>
 	</border>
 	<border>
@@ -192,7 +192,7 @@
 			<horizontalalignment>left</horizontalalignment>
 			<marginleft>30</marginleft>
 			<verticalalignment>top</verticalalignment>
-			<margintop>16</margintop>
+			<margintop>32</margintop>
 		</text>
 	</border>
 	<border>
@@ -254,7 +254,7 @@
 			<verticalalignment>bottom</verticalalignment>
 			<horizontalalignment>right</horizontalalignment>
 			<marginright>40</marginright>
-			<marginbottom>14</marginbottom>
+			<marginbottom>30</marginbottom>
 		</plc_word>
 	</border>
 	<border>
@@ -274,7 +274,7 @@
 			<horizontalalignment>left</horizontalalignment>
 			<marginleft>30</marginleft>
 			<verticalalignment>bottom</verticalalignment>
-			<marginbottom>16</marginbottom>
+			<marginbottom>32</marginbottom>
 		</text>
 	</border>
 	<image>
