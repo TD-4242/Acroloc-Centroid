@@ -86,7 +86,7 @@
 			<fontstyle>bold</fontstyle>
 			<verticalalignment>center</verticalalignment>
 			<horizontalalignment>right</horizontalalignment>
-			<marginright>166</marginright>
+			<marginright>144</marginright>
 		</plc_word>
 	</border>
 	<border>
@@ -105,7 +105,7 @@
 			<fontstyle>bold</fontstyle>
 			<horizontalalignment>right</horizontalalignment>
 			<verticalalignment>center</verticalalignment>
-			<marginright>152</marginright>
+			<marginright>130</marginright>
 		</text>
 	</border>
 	<border>
@@ -119,12 +119,12 @@
 		<plc_word>
 			<number>77</number>
 			<color>#ff3333</color>
-			<fontsize>13</fontsize>
-			<font>Arial</font>
+			<fontsize>18</fontsize>
+			<font>DSEG7 Classic</font>
 			<fontstyle>bold</fontstyle>
 			<verticalalignment>center</verticalalignment>
 			<horizontalalignment>right</horizontalalignment>
-			<marginright>98</marginright>
+			<marginright>76</marginright>
 		</plc_word>
 	</border>
 	<border>
@@ -143,7 +143,7 @@
 			<fontstyle>bold</fontstyle>
 			<horizontalalignment>right</horizontalalignment>
 			<verticalalignment>center</verticalalignment>
-			<marginright>68</marginright>
+			<marginright>46</marginright>
 		</text>
 	</border>
 	<image>
