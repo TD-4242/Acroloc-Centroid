@@ -20,6 +20,7 @@
 !/tools/
 /tools/__pycache__/
 !/mfunc*.mac
+!/cncm.hom
 !/mpucomp.exe
 !/plcmsg.txt
 !/language.msg
