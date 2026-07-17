@@ -56,6 +56,14 @@ referencing its number here -- see
 
 Field notes (retro-skin work, 2026-07):
 
+- **`<type>Float</type>` reads the FW register of the same `<number>`** (verified on-machine
+  2026-07-16: `plc_word` 11 + type Float displayed `FW11`). Int (the default) reads `W n`. So
+  a float value the PLC computes in `FWn` is directly displayable - no integer scaling dance.
+- The PLC can only read encoder counts (`SV_MPU11_ABS_POS_n`, zero-indexed - `_0` is axis 1),
+  which are power-up-relative. For a machine-coordinate display, have the homing program
+  pulse a spare `M94` bit at machine zero so the PLC can latch the counts there (see this
+  repo's `cncm.hom` + the `HomeSync_SV` rungs).
+
 - `<font>` accepts any font installed on the Windows control PC -- e.g. **DSEG7 Classic** gives
   a true 7-segment readout. The font must be installed **for all users** (right-click ->
   "Install for all users") or the VCP process will not see it and will silently substitute.
