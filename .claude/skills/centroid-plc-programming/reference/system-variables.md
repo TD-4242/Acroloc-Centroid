@@ -135,7 +135,7 @@ Coolant.
 
 | SV_ name | Meaning | Source |
 |---|---|---|
-| SV_MPU11_ABS_POS_1 | I64. Absolute position of axis 2 in encoder counts (same value shown in CNC PID screen as AbsPos). Zero-indexed; index 1 = second physical axis. | manual |
+| SV_MPU11_ABS_POS_1 | I64. Absolute position of axis 2 in encoder counts (same value shown in CNC PID screen as AbsPos). Zero-indexed; index 1 = second physical axis — `_0` exists and is axis 1 (verified on-machine 2026-07-16: the Acroloc VCP DRO reads `_0/_1/_2` for X/Y/Z). Counts are power-up-relative, not homed machine coordinates. | manual + verified |
 | SV_MPU11_ABS_POS_7 | I64. Absolute position of axis 8 in encoder counts. | manual |
 
 ### PLC function commands (jog panel / cycle control)

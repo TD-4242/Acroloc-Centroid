@@ -326,17 +326,56 @@ with the gear ratio (`SpinRangeAdjust_FW`) factored in at src:2381; they are
 not repeated rung-by-rung here since none of it is part of the gear *decision* itself, only
 its downstream consumer.
 
+Two Acroloc mirror rungs sit inside that stock-shaped block (tagged `; Acroloc`), feeding
+the retro VCP's seven-segment spindle readout. Display-only; nothing reads the words back:
+
+- (src:2297): `IF True_M THEN SpinOverride_W = SV_PLC_SPINDLE_KNOB` — the spindle override
+  percentage into `SpinOverride_W` (W76, VCP `plc_word` 76).
+- (src:2319, after the min/max clamp rungs so it captures the final value):
+  `IF True_M THEN SpinRPM_W = SpinSpeedCommand_FW` — the final commanded RPM into
+  `SpinRPM_W` (W77, VCP `plc_word` 77); reads 0 whenever the spindle is disabled.
+
+### Machine-coordinate readout (Acroloc, src:2338-2360)
+
+Feeds the retro VCP's X/Y/Z seven-segment readout (`plc_word` 11/12/13, type Float =
+FW11-13). `cncm.hom` pulses `HomeSync_SV` (`M94 /6` .. `M95 /6`) right after its last `M26`,
+when every axis sits exactly at machine zero; the rungs latch the encoder counts there
+(`HomeAbsX/Y/Z_FW`) and set `MachHomed_M`. Every scan, `SV_MPU11_ABS_POS_0/1/2` (zero-indexed:
+X/Y/Z) are mirrored into `AbsX/Y/Z_FW` and converted to machine inches relative to the latch,
+scaled by the CNC12 axis config (8000 counts/turn x 5 turns/inch = 40000 counts/inch; X
+positive, Y and Z reversed, hence the swapped subtraction order). Displays 0.0 until homed;
+re-homing re-latches. Display-only — nothing reads the FWs back.
+
+### RAPID 25% rapids-only override (Acroloc, src:1976-1980)
+
+Feeds the retro VCP's RAPID 25% toggle button (stock `rapid_over` bindings: skin event 82,
+LED OUT1133). `SkinRapid25_M_SV` one-shots through `Rapid25PD_PD` into the `Rapid25_M`
+toggle latch (the same XOR-coil idiom as `PumpManual_M`). While latched,
+`SV_PLC_RAPID_FEEDRATE_OVERRIDE` is written 0.25 each scan (a 0.0-2.0 scale factor,
+parallel to the `SV_PLC_FEEDRATE_OVERRIDE` write at src:1964), cutting rapid (G0) moves to
+25% without touching the feedrate override; when off it is written 1.0 and
+`RapidOverLED_O` goes dark. Independent of the legacy F9/Ctrl-R
+`SelectRapidOverride_SV` toggle directly above it (src:1967-1971), which links rapids to
+the feed override knob.
+
 ### Coolant (mist/flood) — mfunc7/mfunc8 linkage (src:2086-2127)
 
 - (src:2089-2099): `CoolantAutoManualPD_PD` toggles `CoolAutoModeLED_O` (forced on at
   power-up, src:2091), which is mirrored to CNC12 via `SelectCoolAutoMan_SV`.
-- Coolant **mode selection**: the two coolant rungs are coils that toggle the *mode LEDs*
-  `CoolFloodLED_O` / `CoolMistLED_O` (each `LED XOR (!CoolAutoModeLED_O && CoolantXxxPD_PD)`
-  for a manual key press, OR `CoolAutoModeLED_O && M8_SV`/`M7_SV` for auto), ANDed against a
-  kill condition (`!(SV_STOP || CoolantAutoManualPD_PD || (CoolAutoModeLED_O && !M8_SV for flood / !M7_SV for wash) ||
-  ErrorFlag_M || DoToolCheck_SV)`) and report `SelectCoolantFlood_SV`/`SelectCoolantMist_SV`
-  to CNC12. They no longer drive the physical outputs directly, and the two panel buttons are
-  **independent** (not mutually exclusive) — both can be lit at once.
+- **Flood** selection keeps the stock coil shape: `CoolFloodLED_O` toggles on
+  `LED XOR (!CoolAutoModeLED_O && CoolantFloodPD_PD)` for a manual key press, OR
+  `CoolAutoModeLED_O && M8_SV` for auto, ANDed against a kill condition (`!(SV_STOP ||
+  CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M8_SV || ErrorFlag_M || DoToolCheck_SV)`),
+  and reports `SelectCoolantFlood_SV` to CNC12.
+- **Pump (mist channel)** was reworked (Acroloc, src:2045-2056): the PUMP button toggles a
+  dedicated manual-request latch `PumpManual_M` (MEM79) in **either** coolant mode (stock
+  only honored it in manual mode), and `CoolMistLED_O` runs on
+  `PumpManual_M || (CoolAutoModeLED_O && M7_SV)`. Consequences: `M9`/M7-off stops an
+  M7-started pump but never a manually requested one; switching coolant mode clears the
+  manual latch (stock rule, via `CoolantAutoManualPD_PD` in the latch's kill list); the LED
+  rung's own kill list is `SV_STOP || ErrorFlag_M || DoToolCheck_SV`.
+- The two panel buttons are **independent** (not mutually exclusive) — both can be lit at
+  once.
 - Coolant **outputs are derived** from the mode LEDs to match this machine's plumbing
   (OUT4 = coolant pump, OUT3 = flood valve): `IF CoolFloodLED_O THEN (FloodValve_O)` and
   `IF CoolFloodLED_O || CoolMistLED_O THEN (CoolantPump_O)` — the **mist button is the coolant

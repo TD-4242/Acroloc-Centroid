@@ -55,6 +55,23 @@ Instead of an LED, use two whole graphics for the on/off state of the button's o
 </vcp_button>
 ```
 
+### Verify swap polarity on the machine
+
+`image_on` means **the PLC bit is on**, nothing more -- it does not mean "the active/fast/auto
+choice". For mode toggles the bit's sense is only knowable from the PLC program or by flipping
+it on the real machine, and several stock bits are the reverse of what the label suggests
+(field examples: jog-mode bit ON = incremental; the slow/fast override bit ON = slow, so the
+"on" image is the tortoise while the *off* image keeps the highlighted styling). Design the two
+SVGs for the two bit states, verify on-machine, and record the verified polarity in a comment
+-- otherwise the next editor "fixes" it backwards.
+
+### Two-position switches / knobs are just image swaps
+
+A rotary switch, toggle, or any two-state widget is the same mechanism: draw the two positions
+as two SVGs (e.g. a knob pointer at -40 and +40 degrees, with the active legend brightened) and
+swap them with `image_on`/`image_off` on the mode bit. Combined with a `skin_event_num` the
+knob is clickable; without one it is a pure indicator.
+
 ## Indicator light from an input or memory bit
 
 A button can act purely as an indicator, swapping graphics on the state of a PLC **input**
@@ -109,8 +126,10 @@ rectangle of the grid:
 A `<border>` can also carry a `<plc_word>` or `<text>` (see [advanced.md](advanced.md)) and a
 `<group>` for switching.
 
-`<background>` sets the VCP background. A hex value gives a solid color (this repo uses
-`#a6a5a5`; the CNC12 default is `#A6A5A0`):
+`<background>` sets the VCP background. A hex value gives a solid color (the CNC12 default is
+`#A6A5A0`; the stock skins here use `#a6a5a5`, the retro skin `#141210`). Beware: saving from
+CNC12's VCP options screen rewrites the skin and has been observed resetting a custom
+background to `#a6a5a5` -- see [troubleshooting.md](troubleshooting.md).
 
 ```xml
 <background>#a6a5a5</background>

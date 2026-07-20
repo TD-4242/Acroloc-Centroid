@@ -465,69 +465,70 @@ def render_knob_svg(on, title, labels):
 # ------------------------------------------------------- buttons table ----
 # text_y values are in content coordinates (mockup center-58 system).
 BUTTONS = [
-    dict(name='spindle_plus', row=2, col=4, lines=['+'], fs=20, icon='up',
+    dict(name='spindle_plus', row=3, col=4, lines=['+'], fs=20, icon='up',
          text_y=[79]),
-    dict(name='spindle_100', row=2, col=5, lines=['SPIN', '100%']),
-    dict(name='spindle_minus', row=2, col=6, lines=['-'], fs=20, icon='down',
+    dict(name='spindle_100', row=3, col=5, lines=['SPIN', '100%']),
+    dict(name='spindle_minus', row=3, col=6, lines=['-'], fs=20, icon='down',
          text_y=[52]),
-    dict(name='spindle_auto_man', row=2, col=1, row_span=2, col_span=2,
+    dict(name='spindle_auto_man', row=3, col=1, row_span=2, col_span=2,
          special='knob', knob_title='SPIN MODE',
          knob_labels=('MAN', 'AUTO')),
-    dict(name='spindle_cw', row=3, col=3, lines=['CW'], fs=14, icon='cw',
+    dict(name='spindle_cw', row=4, col=3, lines=['CW'], fs=14, icon='cw',
          text_x=78),
-    dict(name='spindle_ccw', row=3, col=4, lines=['CCW'], fs=13, icon='ccw',
+    dict(name='spindle_ccw', row=4, col=4, lines=['CCW'], fs=13, icon='ccw',
          text_x=80),
-    dict(name='spindle_start', row=3, col=5, lines=['SPIN', 'START']),
-    dict(name='spindle_cancel', row=3, col=6, lines=['SPIN', 'STOP']),
-    dict(name='coolant_auto_man', row=4, col=1, row_span=2, col_span=2,
+    dict(name='spindle_start', row=4, col=5, lines=['SPIN', 'START']),
+    dict(name='spindle_cancel', row=4, col=6, lines=['SPIN', 'STOP']),
+    dict(name='coolant_auto_man', row=5, col=1, row_span=2, col_span=2,
          special='knob', knob_title='CLNT MODE',
          knob_labels=('MAN', 'AUTO')),
-    dict(name='flood_coolant', row=4, col=3, row_span=2, rows=2,
+    dict(name='flood_coolant', row=5, col=3,
          lines=['FLOOD', 'M8'], fs=13, icon='flood',
          text_y=[48, 74], text_x=[None, 42]),
-    dict(name='coolant_pump', row=4, col=4, row_span=2, rows=2,
+    dict(name='coolant_pump', row=6, col=3, led=4,
          lines=['PUMP'], fs=13, icon='pump', text_y=[48]),
-    dict(name='incr_cont', row=6, col=1, row_span=2, col_span=2,
+    dict(name='incr_cont', row=7, col=1, row_span=2, col_span=2,
          special='knob', knob_title='JOG MODE',
          knob_labels=('CONT', 'INCR')),
-    dict(name='x1', row=8, col=1, lines=['X1']),
-    dict(name='x10', row=9, col=1, lines=['X10']),
-    dict(name='x100', row=10, col=1, lines=['X100']),
-    dict(name='mpg', row=10, col=2, lines=[], icon='wheel'),
-    dict(name='y_positive', row=7, col=3, lines=['+Y'], icon='up',
+    dict(name='x1', row=10, col=1, lines=['X1']),
+    dict(name='x10', row=10, col=2, lines=['X10']),
+    dict(name='x100', row=10, col=3, lines=['X100']),
+    dict(name='mpg', row=9, col=1, lines=[], icon='wheel'),
+    dict(name='y_positive', row=7, col=4, lines=['+Y'], icon='up',
          text_y=[79]),
-    dict(name='z_positive', row=7, col=5, lines=['+Z'], icon='up',
+    dict(name='z_positive', row=7, col=6, lines=['+Z'], icon='up',
          text_y=[79]),
-    dict(name='x_negative', row=8, col=2, lines=['-X'], icon='left',
+    dict(name='x_negative', row=8, col=3, lines=['-X'], icon='left',
          text_y=[79]),
-    dict(name='tortoise_hare', row=8, col=3, lines=[], icon='hare',
+    dict(name='tortoise_hare', row=8, col=4, lines=[], icon='hare',
          icon_on='tortoise', style='lit', style_on='amber'),
-    dict(name='x_positive', row=8, col=4, lines=['+X'], icon='right',
+    dict(name='x_positive', row=8, col=5, lines=['+X'], icon='right',
          text_y=[79]),
-    dict(name='y_negative', row=9, col=3, lines=['-Y'], icon='down',
+    dict(name='y_negative', row=9, col=4, lines=['-Y'], icon='down',
          text_y=[52]),
-    dict(name='z_negative', row=9, col=5, lines=['-Z'], icon='down',
+    dict(name='z_negative', row=9, col=6, lines=['-Z'], icon='down',
          text_y=[52]),
     dict(name='cycle_start', row=11, col=1, lines=['CYCLE', 'START'],
          style='green', style_on='grnlit'),
+    # rapids-only 25% cut; stock rapid_over xml = skin event 82 + LED
+    # OUT1133, both handled by the PLC's Rapid25_M latch
+    dict(name='rapid_over', row=11, col=5, lines=['RAPID', '25%']),
     dict(name='cycle_cancel', row=11, col=2, lines=['CYCLE', 'CANCEL'],
          fs=13, style='red', style_on='lit'),
-    dict(name='single_block', row=10, col=3, lines=['SINGLE', 'BLOCK'],
+    dict(name='single_block', row=9, col=2, lines=['SINGLE', 'BLOCK'],
          fs=13),
-    dict(name='tool_check', row=10, col=4, lines=['TOOL', 'CHECK']),
-    dict(name='feed_hold', row=10, col=5, lines=['FEED', 'HOLD']),
-    dict(name='feedrate_negative', row=12, col=4, lines=['-'], fs=20,
+    dict(name='tool_check', row=10, col=6, lines=['TOOL', 'CHECK']),
+    dict(name='feed_hold', row=11, col=3, lines=['FEED', 'HOLD']),
+    dict(name='feedrate_negative', row=13, col=4, lines=['-'], fs=20,
          icon='down', text_y=[52]),
-    dict(name='feedrate_100', row=12, col=5, lines=['FEED', '100%']),
-    dict(name='feedrate_positive', row=12, col=6, lines=['+'], fs=20,
+    dict(name='feedrate_100', row=13, col=5, lines=['FEED', '100%']),
+    dict(name='feedrate_positive', row=13, col=6, lines=['+'], fs=20,
          icon='up', text_y=[79]),
-    dict(name='feedrate_25', row=13, col=4, lines=['25%']),
-    dict(name='feedrate_50', row=13, col=5, lines=['50%']),
-    dict(name='feedrate_75', row=13, col=6, lines=['75%']),
+    dict(name='feedrate_25', row=14, col=4, lines=['25%']),
+    dict(name='feedrate_50', row=14, col=5, lines=['50%']),
+    dict(name='feedrate_75', row=14, col=6, lines=['75%']),
     dict(name='reset', row=12, col=1, row_span=3, col_span=3,
          special='reset'),
-    dict(name='vcp_options', row=14, col=4, lines=['VCP', 'OPTIONS'], fs=13),
-    dict(name='push_free', row=14, col=5, lines=['PUSH', 'FREE']),
 ]
 
 
@@ -546,7 +547,6 @@ def _retro_xml(name, xml):
                  '<image_off>%s.svg</image_off>' % rn, xml)
     xml = xml.replace('reset_tripped.svg', 'retro_reset_tripped.svg')
     xml = xml.replace('>reset.svg<', '>retro_reset.svg<')
-    xml = xml.replace('push_pin.svg', 'retro_push_free_on.svg')
     if not xml.endswith('\n'):
         xml += '\n'
     return xml
@@ -575,6 +575,12 @@ def emit_buttons(out_dir):
                    render_knob_svg(True, title, labels))
             continue
         xml = stock_xml(name)
+        if b.get('led'):
+            # watch a different PLC bit than the stock button (e.g. PUMP
+            # watches the real pump output OUT4, not the mist LED, so it
+            # lights whenever the pump runs for any reason)
+            xml = re.sub(r'(<plc_output>\s*<number>)\d+(</number>)',
+                         r'\g<1>%d\g<2>' % b['led'], xml, count=1)
         _write(os.path.join(d, rn + '.xml'), _retro_xml(name, xml))
         if b.get('special') == 'reset':
             _write(os.path.join(d, 'retro_reset.svg'),
@@ -605,7 +611,7 @@ def _border(col, colspan, row, rowspan, label=None, fill='Transparent',
                '\t\t\t<content>%s</content>\n'
                '\t\t\t<fontsize>11</fontsize>\n'
                '\t\t\t<color>#b0a898</color>\n'
-               '\t\t\t<font>Arial Narrow</font>\n'
+               '\t\t\t<font>Arial</font>\n'
                '\t\t\t<fontstyle>bold</fontstyle>\n'
                '\t\t\t<horizontalalignment>center</horizontalalignment>\n'
                '\t\t\t<verticalalignment>top</verticalalignment>\n'
@@ -624,62 +630,160 @@ def _border(col, colspan, row, rowspan, label=None, fill='Transparent',
                lab, extra))
 
 
-# Live feedrate digits in a seven-segment face (DSEG7 Classic must be
+# Live override digits in a seven-segment face (DSEG7 Classic must be
 # installed on the control PC; Windows falls back to the default font if
 # not). The % sign is a separate normal-font label - 7-seg fonts have no
 # percent glyph.
-FEEDRATE_WORD = ('\n\t\t<plc_word>\n'
-                 '\t\t\t<number>4</number>\n'
-                 '\t\t\t<color>#ff3333</color>\n'
-                 '\t\t\t<fontsize>24</fontsize>\n'
-                 '\t\t\t<font>DSEG7 Classic</font>\n'
-                 '\t\t\t<fontstyle>bold</fontstyle>\n'
-                 '\t\t\t<verticalalignment>center</verticalalignment>\n'
-                 '\t\t\t<horizontalalignment>center</horizontalalignment>\n'
-                 '\t\t</plc_word>')
-
-FEEDRATE_PCT = ('\n\t\t<text>\n'
-                '\t\t\t<content>%</content>\n'
-                '\t\t\t<fontsize>16</fontsize>\n'
-                '\t\t\t<color>#ff3333</color>\n'
-                '\t\t\t<font>Arial</font>\n'
-                '\t\t\t<fontstyle>bold</fontstyle>\n'
-                '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
-                '\t\t\t<verticalalignment>center</verticalalignment>\n'
-                '\t\t\t<marginright>68</marginright>\n'
-                '\t\t</text>')
+def _seg_word(number, fs=24, marginright=None, font='DSEG7 Classic'):
+    # marginright None = centered; else right-aligned marginright units in
+    # from the border's right edge (same scheme the feedrate % label uses)
+    halign = ('\t\t\t<horizontalalignment>center</horizontalalignment>\n'
+              if marginright is None else
+              '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
+              '\t\t\t<marginright>%d</marginright>\n' % marginright)
+    return ('\n\t\t<plc_word>\n'
+            '\t\t\t<number>%d</number>\n'
+            '\t\t\t<color>#ff3333</color>\n'
+            '\t\t\t<fontsize>%d</fontsize>\n'
+            '\t\t\t<font>%s</font>\n'
+            '\t\t\t<fontstyle>bold</fontstyle>\n'
+            '\t\t\t<verticalalignment>center</verticalalignment>\n'
+            '%s'
+            '\t\t</plc_word>' % (number, fs, font, halign))
 
 
-def render_feedrate_bezel_svg():
-    # LED window smaller than the 3-cell span: transparent artboard with a
-    # centered dark bezel (318x84 matches the spanned area's aspect)
+def _seg_label(content, fs, marginright):
+    return ('\n\t\t<text>\n'
+            '\t\t\t<content>%s</content>\n'
+            '\t\t\t<fontsize>%d</fontsize>\n'
+            '\t\t\t<color>#ff3333</color>\n'
+            '\t\t\t<font>Arial</font>\n'
+            '\t\t\t<fontstyle>bold</fontstyle>\n'
+            '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
+            '\t\t\t<verticalalignment>center</verticalalignment>\n'
+            '\t\t\t<marginright>%d</marginright>\n'
+            '\t\t</text>' % (content, fs, marginright))
+
+
+FEEDRATE_WORD = _seg_word(4)               # FinalFeedOverride_W, centered
+FEEDRATE_PCT = _seg_label('%', 16, 68)
+# spindle readout: [ XXX% XXXXRPM ] in one window, same 3-cell bezel as the
+# feedrate display; every element is right-aligned so the group keeps its
+# internal spacing (margins are right-edge offsets, per the feedrate %).
+# One element per <border>: the VCP renders a single plc_word/text per
+# border (stacking them in one border dropped the RPM half on-machine).
+SPIN_ELEMENTS = (
+    _seg_word(76, 18, 164),                # SpinOverride_W  -> "XXX"
+    _seg_label('%', 13, 150),              # "%" hugging the override digits
+    _seg_word(77, 18, 48),                 # SpinRPM_W       -> "XXXX"
+    _seg_label('RPM', 12, 18))
+
+
+# machine-coordinate readout: X/Y/Z stacked in a 3x2-cell bezel. plc_word
+# type Float reads the FW register of the same number (FW11/12/13 = machine
+# inches, fed by the PLC's HomeSync latch). One element per border.
+def _dro_word(number, valign, vmargin=0):
+    vm = ('\t\t\t<margin%s>%d</margin%s>\n' % (valign, vmargin, valign)
+          if vmargin else '')
+    return ('\n\t\t<plc_word>\n'
+            '\t\t\t<number>%d</number>\n'
+            '\t\t\t<type>Float</type>\n'
+            '\t\t\t<significant>4</significant>\n'
+            '\t\t\t<color>#ff3333</color>\n'
+            '\t\t\t<fontsize>18</fontsize>\n'
+            '\t\t\t<font>DSEG7 Classic</font>\n'
+            '\t\t\t<fontstyle>bold</fontstyle>\n'
+            '\t\t\t<verticalalignment>%s</verticalalignment>\n'
+            '\t\t\t<horizontalalignment>right</horizontalalignment>\n'
+            '\t\t\t<marginright>40</marginright>\n%s'
+            '\t\t</plc_word>' % (number, valign, vm))
+
+
+def _dro_label(content, valign, vmargin=0):
+    vm = ('\t\t\t<margin%s>%d</margin%s>\n' % (valign, vmargin, valign)
+          if vmargin else '')
+    return ('\n\t\t<text>\n'
+            '\t\t\t<content>%s</content>\n'
+            '\t\t\t<fontsize>14</fontsize>\n'
+            '\t\t\t<color>#ff3333</color>\n'
+            '\t\t\t<font>Arial</font>\n'
+            '\t\t\t<fontstyle>bold</fontstyle>\n'
+            '\t\t\t<horizontalalignment>left</horizontalalignment>\n'
+            '\t\t\t<marginleft>30</marginleft>\n'
+            '\t\t\t<verticalalignment>%s</verticalalignment>\n%s'
+            '\t\t</text>' % (content, valign, vm))
+
+
+DRO_ELEMENTS = (
+    _dro_word(11, 'top', 24), _dro_label('X', 'top', 26),
+    _dro_word(12, 'center'), _dro_label('Y', 'center'),
+    _dro_word(13, 'bottom', 24), _dro_label('Z', 'bottom', 26))
+
+
+def render_dro_bezel_svg():
+    # one tall LED window holding all three axis rows (3-col x 2-row area)
     return (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="318" height="84" '
-        'viewBox="0 0 318 84">'
-        '<rect x="86" y="28" width="146" height="28" rx="5" fill="#1a0000" '
+        '<svg xmlns="http://www.w3.org/2000/svg" width="318" height="168" '
+        'viewBox="0 0 318 168">'
+        '<rect x="20" y="8" width="278" height="152" rx="5" fill="#1a0000" '
         'stroke="#3a3630" stroke-width="2"/>'
-        '<rect x="90" y="31" width="138" height="5" rx="2" fill="#000000" '
+        '<rect x="24" y="11" width="270" height="5" rx="2" fill="#000000" '
         'opacity="0.5"/>'
         '</svg>\n')
+
+
+def render_readout_bezel_svg(w):
+    # LED window smaller than the cell span: transparent artboard with a
+    # centered dark bezel; one cell renders ~106 units wide, 84 tall
+    x = (w - 146) / 2.0
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="84" '
+        'viewBox="0 0 %d 84">'
+        '<rect x="%.0f" y="28" width="146" height="28" rx="5" fill="#1a0000" '
+        'stroke="#3a3630" stroke-width="2"/>'
+        '<rect x="%.0f" y="31" width="138" height="5" rx="2" fill="#000000" '
+        'opacity="0.5"/>'
+        '</svg>\n' % (w, w, x, x + 4))
 
 
 def render_skin():
     p = ['<vcp_skin>\n']
     p.append('\t<background>#141210</background>\n')
-    p.append(_border(4, 3, 12, 2, label='FEEDRATE'))
+    p.append(_border(4, 3, 13, 2, label='FEEDRATE'))
     # readout: drawn bezel image (smaller than the cell span) under two
     # transparent borders carrying the 7-seg digits and the % label
     p.append('\t<image>\n'
              '\t\t<column_span>3</column_span>\n'
              '\t\t<column_start>4</column_start>\n'
              '\t\t<row_span>1</row_span>\n'
-             '\t\t<row_start>11</row_start>\n'
+             '\t\t<row_start>12</row_start>\n'
              '\t\t<path>resources\\vcp\\images\\feedrate_bezel.svg</path>\n'
              '\t</image>\n')
-    p.append(_border(4, 3, 11, 1, outline='Transparent',
+    p.append(_border(4, 3, 12, 1, outline='Transparent',
                      extra=FEEDRATE_WORD))
-    p.append(_border(4, 3, 11, 1, outline='Transparent',
+    p.append(_border(4, 3, 12, 1, outline='Transparent',
                      extra=FEEDRATE_PCT))
+    # spindle override % + commanded RPM readout, right-aligned on row 2
+    # (same bezel image and span as the feedrate display)
+    p.append('\t<image>\n'
+             '\t\t<column_span>3</column_span>\n'
+             '\t\t<column_start>4</column_start>\n'
+             '\t\t<row_span>1</row_span>\n'
+             '\t\t<row_start>2</row_start>\n'
+             '\t\t<path>resources\\vcp\\images\\feedrate_bezel.svg</path>\n'
+             '\t</image>\n')
+    for el in SPIN_ELEMENTS:
+        p.append(_border(4, 3, 2, 1, outline='Transparent', extra=el))
+    # X/Y/Z machine-coordinate readout right of FLOOD/PUMP (rows 5-6)
+    p.append('\t<image>\n'
+             '\t\t<column_span>3</column_span>\n'
+             '\t\t<column_start>4</column_start>\n'
+             '\t\t<row_span>2</row_span>\n'
+             '\t\t<row_start>5</row_start>\n'
+             '\t\t<path>resources\\vcp\\images\\dro_bezel.svg</path>\n'
+             '\t</image>\n')
+    for el in DRO_ELEMENTS:
+        p.append(_border(4, 3, 5, 2, outline='Transparent', extra=el))
     p.append('\t<image>\n'
              '\t\t<column_span>6</column_span>\n'
              '\t\t<column_start>1</column_start>\n'
@@ -709,7 +813,9 @@ def generate(out_dir):
     _write(os.path.join(img_dir, 'acroloc_nameplate.svg'),
            render_nameplate_svg())
     _write(os.path.join(img_dir, 'feedrate_bezel.svg'),
-           render_feedrate_bezel_svg())
+           render_readout_bezel_svg(318))
+    _write(os.path.join(img_dir, 'dro_bezel.svg'),
+           render_dro_bezel_svg())
     skin_dir = os.path.join(out_dir, 'resources', 'vcp', 'skins')
     os.makedirs(skin_dir, exist_ok=True)
     _write(os.path.join(skin_dir, 'acroloc_retro_vcp_skin.vcp'),

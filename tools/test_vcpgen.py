@@ -129,6 +129,14 @@ class TestEmitButtons(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(
             self.bdir, 'retro_x_positive', 'retro_x_positive_on.svg')))
 
+    def test_led_override_targets_plc_output_number(self):
+        # PUMP watches the real pump output (OUT4), not the stock mist LED
+        xml = self._read('retro_coolant_pump', 'retro_coolant_pump.xml')
+        self.assertIn('<plc_output>\n\t\t<number>4</number>', xml)
+        # unrelated buttons keep their stock PLC numbers unchanged
+        cw = self._read('retro_spindle_cw', 'retro_spindle_cw.xml')
+        self.assertIn('<number>1063</number>', cw)
+
     def test_reset_uses_retro_filenames(self):
         xml = self._read('retro_reset', 'retro_reset.xml')
         self.assertIn('<image_on>retro_reset_tripped.svg</image_on>', xml)

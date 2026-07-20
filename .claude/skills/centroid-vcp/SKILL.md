@@ -33,7 +33,8 @@ Not for:
 > Change **where** a button is -> edit the skin `.vcp`. Change **what** a button is -> edit the
 > button folder. Restart CNC12 to reload either.
 
-`options.xml` selects the active skin by name (this repo: `servo_mill_vcp_skin`).
+`options.xml` selects the active skin by name (this repo: `acroloc_retro_vcp_skin`, a fully
+generated theme -- see `tools/vcpgen.py`; the stock `servo_mill_vcp_skin` remains selectable).
 
 ## Button XML at a glance
 
@@ -66,12 +67,24 @@ Children of `<vcp_button>` (details in [button-anatomy.md](reference/button-anat
 
 From on-machine work; details in [troubleshooting.md](reference/troubleshooting.md):
 
-- The renderer effectively ignores SVG `text-anchor` -- position text with an explicit `x` and
-  convert fonts to paths ("Object to Path").
-- Rendered button size tracks the SVG `width`/`height`/artboard -- keep them; copy an existing
-  button SVG so the artboard is correct.
+- The renderer is **Svg2Xaml** and supports only a subset of SVG; unsupported features make the
+  whole VCP silently fail to appear (no error). No `<filter>`/blur; gradients must be absolute
+  `userSpaceOnUse` (no `%`); transforms limited to a single `matrix()` (transform lists stack
+  shapes at the origin). Fake glows with layered shapes.
+- The renderer effectively ignores SVG `text-anchor` -- position text with an explicit `x`
+  (convert fonts to paths, or compute `x` from font metrics), and only use fonts installed on
+  the control PC (missing fonts substitute silently).
+- Rendered graphic size tracks the SVG `width`/`height`/artboard -- it is drawn at declared
+  size, not stretched to the cell; multi-cell buttons need a full-span artboard
+  ([button-anatomy.md](reference/button-anatomy.md) has measured sizes).
+- `image_on` means the PLC bit is ON, not "the active choice" -- verify toggle polarity
+  on-machine and record it ([visual-states.md](reference/visual-states.md)).
+- CNC12's VCP options screen **rewrites the active skin on save** -- keep the source of truth
+  in the repo and re-copy.
+- Files consumed by CNC12 must be ASCII with CRLF line endings (Windows host).
 - Restart CNC12 to reload any skin/button change.
-- Back up the skin `.vcp` before editing; change one thing at a time.
+- Back up the skin `.vcp` before editing; change one thing at a time. When the VCP silently
+  will not start, bisect with minimal one-feature test skins.
 - A button used by more than one skin must be edited/re-checked in each skin.
 
 ## Navigating the VCP files

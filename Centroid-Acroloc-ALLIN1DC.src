@@ -491,6 +491,7 @@ FeedHoldLED_O                   IS OUT1104 ; Row 10 Column 4
 
 ; LED for VCP 2.0
 SkinResetSet_O                  IS OUT1107 ; VCP Reset Button "LED"
+RapidOverLED_O                  IS OUT1133 ; Acroloc VCP RAPID 25% button LED (stock rapid_over LED number)
 FeedOver100LED_O                IS OUT1137
 FeedOver75LED_O                 IS OUT1138
 FeedOver50LED_O                 IS OUT1139
@@ -524,6 +525,7 @@ ProbeFault_M                    IS MEM54  ; 0 = okay, 1 = tried to start spindle
 JogProbeFault_M                 IS MEM55  ; 0 = okay, 1 = tripped probe while jogging
 SpindleFault_M                  IS MEM56  ; 0 = okay, 1 = spindle drive fault
 OtherFault_M                    IS MEM57
+Rapid25_M                       IS MEM58  ; Acroloc latched by the VCP RAPID 25% button; rapids cut to 25% while set
 
 ; Axis1FiberOk_M                IS MEM70
 ; Axis2FiberOk_M                IS MEM71
@@ -535,6 +537,8 @@ OtherFault_M                    IS MEM57
 ; Axis8FiberOk_M                IS MEM77
 
 ProbeMsgSent_M                  IS MEM78
+PumpManual_M                    IS MEM79 ; Acroloc manual coolant-pump request latched by the PUMP button (toggles in any mode)
+MachHomed_M                     IS MEM80 ; Acroloc set once cncm.hom pulses HomeSync_SV; enables the VCP machine-coordinate readout
 True_M                          IS MEM81
 SpinRangeReversed_M             IS MEM82
 SpindleDirection_M              IS MEM83
@@ -1030,6 +1034,7 @@ SkinJogAx8Plus_SV               IS SV_SKIN_EVENT_63
 SkinJogAx8Minus_SV              IS SV_SKIN_EVENT_64
 SkinAux15_SV                    IS SV_SKIN_EVENT_68
 SkinAux16_SV                    IS SV_SKIN_EVENT_69
+SkinRapid25_M_SV                IS SV_SKIN_EVENT_82 ; Acroloc VCP RAPID 25% button (stock rapid_over event number)
 SkinJogAx1MinusAx2Plus_M        IS SV_SKIN_EVENT_107
 SkinJogAx1Ax2Plus_M             IS SV_SKIN_EVENT_108
 SkinJogAx1Ax2Minus_M            IS SV_SKIN_EVENT_109
@@ -1059,7 +1064,7 @@ M6_SV                           IS SV_M94_M95_8 ; Acroloc Tool change request
 M8_SV                           IS SV_M94_M95_3 ; (Flood mode: coolant pump + flood valve)
 M10_SV                          IS SV_M94_M95_4 ; Clamp
 M7_SV                           IS SV_M94_M95_5 ; (Mist/wash mode: coolant pump only)
-;                                IS SV_M94_M95_6 ;
+HomeSync_SV                     IS SV_M94_M95_6 ; Acroloc pulsed by cncm.hom (M94/6 .. M95/6) at machine zero to latch home encoder counts
 ;                                IS SV_M94_M95_7 ;
 
 ;------------------------------------------------------------------------------
@@ -1111,6 +1116,8 @@ MiniPLCStatus_W                 IS W70
 CarouselToolID_W                IS W71 ; Acroloc
 ChangeToTool_W                  IS W72 ; Acroloc
 InstToolID_W                    IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CarouselToolID_W
+SpinOverride_W                  IS W76 ; Acroloc spindle override % (mirror of SV_PLC_SPINDLE_KNOB) for the VCP readout
+SpinRPM_W                       IS W77 ; Acroloc commanded spindle RPM (final clamped SpinSpeedCommand_FW) for the VCP readout
 
 PValue_W                        IS W92
 
@@ -1124,6 +1131,15 @@ CfgMaxSpeed_FW                  IS FW4
 TwelveBitSpeed_FW               IS FW5
 SpinSpeedCommand_FW             IS FW6
 GearBaseSpeed_FW                IS FW7 ; Acroloc un-overridden commanded S (override knob backed out)
+AbsX_FW                         IS FW8  ; Acroloc X encoder absolute counts (SV_MPU11_ABS_POS mirror)
+AbsY_FW                         IS FW9  ; Acroloc Y encoder absolute counts
+AbsZ_FW                         IS FW10 ; Acroloc Z encoder absolute counts
+MachX_FW                        IS FW11 ; Acroloc X machine coordinate (inches) for the VCP readout (plc_word 11, Float)
+MachY_FW                        IS FW12 ; Acroloc Y machine coordinate (inches) for the VCP readout (plc_word 12, Float)
+MachZ_FW                        IS FW13 ; Acroloc Z machine coordinate (inches) for the VCP readout (plc_word 13, Float)
+HomeAbsX_FW                     IS FW14 ; Acroloc X abs counts latched at machine zero by HomeSync_SV
+HomeAbsY_FW                     IS FW15 ; Acroloc Y abs counts latched at machine zero by HomeSync_SV
+HomeAbsZ_FW                     IS FW16 ; Acroloc Z abs counts latched at machine zero by HomeSync_SV
 
 ;------------------------------------------------------------------------------
 ;            One Shot Definitions
@@ -1182,6 +1198,7 @@ Aux16PD_PD                      IS PD56
 
 SkinFeedOverMinusPD_PD          IS PD57
 SkinFeedOverPlusPD_PD           IS PD58
+Rapid25PD_PD                    IS PD59 ; Acroloc one-shot for the VCP RAPID 25% toggle
 
 ;------------------------------------------------------------------------------
 ;                    34initions
@@ -1953,6 +1970,15 @@ IF KbTogRapidOver_M || (F9PD_PD && (SV_PROGRAM_RUNNING || SV_MDI_MODE))
 IF RapidOverPD_PD^ SelectRapidOverride_SV THEN (SelectRapidOverride_SV)
 IF OnAtPowerUp_M THEN SET SelectRapidOverride_SV
 
+; Acroloc: VCP RAPID 25% button - rapids-only cut. While latched, rapid (G0)
+; moves run at 25% via SV_PLC_RAPID_FEEDRATE_OVERRIDE (a 0.0-2.0 scale like
+; SV_PLC_FEEDRATE_OVERRIDE above); the feedrate override is untouched.
+IF SkinRapid25_M_SV THEN (Rapid25PD_PD)
+IF (Rapid25_M ^ Rapid25PD_PD) THEN (Rapid25_M)
+IF Rapid25_M THEN SV_PLC_RAPID_FEEDRATE_OVERRIDE = 0.25
+IF !Rapid25_M THEN SV_PLC_RAPID_FEEDRATE_OVERRIDE = 1.0
+IF Rapid25_M THEN (RapidOverLED_O)
+
 IF (CycleCancelKey_I || KbCycleCancel_M || MpgResetKey_M || SkinCycleCancel_M_SV) || ErrorFlag_M
    THEN (DoCycleCancel_SV)
 
@@ -2039,11 +2065,17 @@ IF ((CoolFloodLED_O ^ (!CoolAutoModeLED_O && CoolantFloodPD_PD)) ||
    !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M8_SV || ErrorFlag_M || DoToolCheck_SV)
    THEN (CoolFloodLED_O), (SelectCoolantFlood_SV)
 
-;--Mist coolant on/off
+;--Mist coolant (pump channel) on/off
+; Acroloc: the PUMP button toggles a manual request in EITHER mode (stock only
+; honored it in manual mode). The pump channel runs on the manual latch OR
+; (auto && M7): M9/M7-off stops an M7-started pump but never a manually
+; requested one; switching coolant mode clears the manual latch (stock rule).
 IF (CoolMistKey_I || KbMistOnOff_M || SkinCoolMist_M_SV) THEN (CoolantMistPD_PD)
-IF ((CoolMistLED_O ^ (!CoolAutoModeLED_O && CoolantMistPD_PD)) ||
-   CoolAutoModeLED_O && M7_SV) &&
-   !(SV_STOP || CoolantAutoManualPD_PD || CoolAutoModeLED_O && !M7_SV || ErrorFlag_M || DoToolCheck_SV)
+IF (PumpManual_M ^ CoolantMistPD_PD) &&
+   !(SV_STOP || CoolantAutoManualPD_PD || ErrorFlag_M || DoToolCheck_SV)
+   THEN (PumpManual_M)
+IF (PumpManual_M || CoolAutoModeLED_O && M7_SV) &&
+   !(SV_STOP || ErrorFlag_M || DoToolCheck_SV)
    THEN (CoolMistLED_O), (SelectCoolantMist_SV)
 
 
@@ -2291,6 +2323,10 @@ IF !SpinAutoModeLED_O THEN SpinSpeedCommand_FW = CfgMaxSpeed_FW *
                                                SpinRangeAdjust_FW
 IF !SpindleEnableOut_O THEN SpinSpeedCommand_FW = 0.0
 
+; Acroloc: mirror the spindle override knob % into a word so the VCP's
+; seven-segment SPIN % readout (plc_word 76) can display it.
+IF True_M THEN SpinOverride_W = SV_PLC_SPINDLE_KNOB
+
 ;-------------------------------------------------------------------------------
 ; If commanded spindle speed is < Min Spin Speed * SpinRangeAdjust
 ; & commanded spindle speed > 0, force to commanded spindle speed
@@ -2307,6 +2343,32 @@ IF (SpinSpeedCommand_FW > 0.0) &&
 ;-------------------------------------------------------------------------------
 IF SpinSpeedCommand_FW > (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
    THEN SpinSpeedCommand_FW = (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
+
+; Acroloc: mirror the final clamped commanded RPM into a word so the VCP's
+; seven-segment spindle readout (plc_word 77) can display it.
+IF True_M THEN SpinRPM_W = SpinSpeedCommand_FW
+
+;-------------------------------------------------------------------------------
+; Acroloc: VCP machine-coordinate readout (plc_word 11/12/13, type Float)
+; cncm.hom pulses HomeSync_SV (M94/6 .. M95/6) right after its last M26, when
+; every axis sits at machine zero; the encoder counts are latched there and
+; positions are counts relative to that, scaled by the CNC12 axis config:
+; 8000 counts/turn x 5 turns/inch = 40000 counts/inch, X +, Y/Z reversed (-).
+; Display-only; shows 0.0 until the machine is homed.
+;-------------------------------------------------------------------------------
+IF True_M THEN AbsX_FW = SV_MPU11_ABS_POS_0,
+               AbsY_FW = SV_MPU11_ABS_POS_1,
+               AbsZ_FW = SV_MPU11_ABS_POS_2
+IF HomeSync_SV THEN HomeAbsX_FW = AbsX_FW,
+                    HomeAbsY_FW = AbsY_FW,
+                    HomeAbsZ_FW = AbsZ_FW,
+                    SET MachHomed_M
+IF !MachHomed_M THEN MachX_FW = 0.0,
+                     MachY_FW = 0.0,
+                     MachZ_FW = 0.0
+IF MachHomed_M THEN MachX_FW = (AbsX_FW - HomeAbsX_FW) / 40000.0,
+                    MachY_FW = (HomeAbsY_FW - AbsY_FW) / 40000.0,
+                    MachZ_FW = (HomeAbsZ_FW - AbsZ_FW) / 40000.0
 
 ;-------------------------------------------------------------------------------
 ; Convert Spindle "S" command to 12 bit value for output to DAC

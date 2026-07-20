@@ -148,6 +148,7 @@ writes the same formula with reversed field names, `msgNumber + 256*msgFile`, wh
 | `Ax4MinusJogLED_O` .. `Ax3MinusJogLED_O` | OUT1097-1101 | 461-465 | | Jog panel row 9 LEDs. [jog-and-mpg.md](jog-and-mpg.md) |
 | `CycleCancelLED_O`, `SingleBlockLED_O`, `ToolCheckLED_O`, `FeedHoldLED_O` | OUT1102-1105 | 467-470 | | Jog panel row 10 LEDs. [jog-and-mpg.md](jog-and-mpg.md) |
 | `SkinResetSet_O` | OUT1107 | 473 | | VCP 2.0 reset button LED. [jog-and-mpg.md](jog-and-mpg.md) |
+| `RapidOverLED_O` | OUT1133 | 494 | Acroloc | VCP RAPID 25% button LED (the stock `rapid_over` button's LED number); lit while `Rapid25_M` is latched. [main-stage.md](main-stage.md) |
 | `FeedOver100LED_O` .. `FeedOver25LED_O` | OUT1137-1140 | 474-477 | | VCP 2.0 feed override LEDs. [jog-and-mpg.md](jog-and-mpg.md) |
 
 ## Memory bits
@@ -177,7 +178,10 @@ writes the same formula with reversed field names, `msgNumber + 256*msgFile`, wh
 | `JogProbeFault_M` | MEM55 | 504 | | 0 = okay, 1 = tripped probe while jogging. [faults-and-messages.md](faults-and-messages.md) |
 | `SpindleFault_M` | MEM56 | 505 | | 0 = okay, 1 = spindle drive fault. [faults-and-messages.md](faults-and-messages.md) |
 | `OtherFault_M` | MEM57 | 506 | | Other fault catch-all. [faults-and-messages.md](faults-and-messages.md) |
+| `Rapid25_M` | MEM58 | 528 | Acroloc | Latched by the VCP RAPID 25% button; while set, rapids run at 25% via `SV_PLC_RAPID_FEEDRATE_OVERRIDE`. [main-stage.md](main-stage.md) |
 | `ProbeMsgSent_M` | MEM78 | 517 | | Probe message sent latch. [faults-and-messages.md](faults-and-messages.md) |
+| `PumpManual_M` | MEM79 | 538 | Acroloc | Manual coolant-pump request, toggled by the PUMP button in either coolant mode; ORed with auto-M7 to drive `CoolMistLED_O`. [main-stage.md](main-stage.md) |
+| `MachHomed_M` | MEM80 | 539 | Acroloc | Set when `cncm.hom` pulses `HomeSync_SV`; enables the VCP machine-coordinate readout. [main-stage.md](main-stage.md) |
 | `True_M` | MEM81 | 518 | | Always-true bit. [scan-model.md](scan-model.md) |
 | `SpinRangeReversed_M` | MEM82 | 519 | | Set when `SpinRangeAdjust_FW` is negative (reversed range ratio). [main-stage.md](main-stage.md) |
 | `SpindleDirection_M` | MEM83 | 520 | | Commanded spindle direction. [main-stage.md](main-stage.md) |
@@ -275,6 +279,8 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `CarouselToolID_W` | W71 | 1093 | Acroloc | Per-group **peak** of the position-switch sum = the settled tool ID (base-16 encoded as decimal across the 5 switches); compared to `ChangeToTool_W`. [atc.md](atc.md) |
 | `ChangeToTool_W` | W72 | 1094 | Acroloc | Target tool ID latched from `M6`. [atc.md](atc.md) |
 | `InstToolID_W` | W75 | 1113 | Acroloc | Instantaneous position-switch sum, rebuilt each scan; its per-group peak is latched into `CarouselToolID_W`. [atc.md](atc.md) |
+| `SpinOverride_W` | W76 | 1114 | Acroloc | Mirror of `SV_PLC_SPINDLE_KNOB` (spindle override %), refreshed every scan so the VCP's seven-segment spindle readout can display it as `plc_word` 76. [main-stage.md](main-stage.md) |
+| `SpinRPM_W` | W77 | 1115 | Acroloc | Mirror of the final clamped `SpinSpeedCommand_FW` (commanded RPM after override, gear ratio, and min/max clamps; 0 when the spindle is disabled), for the VCP readout as `plc_word` 77. [main-stage.md](main-stage.md) |
 | `PValue_W` | W92 | 1096 | | Scratch parameter value. [parameters.md](parameters.md) |
 
 ### Float words (FW)
@@ -288,12 +294,16 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `TwelveBitSpeed_FW` | FW5 | 1105 | | 12-bit DAC speed value, float form. [main-stage.md](main-stage.md) |
 | `SpinSpeedCommand_FW` | FW6 | 1106 | | Commanded spindle speed, clamped to min/max. [main-stage.md](main-stage.md) |
 | `GearBaseSpeed_FW` | FW7 | 1107 | Acroloc | Un-overridden commanded S (override knob backed out); drives gear-shift crossover decision. [gear-shift.md](gear-shift.md) |
+| `AbsX_FW`/`AbsY_FW`/`AbsZ_FW` | FW8-10 | 1131-1133 | Acroloc | Per-scan mirrors of `SV_MPU11_ABS_POS_0/1/2` (X/Y/Z encoder absolute counts). [main-stage.md](main-stage.md) |
+| `MachX_FW`/`MachY_FW`/`MachZ_FW` | FW11-13 | 1134-1136 | Acroloc | Machine coordinates in inches for the VCP readout (`plc_word` 11/12/13, type Float); 0.0 until homed. [main-stage.md](main-stage.md) |
+| `HomeAbsX_FW`/`HomeAbsY_FW`/`HomeAbsZ_FW` | FW14-16 | 1137-1139 | Acroloc | Encoder counts latched at machine zero when `HomeSync_SV` pulses. [main-stage.md](main-stage.md) |
 
 ### One-shot bits (PD)
 
-Pulse-detect (one-shot) bits, `PD1`-`PD58`, defined at src:1112-1166. None are tagged
-`; Acroloc`; they belong to stock jog-panel/keyboard/coolant/spindle edge-detection logic
-(`IncrContPD_PD`, `SlowFastPD_PD`, `MpgPD_PD`, ... `SkinFeedOverPlusPD_PD`). See
+Pulse-detect (one-shot) bits, `PD1`-`PD59`, defined at src:1112-1166. All but one belong to
+stock jog-panel/keyboard/coolant/spindle edge-detection logic (`IncrContPD_PD`,
+`SlowFastPD_PD`, `MpgPD_PD`, ... `SkinFeedOverPlusPD_PD`); `Rapid25PD_PD` (PD59, src:1201)
+is the Acroloc one-shot edge of the VCP RAPID 25% button event. See
 [jog-and-mpg.md](jog-and-mpg.md) and [main-stage.md](main-stage.md) for their consuming
 logic; not itemized row-by-row here since none carry Acroloc-specific meaning or cross-file
 significance beyond "one-shot edge of the same-named key/event".
@@ -323,6 +333,7 @@ significance beyond "one-shot edge of the same-named key/event".
 | `DoCycleCancel_SV` .. `DoAux16Key_SV` | `SV_PLC_FUNCTION_1`-`_117` | 770-822 | | Jog-panel function outputs (cycle cancel/start, jog, aux keys, spindle/coolant/feed-override commands). [jog-and-mpg.md](jog-and-mpg.md) |
 | `Kb_a_SV` .. `Kb_Backslash_SV` | `SV_PC_KEYBOARD_KEY_*` | 845-940 | | PC keyboard keypress identifiers. [jog-and-mpg.md](jog-and-mpg.md) |
 | `SkinSpinOverPlus_M_SV` .. `SkinFeedOver25_SV` | `SV_SKIN_EVENT_1`-`_113` | 945-1017 | | VCP/skin on-screen button events (mirrors jog panel layout). [jog-and-mpg.md](jog-and-mpg.md) |
+| `SkinRapid25_M_SV` | `SV_SKIN_EVENT_82` | 1037 | Acroloc | VCP RAPID 25% button event (the stock `rapid_over` button's event number). [main-stage.md](main-stage.md) |
 | `SetAxis1Part0_SV` .. `SetAxis8Part0_SV` | `SV_PLC_SET_AXIS_n_PART_ZERO` | 1021-1028 | | Set-part-zero commands per axis. [jog-and-mpg.md](jog-and-mpg.md) |
 | `M3_SV` | `SV_M94_M95_1` | 1034 | | Spindle CW M-function trigger. [main-stage.md](main-stage.md) |
 | `M4_SV` | `SV_M94_M95_2` | 1035 | | Spindle CCW M-function trigger. [main-stage.md](main-stage.md) |
@@ -330,6 +341,7 @@ significance beyond "one-shot edge of the same-named key/event".
 | `M8_SV` | `SV_M94_M95_3` | 1037 | | Flood-on M-function trigger. [main-stage.md](main-stage.md) |
 | `M10_SV` | `SV_M94_M95_4` | 1038 | | Clamp M-function trigger. [main-stage.md](main-stage.md) |
 | `M7_SV` | `SV_M94_M95_5` | 1039 | | Mist M-function trigger. [main-stage.md](main-stage.md) |
+| `HomeSync_SV` | `SV_M94_M95_6` | 1064 | Acroloc | Pulsed by `cncm.hom` (`M94 /6` .. `M95 /6`) with every axis at machine zero; latches home encoder counts for the VCP machine-coordinate readout. [main-stage.md](main-stage.md) |
 
 `SV_M94_M95_6` and `SV_M94_M95_7` (src:1040-1041) are commented placeholders with no
 identifier bound — no name to cite.
