@@ -45,11 +45,11 @@ This retro skin becomes the **default** (selected in `options.xml`).
 | 7-10 | Jog block: +Y (7,4), +Z (7,6), -X (8,3), hare/tortoise (8,4), +X (8,5), MPG (9,1), -Y (9,4), -Z (9,6), X1 (10,1), X10 (10,2), X100 (10,3) |
 | 9 | SINGLE BLOCK (9,2) |
 | 10 | TOOL CHECK (10,4) / FEED HOLD (10,5) |
-| 11 | CYCLE START (11,1) / CYCLE CANCEL (11,2); feedrate readout (`plc_word` 4, DSEG7 7-seg red + separate `%` text over a bezel image), cols 4-6 |
+| 11 | CYCLE START (11,1) / CYCLE CANCEL (11,2) |
 | 12-14 | Round RESET, cols 1-3 (3x3 `<button ... column_span/row_span>`) |
-| 12 | FEED `-` / FEED 100% / FEED `+` (cols 4-6) |
-| 13 | 25% / 50% / 75% (cols 4-6) |
-| 14 | VCP OPTIONS (14,4) / PUSH FREE (14,5) |
+| 12 | Feedrate readout (`plc_word` 4, DSEG7 7-seg red + separate `%` text over a bezel image), cols 4-6 |
+| 13 | FEED `-` / FEED 100% / FEED `+` (cols 4-6) |
+| 14 | 25% / 50% / 75% (cols 4-6) |
 
 Group boxes: only FEEDRATE keeps a labeled `<border>`; the SPINDLE/COOLANT/AXIS JOG boxes were
 dropped during on-machine testing (their labels straddled the row seams).

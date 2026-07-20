@@ -516,18 +516,16 @@ BUTTONS = [
          fs=13),
     dict(name='tool_check', row=10, col=4, lines=['TOOL', 'CHECK']),
     dict(name='feed_hold', row=10, col=5, lines=['FEED', 'HOLD']),
-    dict(name='feedrate_negative', row=12, col=4, lines=['-'], fs=20,
+    dict(name='feedrate_negative', row=13, col=4, lines=['-'], fs=20,
          icon='down', text_y=[52]),
-    dict(name='feedrate_100', row=12, col=5, lines=['FEED', '100%']),
-    dict(name='feedrate_positive', row=12, col=6, lines=['+'], fs=20,
+    dict(name='feedrate_100', row=13, col=5, lines=['FEED', '100%']),
+    dict(name='feedrate_positive', row=13, col=6, lines=['+'], fs=20,
          icon='up', text_y=[79]),
-    dict(name='feedrate_25', row=13, col=4, lines=['25%']),
-    dict(name='feedrate_50', row=13, col=5, lines=['50%']),
-    dict(name='feedrate_75', row=13, col=6, lines=['75%']),
+    dict(name='feedrate_25', row=14, col=4, lines=['25%']),
+    dict(name='feedrate_50', row=14, col=5, lines=['50%']),
+    dict(name='feedrate_75', row=14, col=6, lines=['75%']),
     dict(name='reset', row=12, col=1, row_span=3, col_span=3,
          special='reset'),
-    dict(name='vcp_options', row=14, col=4, lines=['VCP', 'OPTIONS'], fs=13),
-    dict(name='push_free', row=14, col=5, lines=['PUSH', 'FREE']),
 ]
 
 
@@ -546,7 +544,6 @@ def _retro_xml(name, xml):
                  '<image_off>%s.svg</image_off>' % rn, xml)
     xml = xml.replace('reset_tripped.svg', 'retro_reset_tripped.svg')
     xml = xml.replace('>reset.svg<', '>retro_reset.svg<')
-    xml = xml.replace('push_pin.svg', 'retro_push_free_on.svg')
     if not xml.endswith('\n'):
         xml += '\n'
     return xml
@@ -749,19 +746,19 @@ def render_readout_bezel_svg(w):
 def render_skin():
     p = ['<vcp_skin>\n']
     p.append('\t<background>#141210</background>\n')
-    p.append(_border(4, 3, 12, 2, label='FEEDRATE'))
+    p.append(_border(4, 3, 13, 2, label='FEEDRATE'))
     # readout: drawn bezel image (smaller than the cell span) under two
     # transparent borders carrying the 7-seg digits and the % label
     p.append('\t<image>\n'
              '\t\t<column_span>3</column_span>\n'
              '\t\t<column_start>4</column_start>\n'
              '\t\t<row_span>1</row_span>\n'
-             '\t\t<row_start>11</row_start>\n'
+             '\t\t<row_start>12</row_start>\n'
              '\t\t<path>resources\\vcp\\images\\feedrate_bezel.svg</path>\n'
              '\t</image>\n')
-    p.append(_border(4, 3, 11, 1, outline='Transparent',
+    p.append(_border(4, 3, 12, 1, outline='Transparent',
                      extra=FEEDRATE_WORD))
-    p.append(_border(4, 3, 11, 1, outline='Transparent',
+    p.append(_border(4, 3, 12, 1, outline='Transparent',
                      extra=FEEDRATE_PCT))
     # spindle override % + commanded RPM readout, right-aligned on row 2
     # (same bezel image and span as the feedrate display)

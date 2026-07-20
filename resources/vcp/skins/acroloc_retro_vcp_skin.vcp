@@ -5,7 +5,7 @@
 		<column_start>4</column_start>
 		<fill>Transparent</fill>
 		<row_span>2</row_span>
-		<row_start>12</row_start>
+		<row_start>13</row_start>
 		<outline_color>#6a645c</outline_color>
 		<outline_thickness>1</outline_thickness>
 		<text>
@@ -23,7 +23,7 @@
 		<column_span>3</column_span>
 		<column_start>4</column_start>
 		<row_span>1</row_span>
-		<row_start>11</row_start>
+		<row_start>12</row_start>
 		<path>resources\vcp\images\feedrate_bezel.svg</path>
 	</image>
 	<border>
@@ -31,7 +31,7 @@
 		<column_start>4</column_start>
 		<fill>Transparent</fill>
 		<row_span>1</row_span>
-		<row_start>11</row_start>
+		<row_start>12</row_start>
 		<outline_color>Transparent</outline_color>
 		<outline_thickness>1</outline_thickness>
 		<plc_word>
@@ -49,7 +49,7 @@
 		<column_start>4</column_start>
 		<fill>Transparent</fill>
 		<row_span>1</row_span>
-		<row_start>11</row_start>
+		<row_start>12</row_start>
 		<outline_color>Transparent</outline_color>
 		<outline_thickness>1</outline_thickness>
 		<text>
@@ -321,12 +321,10 @@
 	<button row="11" column="1">retro_cycle_start</button>
 	<button row="11" column="2">retro_cycle_cancel</button>
 	<button row="12" column="1" column_span="3" row_span="3">retro_reset</button>
-	<button row="12" column="4">retro_feedrate_negative</button>
-	<button row="12" column="5">retro_feedrate_100</button>
-	<button row="12" column="6">retro_feedrate_positive</button>
-	<button row="13" column="4">retro_feedrate_25</button>
-	<button row="13" column="5">retro_feedrate_50</button>
-	<button row="13" column="6">retro_feedrate_75</button>
-	<button row="14" column="4">retro_vcp_options</button>
-	<button row="14" column="5">retro_push_free</button>
+	<button row="13" column="4">retro_feedrate_negative</button>
+	<button row="13" column="5">retro_feedrate_100</button>
+	<button row="13" column="6">retro_feedrate_positive</button>
+	<button row="14" column="4">retro_feedrate_25</button>
+	<button row="14" column="5">retro_feedrate_50</button>
+	<button row="14" column="6">retro_feedrate_75</button>
 </vcp_skin>
