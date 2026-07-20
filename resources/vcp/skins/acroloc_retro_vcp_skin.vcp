@@ -12,7 +12,7 @@
 			<content>FEEDRATE</content>
 			<fontsize>11</fontsize>
 			<color>#b0a898</color>
-			<font>Arial Narrow</font>
+			<font>Arial</font>
 			<fontstyle>bold</fontstyle>
 			<horizontalalignment>center</horizontalalignment>
 			<verticalalignment>top</verticalalignment>

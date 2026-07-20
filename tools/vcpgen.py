@@ -579,8 +579,8 @@ def emit_buttons(out_dir):
             # watch a different PLC bit than the stock button (e.g. PUMP
             # watches the real pump output OUT4, not the mist LED, so it
             # lights whenever the pump runs for any reason)
-            xml = re.sub(r'<number>\d+</number>',
-                         '<number>%d</number>' % b['led'], xml, count=1)
+            xml = re.sub(r'(<plc_output>\s*<number>)\d+(</number>)',
+                         r'\g<1>%d\g<2>' % b['led'], xml, count=1)
         _write(os.path.join(d, rn + '.xml'), _retro_xml(name, xml))
         if b.get('special') == 'reset':
             _write(os.path.join(d, 'retro_reset.svg'),
@@ -611,7 +611,7 @@ def _border(col, colspan, row, rowspan, label=None, fill='Transparent',
                '\t\t\t<content>%s</content>\n'
                '\t\t\t<fontsize>11</fontsize>\n'
                '\t\t\t<color>#b0a898</color>\n'
-               '\t\t\t<font>Arial Narrow</font>\n'
+               '\t\t\t<font>Arial</font>\n'
                '\t\t\t<fontstyle>bold</fontstyle>\n'
                '\t\t\t<horizontalalignment>center</horizontalalignment>\n'
                '\t\t\t<verticalalignment>top</verticalalignment>\n'
