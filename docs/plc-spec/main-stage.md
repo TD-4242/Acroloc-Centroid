@@ -346,6 +346,18 @@ scaled by the CNC12 axis config (8000 counts/turn x 5 turns/inch = 40000 counts/
 positive, Y and Z reversed, hence the swapped subtraction order). Displays 0.0 until homed;
 re-homing re-latches. Display-only — nothing reads the FWs back.
 
+### RAPID 25% rapids-only override (Acroloc, src:1976-1980)
+
+Feeds the retro VCP's RAPID 25% toggle button (stock `rapid_over` bindings: skin event 82,
+LED OUT1133). `SkinRapid25_M_SV` one-shots through `Rapid25PD_PD` into the `Rapid25_M`
+toggle latch (the same XOR-coil idiom as `PumpManual_M`). While latched,
+`SV_PLC_RAPID_FEEDRATE_OVERRIDE` is written 0.25 each scan (a 0.0-2.0 scale factor,
+parallel to the `SV_PLC_FEEDRATE_OVERRIDE` write at src:1964), cutting rapid (G0) moves to
+25% without touching the feedrate override; when off it is written 1.0 and
+`RapidOverLED_O` goes dark. Independent of the legacy F9/Ctrl-R
+`SelectRapidOverride_SV` toggle directly above it (src:1967-1971), which links rapids to
+the feed override knob.
+
 ### Coolant (mist/flood) — mfunc7/mfunc8 linkage (src:2086-2127)
 
 - (src:2089-2099): `CoolantAutoManualPD_PD` toggles `CoolAutoModeLED_O` (forced on at
