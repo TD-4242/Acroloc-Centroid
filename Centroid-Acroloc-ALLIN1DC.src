@@ -1115,6 +1115,7 @@ MiniPLCStatus_W                 IS W70
 
 CarouselToolID_W                IS W71 ; Acroloc
 ChangeToTool_W                  IS W72 ; Acroloc
+CurrentBin_W                    IS W78 ; Acroloc current carousel bin reported to CNC12 (random ATC)
 InstToolID_W                    IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CarouselToolID_W
 SpinOverride_W                  IS W76 ; Acroloc spindle override % (mirror of SV_PLC_SPINDLE_KNOB) for the VCP readout
 SpinRPM_W                       IS W77 ; Acroloc commanded spindle RPM (final clamped SpinSpeedCommand_FW) for the VCP readout
@@ -1308,6 +1309,7 @@ IF 1==1 THEN SET True_M,
              EngagedRange_W = 0,       ; Acroloc gear unknown -> first spin-up engages a gear
              DesiredRange_W = 0,       ; Acroloc boot placeholder (decision overwrites next scan)
              SpindleRange_W = 1,       ; Acroloc safe default ratio until first engage
+             CurrentBin_W = SV_ATC_CAROUSEL_POSITION,  ; Acroloc seed last-known bin from CNC12 (random ATC)
              RST InitialStage
 
 ;=============================================================================
@@ -2929,6 +2931,13 @@ IF True_M THEN RST OnAtPowerUp_M
 ; wrong tool under the spindle).
 IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CarouselToolID_W = 0
 IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
+
+; Acroloc -- random ATC: report current carousel bin to CNC12 (outside ATCStage; search logic untouched)
+; Latch only when no change is running and a settled ID is present, so mid-spin
+; transients never reach CNC12. CarouselToolID_W holds the matched bin from end
+; of change until the next kickoff zeroes it.
+IF !ATCStage && CarouselToolID_W > 0 THEN CurrentBin_W = CarouselToolID_W
+IF True_M THEN SV_PLC_CAROUSEL_POSITION = CurrentBin_W
 
 ; Acroloc manual tool changes
 IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O
