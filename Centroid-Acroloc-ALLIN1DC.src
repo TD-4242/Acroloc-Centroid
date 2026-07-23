@@ -731,7 +731,7 @@ KbAux15Key_M                    IS MEM446 ; "ctrl" + "3"
 KbAux16Key_M                    IS MEM447 ; "ctrl" + "4"
 
 ; Tool changer position state tracking
-InToolSelect_M                  IS MEM443 ; Acroloc 0=false, 1=true
+InBinDecode_M                   IS MEM443 ; Acroloc 0=false, 1=true
 ToolSelected_M                  IS MEM452 ; Acroloc 0=false, 1=true (moved off MEM444; it collided with KbAux13Key_M)
 ChangerHoldActive_M             IS MEM448 ; Acroloc feed-hold active while spindle stops in changer zone
 ChangerHoldDone_M               IS MEM449 ; Acroloc once-per-entry latch, cleared when Z clears changer
@@ -1113,8 +1113,8 @@ P170Value_W                     IS W68
 P900Value_W                     IS W69
 MiniPLCStatus_W                 IS W70
 
-CarouselToolID_W                IS W71 ; Acroloc
-ChangeToTool_W                  IS W72 ; Acroloc
+CarouselBinID_W                 IS W71 ; Acroloc
+ChangeToToolBin_W               IS W72 ; Acroloc
 ChangeBinDisp_W                 IS W8  ; Acroloc macro-readable copy of chosen bin (#96008) for the M6 console message
 BinTool1_W                      IS W78 ; Acroloc bin 1 loaded tool number (from P701; fixed tool-bin map)
 BinTool2_W                      IS W79 ; Acroloc bin 2 loaded tool number (P702)
@@ -1128,7 +1128,7 @@ BinTool9_W                      IS W86 ; Acroloc bin 9 loaded tool number (P709)
 BinTool10_W                     IS W87 ; Acroloc bin 10 loaded tool number (P710)
 BinTool11_W                     IS W88 ; Acroloc bin 11 loaded tool number (P711)
 BinTool12_W                     IS W89 ; Acroloc bin 12 loaded tool number (P712)
-InstToolID_W                    IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CarouselToolID_W
+InstBinID_W                     IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CarouselBinID_W
 SpinOverride_W                  IS W76 ; Acroloc spindle override % (mirror of SV_PLC_SPINDLE_KNOB) for the VCP readout
 SpinRPM_W                       IS W77 ; Acroloc commanded spindle RPM (final clamped SpinSpeedCommand_FW) for the VCP readout
 
@@ -2953,31 +2953,31 @@ IF True_M THEN RST OnAtPowerUp_M
 
 ; Acroloc tool stage start
 ; Acroloc: once per change (before SET ATCStage below, so !ATCStage is true only on the
-; first scan): arm the carousel search watchdog, AND clear CarouselToolID_W so a stale
+; first scan): arm the carousel search watchdog, AND clear CarouselBinID_W so a stale
 ; value from the previous change cannot cause an immediate match -- the carousel always
 ; re-indexes to the requested tool, even the same tool (a manual change may have left the
 ; wrong tool under the spindle).
-IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CarouselToolID_W = 0
+IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CarouselBinID_W = 0
 ; Acroloc -- fixed tool->bin map: translate the requested TOOL number to its BIN.
 ; BinTool1_W..BinTool12_W hold the tool loaded in each bin (from P701-712). Set
-; ChangeToTool_W to the bin whose loaded tool == SV_TOOL_NUMBER. Default 99 (an
+; ChangeToToolBin_W to the bin whose loaded tool == SV_TOOL_NUMBER. Default 99 (an
 ; unreachable bin) so a tool that is in no bin never matches and faults on the
 ; 20 s ATCSpin_T watchdog instead of false-matching bin 0 and completing without
-; moving. ATCStage then indexes the carousel to ChangeToTool_W exactly as before.
-IF M6_SV THEN ChangeToTool_W = 99
-IF M6_SV && BinTool1_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 1
-IF M6_SV && BinTool2_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 2
-IF M6_SV && BinTool3_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 3
-IF M6_SV && BinTool4_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 4
-IF M6_SV && BinTool5_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 5
-IF M6_SV && BinTool6_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 6
-IF M6_SV && BinTool7_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 7
-IF M6_SV && BinTool8_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 8
-IF M6_SV && BinTool9_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 9
-IF M6_SV && BinTool10_W == SV_TOOL_NUMBER THEN ChangeToTool_W = 10
-IF M6_SV && BinTool11_W == SV_TOOL_NUMBER THEN ChangeToTool_W = 11
-IF M6_SV && BinTool12_W == SV_TOOL_NUMBER THEN ChangeToTool_W = 12
-IF M6_SV THEN ChangeBinDisp_W = ChangeToTool_W, SET ATCStage  ; Acroloc expose bin to mfunc6 (#96008)
+; moving. ATCStage then indexes the carousel to ChangeToToolBin_W exactly as before.
+IF M6_SV THEN ChangeToToolBin_W = 99
+IF M6_SV && BinTool1_W  == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 1
+IF M6_SV && BinTool2_W  == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 2
+IF M6_SV && BinTool3_W  == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 3
+IF M6_SV && BinTool4_W  == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 4
+IF M6_SV && BinTool5_W  == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 5
+IF M6_SV && BinTool6_W  == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 6
+IF M6_SV && BinTool7_W  == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 7
+IF M6_SV && BinTool8_W  == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 8
+IF M6_SV && BinTool9_W  == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 9
+IF M6_SV && BinTool10_W == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 10
+IF M6_SV && BinTool11_W == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 11
+IF M6_SV && BinTool12_W == SV_TOOL_NUMBER THEN ChangeToToolBin_W = 12
+IF M6_SV THEN ChangeBinDisp_W = ChangeToToolBin_W, SET ATCStage  ; Acroloc expose bin to mfunc6 (#96008)
 
 ; Acroloc manual tool changes
 IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O
@@ -3053,7 +3053,7 @@ IF ATCStage && !ZeroSpeed_I THEN
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
-  ChangeToTool_W = 0,
+  ChangeToToolBin_W = 0,
   RST ATCSpin_T,
   RST ATCStage
 
@@ -3064,53 +3064,53 @@ IF !ATC_Z_Zero_Release_I THEN
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
-  ChangeToTool_W = 0,
+  ChangeToToolBin_W = 0,
   RST ATCSpin_T,
   RST ATCStage
 
 ; z axis is clear of tool carousel, carousel is ready to spin
-IF ATCStage && ChangeToTool_W > 0 THEN
+IF ATCStage && ChangeToToolBin_W > 0 THEN
   SET ATCUnlocked_O,
   SET ATCMotor_O
 
 ; If carousel is moving and any of the position switches are triggered we need to start
 ; tracking the switches to calculate what position we are at
-IF ATCMotor_O && ( ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I ) && !InToolSelect_M THEN
-  CarouselToolID_W = 0,
-  SET InToolSelect_M
+IF ATCMotor_O && ( ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I ) && !InBinDecode_M THEN
+  CarouselBinID_W = 0,
+  SET InBinDecode_M
 
-; tools are in base16 encoded as decimal
-; start adding any ID points that come across to identify the tool
-; switch 1 2 3 4 5         1 2 3 4 5         1 2 3 4 5
-; T1 =  * O O O O    T5 = * O * O O    T9 = * O O * O
-; T2 =  O * O O O    T6 = O * * O O   T10 = O O O O *
-; T3 =  * * O O O    T7 = * * * O O   T11 = * O O O *
-; T4 =  O O * O O    T8 = O O O * O   T12 = O * O O *
-; The position switches for a pocket do NOT open/close simultaneously, so the instantaneous
+; the carousel BIN (physical position) is base16 encoded as decimal across the 5 switches
+; start adding any ID points that come across to identify the bin (carousel position)
+; switch 1 2 3 4 5          1 2 3 4 5          1 2 3 4 5
+; B1 =  * O O O O    B5 =  * O * O O    B9 =  * O O * O
+; B2 =  O * O O O    B6 =  O * * O O   B10 =  O O O O *
+; B3 =  * * O O O    B7 =  * * * O O   B11 =  * O O O *
+; B4 =  O O * O O    B8 =  O O O * O   B12 =  O * O O *
+; The position switches for a bin do NOT open/close simultaneously, so the instantaneous
 ; sum passes through single-switch values (e.g. Pos3 alone = 4) at the entry AND exit edges.
 ; Build the instantaneous sum each scan, then keep the PEAK across the group in
-; CarouselToolID_W -- the peak is reached only when all of the pocket's switches are on at
-; the aligned dwell, so it is the true tool ID. Comparing the peak (not a live edge partial)
-; stops requesting-T4 from false-matching the Pos3 transient at T5/T6/T7.
-IF InToolSelect_M THEN InstToolID_W = 0
-IF InToolSelect_M && ATC_Pos1_I THEN InstToolID_W = InstToolID_W + 1
-IF InToolSelect_M && ATC_Pos2_I THEN InstToolID_W = InstToolID_W + 2
-IF InToolSelect_M && ATC_Pos3_I THEN InstToolID_W = InstToolID_W + 4
-IF InToolSelect_M && ATC_Pos4_I THEN InstToolID_W = InstToolID_W + 8
-IF InToolSelect_M && ATC_Pos5_I THEN InstToolID_W = InstToolID_W + 10; Not 16 due to base16 encoded as decimal
-IF InToolSelect_M && InstToolID_W > CarouselToolID_W THEN CarouselToolID_W = InstToolID_W
+; CarouselBinID_W -- the peak is reached only when all of the bin's switches are on at
+; the aligned dwell, so it is the true bin ID. Comparing the peak (not a live edge partial)
+; stops a requested bin from false-matching a Pos3 transient at an adjacent bin.
+IF InBinDecode_M THEN InstBinID_W = 0
+IF InBinDecode_M && ATC_Pos1_I THEN InstBinID_W = InstBinID_W + 1
+IF InBinDecode_M && ATC_Pos2_I THEN InstBinID_W = InstBinID_W + 2
+IF InBinDecode_M && ATC_Pos3_I THEN InstBinID_W = InstBinID_W + 4
+IF InBinDecode_M && ATC_Pos4_I THEN InstBinID_W = InstBinID_W + 8
+IF InBinDecode_M && ATC_Pos5_I THEN InstBinID_W = InstBinID_W + 10; Not 16 due to base16 encoded as decimal
+IF InBinDecode_M && InstBinID_W > CarouselBinID_W THEN CarouselBinID_W = InstBinID_W
 
-; If all tool position switches go back to 0 then we need to exit the tool selection mode
-; and CarouselToolID_W should be the tool number passing the spindle.
+; If all position switches go back to 0 then we exit the bin-decode mode, and
+; CarouselBinID_W now holds the bin (carousel position) that just passed the spindle.
 IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !ATC_Pos5_I ) THEN
-  RST InToolSelect_M
+  RST InBinDecode_M
 
-; lets fire and stop on tool
-; Compare only after the group ends (!InToolSelect_M, all switches back to 0). CarouselToolID_W
-; now holds the per-group PEAK (the settled full tool ID), so neither an entry nor an exit
+; fire and stop on the matching bin
+; Compare only after the group ends (!InBinDecode_M, all switches back to 0). CarouselBinID_W
+; now holds the per-group PEAK (the settled full bin ID), so neither an entry nor an exit
 ; single-switch partial can false-match.
-IF !InToolSelect_M && CarouselToolID_W == ChangeToTool_W THEN
-  ChangeToTool_W = 0,
+IF !InBinDecode_M && CarouselBinID_W == ChangeToToolBin_W THEN
+  ChangeToToolBin_W = 0,
   SET ToolSelected_M,
   RST ATCMotor_O,
   RST ATCUnlocked_O,
@@ -3128,7 +3128,7 @@ IF ATCStage && ATCSpin_T THEN
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
-  ChangeToTool_W = 0,
+  ChangeToToolBin_W = 0,
   RST ATCSpin_T,
   RST ATCStage
 
