@@ -1115,7 +1115,19 @@ MiniPLCStatus_W                 IS W70
 
 CarouselToolID_W                IS W71 ; Acroloc
 ChangeToTool_W                  IS W72 ; Acroloc
-CurrentBin_W                    IS W78 ; Acroloc current carousel bin reported to CNC12 (random ATC)
+ChangeBinDisp_W                 IS W8  ; Acroloc macro-readable copy of chosen bin (#96008) for the M6 console message
+BinTool1_W                      IS W78 ; Acroloc bin 1 loaded tool number (from P701; fixed tool-bin map)
+BinTool2_W                      IS W79 ; Acroloc bin 2 loaded tool number (P702)
+BinTool3_W                      IS W80 ; Acroloc bin 3 loaded tool number (P703)
+BinTool4_W                      IS W81 ; Acroloc bin 4 loaded tool number (P704)
+BinTool5_W                      IS W82 ; Acroloc bin 5 loaded tool number (P705)
+BinTool6_W                      IS W83 ; Acroloc bin 6 loaded tool number (P706)
+BinTool7_W                      IS W84 ; Acroloc bin 7 loaded tool number (P707)
+BinTool8_W                      IS W85 ; Acroloc bin 8 loaded tool number (P708)
+BinTool9_W                      IS W86 ; Acroloc bin 9 loaded tool number (P709)
+BinTool10_W                     IS W87 ; Acroloc bin 10 loaded tool number (P710)
+BinTool11_W                     IS W88 ; Acroloc bin 11 loaded tool number (P711)
+BinTool12_W                     IS W89 ; Acroloc bin 12 loaded tool number (P712)
 InstToolID_W                    IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CarouselToolID_W
 SpinOverride_W                  IS W76 ; Acroloc spindle override % (mirror of SV_PLC_SPINDLE_KNOB) for the VCP readout
 SpinRPM_W                       IS W77 ; Acroloc commanded spindle RPM (final clamped SpinSpeedCommand_FW) for the VCP readout
@@ -1309,7 +1321,6 @@ IF 1==1 THEN SET True_M,
              EngagedRange_W = 0,       ; Acroloc gear unknown -> first spin-up engages a gear
              DesiredRange_W = 0,       ; Acroloc boot placeholder (decision overwrites next scan)
              SpindleRange_W = 1,       ; Acroloc safe default ratio until first engage
-             CurrentBin_W = SV_ATC_CAROUSEL_POSITION,  ; Acroloc seed last-known bin from CNC12 (random ATC)
              RST InitialStage
 
 ;=============================================================================
@@ -1329,6 +1340,23 @@ IF True_M THEN BITTST PValue_W 1 MpgX100LockOut_M
 IF True_M THEN P146Value_W = SV_MACHINE_PARAMETER_146,  ; Feed hold threshold
                P148Value_W = SV_MACHINE_PARAMETER_148,  ; Misc Jogging Options
                P170Value_W = SV_MACHINE_PARAMETER_170  ; Enable Keyboard Jogging
+
+; Acroloc -- fixed tool->bin map: P701-712 = the tool number loaded in bins 1-12.
+; Re-read every scan here, so editing a bin's tool on the parameter screen takes
+; effect without a reboot. The M6 kickoff (MainStage) looks the requested tool up
+; in these to pick the carousel bin.
+IF True_M THEN BinTool1_W  = SV_MACHINE_PARAMETER_701,  ; Acroloc
+               BinTool2_W  = SV_MACHINE_PARAMETER_702,  ; Acroloc
+               BinTool3_W  = SV_MACHINE_PARAMETER_703,  ; Acroloc
+               BinTool4_W  = SV_MACHINE_PARAMETER_704,  ; Acroloc
+               BinTool5_W  = SV_MACHINE_PARAMETER_705,  ; Acroloc
+               BinTool6_W  = SV_MACHINE_PARAMETER_706,  ; Acroloc
+               BinTool7_W  = SV_MACHINE_PARAMETER_707,  ; Acroloc
+               BinTool8_W  = SV_MACHINE_PARAMETER_708,  ; Acroloc
+               BinTool9_W  = SV_MACHINE_PARAMETER_709,  ; Acroloc
+               BinTool10_W = SV_MACHINE_PARAMETER_710,  ; Acroloc
+               BinTool11_W = SV_MACHINE_PARAMETER_711,  ; Acroloc
+               BinTool12_W = SV_MACHINE_PARAMETER_712   ; Acroloc
 
 IF True_M THEN (SV_ENABLE_IO_OVERRIDE),
                SV_INVERT_INP1_16_BITS      = SV_MACHINE_PARAMETER_911,
@@ -2930,14 +2958,26 @@ IF True_M THEN RST OnAtPowerUp_M
 ; re-indexes to the requested tool, even the same tool (a manual change may have left the
 ; wrong tool under the spindle).
 IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CarouselToolID_W = 0
-IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
-
-; Acroloc -- random ATC: report current carousel bin to CNC12 (outside ATCStage; search logic untouched)
-; Latch only when no change is running and a settled ID is present, so mid-spin
-; transients never reach CNC12. CarouselToolID_W holds the matched bin from end
-; of change until the next kickoff zeroes it.
-IF !ATCStage && CarouselToolID_W > 0 THEN CurrentBin_W = CarouselToolID_W
-IF True_M THEN SV_PLC_CAROUSEL_POSITION = CurrentBin_W
+; Acroloc -- fixed tool->bin map: translate the requested TOOL number to its BIN.
+; BinTool1_W..BinTool12_W hold the tool loaded in each bin (from P701-712). Set
+; ChangeToTool_W to the bin whose loaded tool == SV_TOOL_NUMBER. Default 99 (an
+; unreachable bin) so a tool that is in no bin never matches and faults on the
+; 20 s ATCSpin_T watchdog instead of false-matching bin 0 and completing without
+; moving. ATCStage then indexes the carousel to ChangeToTool_W exactly as before.
+IF M6_SV THEN ChangeToTool_W = 99
+IF M6_SV && BinTool1_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 1
+IF M6_SV && BinTool2_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 2
+IF M6_SV && BinTool3_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 3
+IF M6_SV && BinTool4_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 4
+IF M6_SV && BinTool5_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 5
+IF M6_SV && BinTool6_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 6
+IF M6_SV && BinTool7_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 7
+IF M6_SV && BinTool8_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 8
+IF M6_SV && BinTool9_W  == SV_TOOL_NUMBER THEN ChangeToTool_W = 9
+IF M6_SV && BinTool10_W == SV_TOOL_NUMBER THEN ChangeToTool_W = 10
+IF M6_SV && BinTool11_W == SV_TOOL_NUMBER THEN ChangeToTool_W = 11
+IF M6_SV && BinTool12_W == SV_TOOL_NUMBER THEN ChangeToTool_W = 12
+IF M6_SV THEN ChangeBinDisp_W = ChangeToTool_W, SET ATCStage  ; Acroloc expose bin to mfunc6 (#96008)
 
 ; Acroloc manual tool changes
 IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O

@@ -21,6 +21,12 @@ M107            ; Send tool number
 G4 P.1          ; wait .1 second
 M94 /8          ; Set M6_SV to start tool change stage
 G4 p1           ; wait 1 second (can I shorten this wait?)
+; Acroloc -- operator message: the PLC tool->bin map picked the carousel bin.
+; ChangeBinDisp_W (W8) = chosen bin, read here as #96008. This is a custom,
+; undocumented feature, so tell the operator which tool and bin/parameter.
+#101 = #96008                       ; chosen carousel bin
+#102 = 700 + #101                   ; P70x parameter that assigns this bin
+M225 #100 "Change to T%.0f in bin %.0f (P%.0f)" #4120 #101 #102
 M100 /93016     ; ATCStage RST
 M95 /8          ; reset M6_SV to stop tool change stage when done
 
