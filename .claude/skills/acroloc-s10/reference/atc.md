@@ -8,6 +8,30 @@ tool-change control flow and carousel position encoding, see
 
 - **Carousel capacity:** 12 tools.
 
+## Tool-change mechanism (Z-motion, unique to Acroloc)
+
+This is **not** a typical modern ATC (no arm, gripper, or separate clamp/unclamp step). The
+tool locks to and unlocks from the spindle purely by **Z depth** as the spindle travels
+through the carousel ring:
+
+- **Z0** (tool-change position): **no tool in the spindle** — it is deposited and resting in
+  the carousel bin under the spindle.
+- **~Z -1.5"**: the tool automatically, mechanically **locks** into the spindle.
+- **~Z -1.75 to -2"**: fully engaged; the spindle may spin.
+
+Two consequences the PLC must respect:
+
+- The spindle must **not** spin while Z is travelling through the ring (the tool is
+  locking/unlocking there). This is the reason for the spindle-stop / `ZeroSpeed_I` (INP12)
+  feed-hold interlock in `MainStage` (see [atc-flow.md](atc-flow.md)).
+- **A manual carousel spin (`ATCManualUnlock_I`, only usable at Z clear/Z0) is a full tool
+  swap:** the spindle is empty at Z0, so hand-spinning the carousel changes which tool gets
+  picked up on the next Z descent. After a manual spin **both the bin and the active tool are
+  unknown.** The PLC forces the bin to 0 = UNKNOWN on manual unlock (`CurrentToolBin_W` /
+  `TargetToolBinDisp_W`), but it cannot clear CNC12's current tool at `P160 = 0`
+  (`SV_ATC_TOOL_IN_SPINDLE` is CNC12->PLC only) — the operator re-establishes the current
+  tool after a manual swap.
+
 ## Bin numbering and tool→bin map
 
 The five position switches (`ATC_Pos1_I`..`ATC_Pos5_I`) encode the carousel **bin

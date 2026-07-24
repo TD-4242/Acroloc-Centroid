@@ -108,12 +108,19 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN ... SPINDLE_FA
 
 **Manual unlock (outside M6):**
 ```plc
-IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O
+IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O,
+  CurrentToolBin_W = 0,
+  TargetToolBinDisp_W = 0
 IF !ATCManualUnlock_I && !ATCStage THEN RST ATCUnlocked_O
 ```
 The front-panel `ATCManualUnlock_I` (INP24) button lets an operator unlock
 the carousel by hand, but only when Z is clear (`ATC_Z_Zero_Release_I`,
-INP27) and `ATCStage` is not running.
+INP27) and `ATCStage` is not running. Because this is a **Z-motion changer**
+(the spindle is empty at Z0 — see [atc.md](atc.md)), a hand-spin is a full tool
+swap: the known bin is now stale, so both `CurrentToolBin_W` and the VCP readout
+`TargetToolBinDisp_W` are forced to **0 = unknown**. The PLC cannot clear CNC12's
+current tool at `P160 = 0`, so the operator re-establishes the tool after a manual
+swap; the next `M6` re-derives the bin by absolute-switch search regardless.
 
 ### 3. `ATCStage` (STG16) — carousel indexing and match
 
