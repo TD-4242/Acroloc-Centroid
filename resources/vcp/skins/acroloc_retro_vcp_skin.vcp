@@ -354,6 +354,7 @@
 	<button row="8" column="3">retro_x_negative</button>
 	<button row="8" column="4">retro_tortoise_hare</button>
 	<button row="8" column="5">retro_x_positive</button>
+	<button row="8" column="6">retro_z_home</button>
 	<button row="9" column="1">retro_mpg</button>
 	<button row="9" column="2">retro_single_block</button>
 	<button row="9" column="4">retro_y_negative</button>
