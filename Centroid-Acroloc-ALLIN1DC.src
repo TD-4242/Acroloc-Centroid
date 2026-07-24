@@ -1115,7 +1115,7 @@ MiniPLCStatus_W                 IS W70
 
 CurrentToolBin_W                IS W71 ; Acroloc
 TargetToolBin_W                 IS W72 ; Acroloc
-TargetToolBinDisp_W             IS W8  ; Acroloc macro-readable copy of chosen bin (#96008) for the M6 console message
+TargetToolBinDisp_W             IS W8  ; Acroloc last chosen carousel bin, held for the retro VCP live BIN readout (plc_word 8)
 ToolInBin1_W                    IS W78 ; Acroloc bin 1 loaded tool number (from P701; fixed tool-bin map)
 ToolInBin2_W                    IS W79 ; Acroloc bin 2 loaded tool number (P702)
 ToolInBin3_W                    IS W80 ; Acroloc bin 3 loaded tool number (P703)
@@ -2977,7 +2977,7 @@ IF M6_SV && ToolInBin9_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 9
 IF M6_SV && ToolInBin10_W == SV_TOOL_NUMBER THEN TargetToolBin_W = 10
 IF M6_SV && ToolInBin11_W == SV_TOOL_NUMBER THEN TargetToolBin_W = 11
 IF M6_SV && ToolInBin12_W == SV_TOOL_NUMBER THEN TargetToolBin_W = 12
-IF M6_SV THEN TargetToolBinDisp_W = TargetToolBin_W, SET ATCStage  ; Acroloc expose bin to mfunc6 (#96008)
+IF M6_SV THEN TargetToolBinDisp_W = TargetToolBin_W, SET ATCStage  ; Acroloc hold chosen bin for the VCP BIN readout
 
 ; Acroloc manual tool changes
 IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O

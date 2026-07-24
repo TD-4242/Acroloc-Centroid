@@ -148,6 +148,51 @@
 	</border>
 	<image>
 		<column_span>3</column_span>
+		<column_start>1</column_start>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<path>resources\vcp\images\feedrate_bezel.svg</path>
+	</image>
+	<border>
+		<column_span>3</column_span>
+		<column_start>1</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<plc_word>
+			<number>8</number>
+			<color>#ff3333</color>
+			<fontsize>24</fontsize>
+			<font>DSEG7 Classic</font>
+			<fontstyle>bold</fontstyle>
+			<verticalalignment>center</verticalalignment>
+			<horizontalalignment>right</horizontalalignment>
+			<marginright>78</marginright>
+		</plc_word>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>1</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<text>
+			<content>BIN</content>
+			<fontsize>13</fontsize>
+			<color>#ff3333</color>
+			<font>Arial</font>
+			<fontstyle>bold</fontstyle>
+			<horizontalalignment>right</horizontalalignment>
+			<verticalalignment>center</verticalalignment>
+			<marginright>30</marginright>
+		</text>
+	</border>
+	<image>
+		<column_span>3</column_span>
 		<column_start>4</column_start>
 		<row_span>2</row_span>
 		<row_start>5</row_start>

@@ -678,6 +678,13 @@ SPIN_ELEMENTS = (
     _seg_word(77, 18, 48),                 # SpinRPM_W       -> "XXXX"
     _seg_label('RPM', 12, 18))
 
+# carousel tool-bin readout: TargetToolBinDisp_W (W8) is latched to the mapped
+# bin on every M6 and held. Non-modal, always visible -- this replaces the
+# modal M225 popup so the operator can see which bin the tool->bin map picked.
+BIN_ELEMENTS = (
+    _seg_word(8, 24, 78),                  # TargetToolBinDisp_W -> bin number
+    _seg_label('BIN', 13, 30))             # "BIN" label to its right
+
 
 # machine-coordinate readout: X/Y/Z stacked in a 3x2-cell bezel. plc_word
 # type Float reads the FW register of the same number (FW11/12/13 = machine
@@ -774,6 +781,17 @@ def render_skin():
              '\t</image>\n')
     for el in SPIN_ELEMENTS:
         p.append(_border(4, 3, 2, 1, outline='Transparent', extra=el))
+    # carousel BIN readout on row 2 cols 1-3 (mirrors the spindle readout at
+    # cols 4-6); TargetToolBinDisp_W (W8) = the bin the last M6 mapped to
+    p.append('\t<image>\n'
+             '\t\t<column_span>3</column_span>\n'
+             '\t\t<column_start>1</column_start>\n'
+             '\t\t<row_span>1</row_span>\n'
+             '\t\t<row_start>2</row_start>\n'
+             '\t\t<path>resources\\vcp\\images\\feedrate_bezel.svg</path>\n'
+             '\t</image>\n')
+    for el in BIN_ELEMENTS:
+        p.append(_border(1, 3, 2, 1, outline='Transparent', extra=el))
     # X/Y/Z machine-coordinate readout right of FLOOD/PUMP (rows 5-6)
     p.append('\t<image>\n'
              '\t\t<column_span>3</column_span>\n'
