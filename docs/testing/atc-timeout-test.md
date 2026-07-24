@@ -18,7 +18,7 @@ Run after any change to the `ATCStage` search logic, the position-switch decode,
 | OUT17 | `ATCMotor_O` | 1 = carousel motor running |
 | OUT18 | `ATCUnlocked_O` | 1 = carousel unlocked (0 = locked) |
 | T24 | `ATCSpin_T` | search watchdog (true at 20 s expiry) |
-| W72 | `ChangeToTool_W` | target tool (0 = none) |
+| W72 | `TargetToolBin_W` | target bin (0 = none) |
 
 The watchdog preset is `ATC_SPIN_TIMEOUT_MS_C = 20000` ms.
 
@@ -33,7 +33,7 @@ The watchdog preset is `ATC_SPIN_TIMEOUT_MS_C = 20000` ms.
 2. **Unreachable tool -> timeout.** With no tool in the spindle, command a tool that has no
    pocket / never decodes — e.g. `M6 T13` on a 12-pocket carousel. Expected: the carousel
    spins, and at ~20 s the change **faults with "CAROUSEL MOVE TIME OUT"**, `ATCMotor_O` -> 0,
-   the carousel relocks (`ATCUnlocked_O` -> 0), and `M6_SV`/`ChangeToTool_W` clear.
+   the carousel relocks (`ATCUnlocked_O` -> 0), and `M6_SV`/`TargetToolBin_W` clear.
    Result: ______
    *(If commanding an out-of-range tool is undesirable, instead physically hold/stall the
    carousel so no position switch changes, and confirm the same ~20 s fault.)*

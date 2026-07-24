@@ -13,7 +13,7 @@ content -- see each file's "Restore" note.
 
 | File | What's customized | Commits | How to tell it reverted | Restore |
 |------|-------------------|---------|-------------------------|---------|
-| `language.msg` | Parameter-screen labels for **P701-P712** (ATC tool->bin map). Everything else is the stock baseline. | `75c2acb` (labels); `dfab98c` (baseline add) | P701-P712 read "Reserved for Enduser/Integrator custom PLC and Macro use" again. | **Re-apply the P701-712 relabel onto the upgraded file** (don't overwrite it wholesale). See "language.msg" below. |
+| `language.msg` | Parameter-screen labels: **P860-P863** (gear shift) and **P701-P712** (ATC tool->bin map). Everything else is the stock baseline. | `dfab98c` (P860-863 + baseline), `75c2acb` (P701-712) | P701-P712 read "Reserved for Enduser/Integrator..." again; P860-P863 read "Not Used". | **Re-apply both label sets onto the upgraded file** (don't overwrite it wholesale). See "language.msg" below. |
 | `plcmsg.txt` | This machine's **PLC operator messages** (ATC / spindle / turret / carousel). | `e1ab3c5` (add), `4c329ee` (feed-hold interlock msgs), `96ccf68` (ATC timeout) | Custom ATC/spindle faults show blank or a stock string. | Re-merge the custom messages into the upgraded `plcmsg.txt` (diff against stock). |
 | `cncm.hom` | Full custom homing program (home order + HomeSync latch). | `b90529c` | Homing order wrong / machine-coord DRO latch gone. | Fully custom -- copy `cncm.hom` from the repo verbatim. |
 
@@ -29,13 +29,17 @@ upgrade): `Centroid-Acroloc-ALLIN1DC.src` + `mfunc*.mac`, the retro VCP under
 - Each parameter N has `@P<N>_LABEL` (short, in the list) and `@P<N>_LABEL_L` (long
   description); edit the `eng:` line. Other-language slots can stay as-is (machine runs
   English). **Any CNC12 parameter or UI label can be renamed this way.**
-- **Only customization here:** P701-P712 (commit `75c2acb`), relabeled from the generic
-  "Reserved for Enduser/Integrator..." to `"ATC bin <n> - tool number loaded in this carousel
-  bin"` + the long map description. Nothing else in the file is ours.
-- **Restore after upgrade:** the upgraded `language.msg` is fine to keep; just re-apply the
-  24 label edits (P701-P712, `@P70n_LABEL` and `@P70n_LABEL_L`). The exact before/after is in
-  `git show 75c2acb -- language.msg`; a one-shot rewriter that does it precisely is in the
-  commit's approach (target the `eng:` line for each `@P70n_LABEL` / `_L`, preserve UTF-8+LF).
+- **Two customizations here** (everything else is the stock baseline):
+  - **P860-P863** (gear shift, commit `dfab98c`) -- CNC12 shows the 860-870 block as "Not
+    Used", so these were named: `Gear Crossover RPM`, `Gear Crossover Hysteresis`,
+    `Gear Shift Coast Dwell ms`, `High Gear Ratio`.
+  - **P701-P712** (ATC tool->bin map, commit `75c2acb`) -- relabeled from the generic
+    "Reserved for Enduser/Integrator..." to `"ATC bin <n> - tool number loaded in this
+    carousel bin"` + the long map description (24 lines: `@P70n_LABEL` and `@P70n_LABEL_L`).
+- **Restore after upgrade:** keep the upgraded `language.msg` and re-apply **both** label sets.
+  The exact before/after is in `git show 75c2acb -- language.msg` and
+  `git show dfab98c -- language.msg`; target the `eng:` line for each `@P<n>_LABEL` / `_L` and
+  preserve UTF-8 + LF.
 
 ### `plcmsg.txt` -- PLC operator messages
 

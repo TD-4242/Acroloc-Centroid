@@ -310,8 +310,11 @@ the `InBinDecode_M` gating must still be tested carefully. A value of
 
 `Spindle_Low_gear_O` (OUT19) and `Spindle_High_gear_O` (OUT20) are driven by
 the RPM-based auto-shift logic: a decision block in `MainStage` picks the gear
-from the un-overridden commanded S (crossover P941 ± hysteresis P942) and
-`GearShiftStage` (STG17) swaps clutches with a neutral coast dwell (P943).
+from the un-overridden commanded S (crossover **P860** ± hysteresis **P861**) and
+`GearShiftStage` (STG17) swaps clutches with a neutral coast dwell (**P862**;
+**P863** is the high-gear ratio). These live in the free 860-870 "Not Used"
+block — **do not use P941-943**: the 900-block is reserved on this control
+(P911-940 force MEM bits off, and **P941 is the PLC limit-defeat button**).
 This is **intentionally open-loop** — the engaged gear is tracked only from the
 commanded clutch outputs (`EngagedRange_W`), and a shift is inhibited during
 `ATCStage`. Closed-loop gear confirmation is **not planned**: the stock

@@ -23,6 +23,13 @@ to find every custom addition (definitions and logic alike).
 - `mfunc*.mac` — M-code macros (G-code-like) executed by the CNC when an M-function fires.
   - `mfunc3/4` = spindle CW/CCW, `mfunc6` = **tool change (M6)**, `mfunc7/8` = mist/flood
     coolant, `mfunc10/11` = clamp on/off.
+- `resources/vcp/` — **generated** operator panel (retro VCP). Emitted by `tools/vcpgen.py`;
+  do not hand-edit. `resources/colors/` holds the color themes.
+- **Customized CNC12 control-PC files** — `language.msg` (parameter/UI labels: P860-863 gear
+  shift, P701-712 ATC tool->bin map), `plcmsg.txt` (custom ATC/spindle operator messages, keyed
+  to the `.src` message constants), `cncm.hom` (homing + HomeSync latch). These look stock but
+  are ours, and a **CNC12 upgrade can overwrite them** — see
+  `docs/control-pc-customizations.md` for what is customized and how to restore it.
 
 ## Build / deploy
 
@@ -40,6 +47,9 @@ Local helper scripts (run on the dev box; they shell out to the vendor compiler 
 - `tools/plcfmt.py` — reformat the `.src` to canonical style (`--fix`), guarded by a
   fingerprint check that the compiled program is unchanged. See `tools/README.md`. Run
   `./compile.sh` after `--fix`. Tests: `python3 tools/test_plcfmt.py`.
+- `tools/vcpgen.py` — **generates the whole retro VCP** (`resources/vcp/` skin, button XML +
+  SVGs). Edit the generator and re-run it; **never hand-edit the emitted files** — they are
+  overwritten. Tests: `python3 tools/test_vcpgen.py`.
 
 ## PLC architecture (how the .src is organized)
 
@@ -73,18 +83,29 @@ Understand this before touching tool-change logic; it spans `mfunc6.mac`, `MainS
 1. `M6` runs `mfunc6.mac`: stops spindle/coolant, moves Z to the tool-change position via
    `G53 Z0`, sends the target tool with `M107`, then sets `M6_SV` (`M94 /8`) to kick off the
    tool-change stage and resets it (`M95 /8`) when `ATCStage` clears.
-2. `MainStage` sees `M6_SV`, latches the target into `ChangeToTool_W`, and `SET ATCStage`.
-   While Z has not cleared the tool changer (`ATC_Z_ClearedToolChanger_I` low) it drops
-   spindle enable; `ATCStage` posts the "spindle not parked" fault. See
-   `docs/plc-spec/atc.md` for the exact kickoff/safety rungs.
+2. `MainStage` sees `M6_SV` and **maps the requested tool to a carousel bin**: machine
+   parameters `P701-P712` hold the tool loaded in bins 1-12 (cached in
+   `ToolInBin1_W..ToolInBin12_W` at `LoadParametersStage`, re-read every scan). It sets
+   `TargetToolBin_W` to the bin whose loaded tool equals `SV_TOOL_NUMBER` — or `99`, an
+   unreachable bin, if the tool is in no bin, so it faults on the watchdog instead of
+   false-matching — then `SET ATCStage`. While Z has not cleared the tool changer
+   (`ATC_Z_ClearedToolChanger_I` low) it drops spindle enable; `ATCStage` posts the "spindle
+   not parked" fault.
 3. `ATCStage` spins the carousel (`ATCMotor_O`, `ATCUnlocked_O`) and reads the **5 position
-   switches** (`ATC_Pos1_I`..`ATC_Pos5_I`, INP32..INP28). Tool IDs are **base-16 encoded as
-   decimal** across those 5 bits (note `ATC_Pos5_I` adds `10`, not `16`). The accumulated
-   `CarouselToolID_W` is compared to `ChangeToTool_W`; on match it stops the motor, relocks,
-   and `RST M6_SV` / `RST ATCStage` to finish.
+   switches** (`ATC_Pos1_I`..`ATC_Pos5_I`, INP32..INP28). These encode the **carousel bin
+   (physical position)**, not the tool number — **base-16 as decimal** across those 5 bits
+   (note `ATC_Pos5_I` adds `10`, not `16`). The decoded `CurrentToolBin_W` is compared to
+   `TargetToolBin_W`; on match it stops the motor, relocks, and `RST M6_SV` / `RST ATCStage`
+   to finish.
+
+**Naming rule:** anything `...ToolBin...` holds a **carousel bin**; `ToolInBinN_W` holds a
+**tool number**. CNC12's own enhanced-ATC modes are deliberately unused (`P160 = 0`) — they
+either reshuffle the map (random) or force tool == bin (non-random).
 
 Custom ATC I/O (all marked `; Acroloc`): inputs `INP24`,`INP26`,`INP27`,`INP28..32`;
-outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71`/`W72`.
+outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71` (`CurrentToolBin_W`),
+`W72` (`TargetToolBin_W`), `W8` (`TargetToolBinDisp_W`, the VCP `TOOL BIN` readout), and
+`W78-W89` (`ToolInBin1_W..12_W`).
 
 ## Conventions & cautions
 
