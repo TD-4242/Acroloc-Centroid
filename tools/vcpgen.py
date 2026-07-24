@@ -681,9 +681,11 @@ SPIN_ELEMENTS = (
 # carousel tool-bin readout: TargetToolBinDisp_W (W8) is latched to the mapped
 # bin on every M6 and held. Non-modal, always visible -- this replaces the
 # modal M225 popup so the operator can see which bin the tool->bin map picked.
+# Reads "TOOL BIN #": label on the left, number on the right (both right-
+# aligned, ordered by marginright, like the spindle readout).
 BIN_ELEMENTS = (
-    _seg_word(8, 24, 78),                  # TargetToolBinDisp_W -> bin number
-    _seg_label('BIN', 13, 30))             # "BIN" label to its right
+    _seg_label('TOOL BIN', 12, 55),        # "TOOL BIN" label on the left
+    _seg_word(8, 22, 18))                  # TargetToolBinDisp_W -> bin number
 
 
 # machine-coordinate readout: X/Y/Z stacked in a 3x2-cell bezel. plc_word

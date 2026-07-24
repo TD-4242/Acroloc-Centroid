@@ -161,16 +161,16 @@
 		<row_start>2</row_start>
 		<outline_color>Transparent</outline_color>
 		<outline_thickness>1</outline_thickness>
-		<plc_word>
-			<number>8</number>
+		<text>
+			<content>TOOL BIN</content>
+			<fontsize>12</fontsize>
 			<color>#ff3333</color>
-			<fontsize>24</fontsize>
-			<font>DSEG7 Classic</font>
+			<font>Arial</font>
 			<fontstyle>bold</fontstyle>
-			<verticalalignment>center</verticalalignment>
 			<horizontalalignment>right</horizontalalignment>
-			<marginright>78</marginright>
-		</plc_word>
+			<verticalalignment>center</verticalalignment>
+			<marginright>55</marginright>
+		</text>
 	</border>
 	<border>
 		<column_span>3</column_span>
@@ -180,16 +180,16 @@
 		<row_start>2</row_start>
 		<outline_color>Transparent</outline_color>
 		<outline_thickness>1</outline_thickness>
-		<text>
-			<content>BIN</content>
-			<fontsize>13</fontsize>
+		<plc_word>
+			<number>8</number>
 			<color>#ff3333</color>
-			<font>Arial</font>
+			<fontsize>22</fontsize>
+			<font>DSEG7 Classic</font>
 			<fontstyle>bold</fontstyle>
-			<horizontalalignment>right</horizontalalignment>
 			<verticalalignment>center</verticalalignment>
-			<marginright>30</marginright>
-		</text>
+			<horizontalalignment>right</horizontalalignment>
+			<marginright>18</marginright>
+		</plc_word>
 	</border>
 	<image>
 		<column_span>3</column_span>
