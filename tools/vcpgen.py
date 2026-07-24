@@ -508,9 +508,9 @@ BUTTONS = [
          text_y=[52]),
     dict(name='z_negative', row=9, col=6, lines=['-Z'], icon='down',
          text_y=[52]),
-    # Z-to-machine-zero, between +Z (r7) and -Z (r9). Runs G53 Z0 directly
-    # (needs CNC12 v5.08+ <run>); no stock button to derive from.
-    dict(name='z_home', row=8, col=6, lines=['Z', 'HOME'],
+    # Z-to-machine-zero (park), between +Z (r7) and -Z (r9). Runs G53 Z0
+    # directly (needs CNC12 v5.08+ <run>); no stock button to derive from.
+    dict(name='z_park', row=8, col=6, lines=['Z', 'PARK'],
          run_line='G53 G0 Z0'),
     dict(name='cycle_start', row=11, col=1, lines=['CYCLE', 'START'],
          style='green', style_on='grnlit'),
