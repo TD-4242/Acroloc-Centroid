@@ -94,7 +94,7 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 |--------|----------|------|
 | `CurrentToolBin_W` | W71 | Current carousel **bin** ID, decoded from the 5 position switches during motor run; compared to `TargetToolBin_W` each scan |
 | `TargetToolBin_W` | W72 | Target carousel **bin** for the change: the bin whose loaded tool == `SV_TOOL_NUMBER` (via the P701–712 map), or 99 if the tool is in no bin |
-| `TargetToolBinDisp_W` | W8 | Macro-readable copy of `TargetToolBin_W` (`#96008`) for the `mfunc6` console message |
+| `TargetToolBinDisp_W` | W8 | Chosen bin held for the retro VCP live `BIN` readout (`plc_word` 8); latched from `TargetToolBin_W` each M6 |
 | `ToolInBin1_W`..`ToolInBin12_W` | W78–W89 | Tool number loaded in bins 1–12, cached from machine parameters **P701–712** at `LoadParametersStage` (re-read each scan) |
 
 ---

@@ -30,10 +30,6 @@ M107            ; send target tool number to PLC
 G4 P.1          ; brief settle delay
 M94 /8          ; SET M6_SV (SV_M94_M95_8) — kicks off ATCStage
 G4 p1           ; wait for ATCStage to start (PLC computes the bin)
-#101 = #96008   ; TargetToolBinDisp_W — the bin the PLC picked (99 = tool in no bin)
-#102 = 700 + #101
-IF #101 != 99 THEN M225 #100 "Change to T%.0f in bin %.0f (P%.0f)" #4120 #101 #102
-IF #101 == 99 THEN M225 #100 "M6: T%.0f is not assigned to a bin (set P701-P712)" #4120
 M100 /93016     ; wait here until ATCStage resets (PLC bit 93016)
 M95 /8          ; RST M6_SV — handshake cleanup
 ```
@@ -46,10 +42,10 @@ M109 /1/2                           ; disable overrides
 ```
 
 The macro does **not** drive any ATC hardware directly. It relies entirely
-on the PLC stage to index the carousel and signal completion. The `M225`
-message is operator feedback for the custom tool→bin mapping (macros can only
-read `W1–W44`, so the PLC exposes the chosen bin in `TargetToolBinDisp_W` = W8,
-read here as `#96008`).
+on the PLC stage to index the carousel and signal completion. The chosen bin is
+shown on the **retro VCP** as a live `BIN` readout (`plc_word` 8 =
+`TargetToolBinDisp_W`), not as a macro message — `M225` is a *modal* box that
+would pause the change until dismissed.
 
 ### 2. `MainStage` — kickoff and spindle-stop safety
 
@@ -72,8 +68,8 @@ IF M6_SV THEN TargetToolBinDisp_W = TargetToolBin_W, SET ATCStage
 `M6_SV` is `SV_M94_M95_8`. `TargetToolBin_W` (W72) becomes the bin whose loaded
 tool equals the request; the **99** default is an unreachable bin, so a tool in
 no bin never matches and faults on the 20 s watchdog instead of false-matching
-bin 0. `TargetToolBinDisp_W` (W8) is a macro-readable copy (`#96008`) for the
-`mfunc6` console message. `ATCStage` (STG16) then indexes the carousel to
+bin 0. `TargetToolBinDisp_W` (W8) holds the chosen bin for the retro VCP `BIN`
+readout (`plc_word` 8). `ATCStage` (STG16) then indexes the carousel to
 `TargetToolBin_W` — its search/decode/match logic is unchanged.
 
 **Spindle-in-changer feed-hold interlock — `ChangerStopTimer_T` and `ZeroSpeed_I`:**
