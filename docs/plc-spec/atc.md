@@ -9,14 +9,14 @@ verified via `git log -1 --format=%H -- Centroid-Acroloc-ALLIN1DC.src` returning
 `21128a9006ef99abb061276807d38401787105f0`, whose most recent change to this file predates
 41f3fd6, and `git status` shows no working-tree modifications to the `.src`).
 
-> ⚠️ **Superseded on the `tool-bin-mapping` branch.** The tool change was reworked there
-> (PR #22): a fixed **tool→bin map** (machine parameters **P701–712**, at `P160 = 0`) now
+> ⚠️ **Superseded by the tool→bin mapping change (PR #22).** The tool change was reworked:
+> a fixed **tool→bin map** (machine parameters **P701–712**, at `P160 = 0`) now
 > translates `SV_TOOL_NUMBER` to a carousel bin in `MainStage`, and the ATC variables were
 > renamed for tool-vs-bin clarity — `CarouselToolID_W → CurrentToolBin_W`,
 > `ChangeToTool_W → TargetToolBin_W`, `InstToolID_W → InstBinID_W`,
 > `InToolSelect_M → InBinDecode_M` (plus `ToolInBin1_W..12_W`, `TargetToolBinDisp_W`).
 > The line numbers **and** variable names below reflect the 41f3fd6 snapshot and no longer
-> match the branch. For the current flow and the map, see
+> match the current program. For the current flow and the map, see
 > [`../../.claude/skills/acroloc-s10/reference/atc-flow.md`](../../.claude/skills/acroloc-s10/reference/atc-flow.md).
 > This pinned spec should be re-based to the merge commit as a dedicated pass (re-deriving
 > the citations), per the "don't re-baseline line refs piecemeal" convention.

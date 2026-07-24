@@ -35,14 +35,16 @@
   then `TargetToolBinDisp_W = TargetToolBin_W, SET ATCStage`.
 - [x] `./compile.sh` clean (4930 -> 5056 tokens, warnings unchanged at 190).
 
-### Task 2: Operator console message (`mfunc6.mac`)
+### Task 2: Operator feedback -- retro VCP `TOOL BIN` readout
 
-**Files:** Modify `mfunc6.mac`.
+**Files:** Modify `tools/vcpgen.py` (regenerate `resources/vcp/`); `mfunc6.mac`.
 
-- [x] After `M94 /8` + settle, read `#101 = #96008` (chosen bin), `#102 = 700 + #101`.
-- [x] Guarded `M225`: `IF #101 != 99 THEN M225 #100 "Change to T%.0f in bin %.0f (P%.0f)" #4120 #101 #102`;
-  `IF #101 == 99 THEN M225 #100 "M6: T%.0f is not assigned to a bin (set P701-P712)" #4120`.
-- [x] Preserve the graph/search guard and `N1000`; ASCII-clean.
+- [x] PLC latches the chosen bin into `TargetToolBinDisp_W` (W8) on every M6 and holds it.
+- [x] `tools/vcpgen.py`: `BIN_ELEMENTS` renders a live `TOOL BIN` readout (`plc_word` 8)
+  over a reused bezel at row 2 cols 1-3; regenerate and keep `test_vcpgen.py` green.
+- [x] **No macro message.** `M225` is a *modal* box that pauses the change until dismissed
+  (confirmed on-machine), so `mfunc6.mac` posts none -- do **not** reintroduce it.
+- [x] `mfunc6.mac` keeps the graph/search guard and `N1000`; ASCII-clean.
 
 ### Task 3: Tool-vs-bin naming clarity
 
@@ -65,6 +67,6 @@
 
 ## On-machine verification (owner-run, P160 = 0)
 
-- Set P701-712 = tool in each bin; load the `.plc` + `mfunc6.mac`.
-- Identity map `M6T5` -> bin 5; remap `P705=31` -> `M6T31` -> bin 5 with the console message; unmapped tool -> `CAROUSEL MOVE TIME OUT` + "not assigned" message.
-- Confirm `M225` does not pause the change.
+- Set P701-712 = tool in each bin; load the `.plc` + `mfunc6.mac`; copy `resources/vcp/` and restart CNC12.
+- Identity map `M6T5` -> bin 5; remap `P705=31` -> `M6T31` -> bin 5, `TOOL BIN` readout tracks; unmapped tool -> `CAROUSEL MOVE TIME OUT` with `TOOL BIN` = 99; manual unlock -> `TOOL BIN` = 0.
+- Confirm the change completes with no pop-up to dismiss.

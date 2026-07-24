@@ -1,7 +1,7 @@
 # Tool-to-Bin Mapping - On-Machine Test Procedure
 
-Branch: `tool-bin-mapping`. Covers the P701-712 tool->bin map, the retro VCP
-`TOOL BIN` readout, the removed M6 popup, and the manual-unlock bin reset.
+Covers the fixed tool->bin map (`P160 = 0`, parameters P701-P712), the retro VCP
+`TOOL BIN` readout, and the manual-unlock bin reset.
 
 ## 0. Deploy (control PC)
 

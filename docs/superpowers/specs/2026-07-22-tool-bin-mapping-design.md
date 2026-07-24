@@ -68,11 +68,15 @@ P712=12`; an empty bin is left 0.
 - `ATCStage` search/decode/match is unchanged - it indexes the carousel to
   `TargetToolBin_W`.
 
-**Operator message (`mfunc6.mac`):** because this is a custom, undocumented
-feature, `mfunc6` prints an `M225` console message. The PLC copies the chosen
-bin into `TargetToolBinDisp_W` (W8, macro-readable as `#96008`, since macros can
-only read W1-44). A matched tool prints `Change to T# in bin # (P70#)`; an
-unmatched tool (bin 99) prints `M6: T# is not assigned to a bin (set P701-P712)`.
+**Operator feedback (retro VCP `TOOL BIN` readout):** because this is a custom,
+undocumented feature, the chosen bin is shown to the operator. The PLC latches it
+into `TargetToolBinDisp_W` (W8) on every M6 and holds it; the retro VCP displays
+it live as a `TOOL BIN` readout (`plc_word` 8) at row 2 cols 1-3. `99` means the
+tool is in no bin; `0` means the position is unknown (set on manual unlock).
+
+This is deliberately **not** a macro message: `M225` is a *modal* message box
+that pauses the change until the operator dismisses it (confirmed on-machine), so
+`mfunc6.mac` posts no message at all.
 
 **Naming scheme** (so tool vs bin is never ambiguous):
 
@@ -99,7 +103,8 @@ unmatched tool (bin 99) prints `M6: T# is not assigned to a bin (set P701-P712)`
 1. This design doc.
 2. PLC map: `ToolInBin1_W..12_W` cached from P701-712, the `MainStage`
    translation into `TargetToolBin_W`, tagged `; Acroloc`, `./compile.sh` clean.
-3. `mfunc6.mac` M225 operator message (matched + unmatched cases).
+3. Retro VCP `TOOL BIN` readout (`plc_word` 8 = `TargetToolBinDisp_W`) via
+   `tools/vcpgen.py`; no macro message in `mfunc6.mac`.
 4. Operator setup: P160 = 0; P701-712 = the tool in each bin.
 5. Doc updates: `docs/plc-spec/atc.md` (+ pinned hash) and the `acroloc-s10` ATC
    references, to the P160=0 map and the final variable names.
@@ -107,9 +112,11 @@ unmatched tool (bin 99) prints `M6: T# is not assigned to a bin (set P701-P712)`
 ## Testing / rollout
 
 - `./compile.sh` clean (token/warning delta reported).
-- On-machine at **P160 = 0**: set P701-712, load the `.plc` + `mfunc6.mac`.
-  - Identity map (P701..P712 = 1..12): `M6T5` -> bin 5, message shows.
-  - Remap: `P705 = 31` -> `M6T31` -> bin 5, message `Change to T31 in bin 5 (P705)`.
-  - Unmapped tool -> `CAROUSEL MOVE TIME OUT` fault at 20 s + the "not assigned"
-    message.
-- Confirm the `M225` message does not pause the change (non-blocking display).
+- On-machine at **P160 = 0**: set P701-712, load the `.plc` + `mfunc6.mac`, and
+  copy `resources/vcp/` (restart CNC12) for the readout.
+  - Identity map (P701..P712 = 1..12): `M6T5` -> bin 5, `TOOL BIN` reads 5.
+  - Remap: `P705 = 31` -> `M6T31` -> bin 5, `TOOL BIN` reads 5.
+  - Unmapped tool -> `CAROUSEL MOVE TIME OUT` fault at 20 s; `TOOL BIN` reads 99.
+  - Manual unlock at Z clear -> `TOOL BIN` drops to 0 (position unknown).
+- Confirm the change runs start-to-finish with **no pop-up to dismiss** (the
+  readout is non-blocking; the modal `M225` message was removed for this reason).
