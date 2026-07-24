@@ -2980,7 +2980,14 @@ IF M6_SV && ToolInBin12_W == SV_TOOL_NUMBER THEN TargetToolBin_W = 12
 IF M6_SV THEN TargetToolBinDisp_W = TargetToolBin_W, SET ATCStage  ; Acroloc hold chosen bin for the VCP BIN readout
 
 ; Acroloc manual tool changes
-IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O
+; Manual unlock lets the operator hand-spin the carousel to ANY bin, forward or
+; backward. The PLC does not track hand rotation (the position decode only runs
+; under ATCMotor_O), so the known bin is now stale -> force it to 0 = UNKNOWN.
+; The VCP TOOL BIN readout (TargetToolBinDisp_W) then shows 0 instead of a stale
+; value, and the next M6 re-derives the bin by absolute-switch search anyway.
+IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O,
+  CurrentToolBin_W = 0,
+  TargetToolBinDisp_W = 0
 IF !ATCManualUnlock_I && !ATCStage THEN RST ATCUnlocked_O
 
 IF ATCManualUnlock_I THEN
