@@ -38558,7 +38558,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P701_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P701_LABEL = "ATC bin 1 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38571,7 +38571,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P701_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P701_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 1. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38584,7 +38584,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P702_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P702_LABEL = "ATC bin 2 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38597,7 +38597,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P702_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P702_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 2. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38610,7 +38610,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P703_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P703_LABEL = "ATC bin 3 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38623,7 +38623,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P703_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P703_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 3. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38636,7 +38636,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P704_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P704_LABEL = "ATC bin 4 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38649,7 +38649,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P704_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P704_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 4. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38662,7 +38662,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P705_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P705_LABEL = "ATC bin 5 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38675,7 +38675,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P705_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P705_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 5. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38688,7 +38688,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P706_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P706_LABEL = "ATC bin 6 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38701,7 +38701,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P706_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P706_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 6. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38714,7 +38714,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P707_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P707_LABEL = "ATC bin 7 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38727,7 +38727,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P707_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P707_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 7. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38740,7 +38740,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P708_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P708_LABEL = "ATC bin 8 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38753,7 +38753,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P708_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P708_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 8. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38766,7 +38766,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P709_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P709_LABEL = "ATC bin 9 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38779,7 +38779,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P709_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P709_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 9. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38792,7 +38792,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P710_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P710_LABEL = "ATC bin 10 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38805,7 +38805,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P710_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P710_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 10. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38818,7 +38818,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P711_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P711_LABEL = "ATC bin 11 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38831,7 +38831,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P711_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P711_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 11. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38844,7 +38844,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P712_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P712_LABEL = "ATC bin 12 - tool number loaded in this carousel bin"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38857,7 +38857,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P712_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P712_LABEL_L = "Acroloc tool->bin map (P160=0): the tool number physically loaded in ATC carousel bin 12. M6T# indexes the carousel to the bin whose value matches the requested tool. 0 = empty bin."
  spa: ""
  frc: ""
  roc: "未能使用"

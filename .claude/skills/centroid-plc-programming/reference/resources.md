@@ -53,7 +53,7 @@ MsgClear_T                    IS T1            ; allin1dc-basic-v6.src, line 987
 ATCMotor_O                    IS OUT17         ; Centroid-Acroloc-ALLIN1DC.src, line 382
 ATC_Pos1_I                    IS INP32         ; Centroid-Acroloc-ALLIN1DC.src, line 234
 SpinRangeAdjust_FW            IS FW1           ; Centroid-Acroloc-ALLIN1DC.src, line 1095
-CarouselToolID_W              IS W71           ; Centroid-Acroloc-ALLIN1DC.src, line 1087
+CurrentToolBin_W              IS W71           ; Centroid-Acroloc-ALLIN1DC.src, line 1116
 ```
 
 ### System Variables (SV)
@@ -94,7 +94,7 @@ Centroid's style guide (and the convention used in all stock and Acroloc sources
 | `_I` | `INP` — physical input bit | `ATC_Pos1_I IS INP32` (Centroid-Acroloc-ALLIN1DC.src, line 234) |
 | `_O` | `OUT` — physical output bit | `ATCMotor_O IS OUT17` (Centroid-Acroloc-ALLIN1DC.src, line 382) |
 | `_M` | `MEM` — memory bit | `SoftwareNotReady_M IS MEM2` (allin1dc-basic-v6.src, line 425) |
-| `_W` | `W` — 32-bit integer word | `CarouselToolID_W IS W71` (Centroid-Acroloc-ALLIN1DC.src, line 1087) |
+| `_W` | `W` — 32-bit integer word | `CurrentToolBin_W IS W71` (Centroid-Acroloc-ALLIN1DC.src, line 1116) |
 | `_FW` | `FW` — 32-bit floating-point word | `SpinRangeAdjust_FW IS FW1` (Centroid-Acroloc-ALLIN1DC.src, line 1095) |
 | `_T` | `T` — timer | `MsgClear_T IS T1` (allin1dc-basic-v6.src, line 987) |
 | `_SV` | System Variable | `M6_SV IS SV_M94_M95_8` (Centroid-Acroloc-ALLIN1DC.src, line 1036) |

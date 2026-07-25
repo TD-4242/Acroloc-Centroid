@@ -21,6 +21,9 @@ M107            ; Send tool number
 G4 P.1          ; wait .1 second
 M94 /8          ; Set M6_SV to start tool change stage
 G4 p1           ; wait 1 second (can I shorten this wait?)
+; Acroloc -- the chosen carousel bin is shown live on the retro VCP (BIN readout),
+; from TargetToolBinDisp_W (W8). No macro message here: M225 is a modal box that
+; would pause the change until dismissed.
 M100 /93016     ; ATCStage RST
 M95 /8          ; reset M6_SV to stop tool change stage when done
 

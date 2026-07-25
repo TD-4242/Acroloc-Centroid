@@ -508,6 +508,10 @@ BUTTONS = [
          text_y=[52]),
     dict(name='z_negative', row=9, col=6, lines=['-Z'], icon='down',
          text_y=[52]),
+    # Z-to-machine-zero (park), between +Z (r7) and -Z (r9). Runs G53 Z0
+    # directly (needs CNC12 v5.08+ <run>); no stock button to derive from.
+    dict(name='z_park', row=8, col=6, lines=['Z', 'PARK'],
+         run_line='G53 G0 Z0'),
     dict(name='cycle_start', row=11, col=1, lines=['CYCLE', 'START'],
          style='green', style_on='grnlit'),
     # rapids-only 25% cut; stock rapid_over xml = skin event 82 + LED
@@ -574,14 +578,21 @@ def emit_buttons(out_dir):
             _write(os.path.join(d, rn + '_on.svg'),
                    render_knob_svg(True, title, labels))
             continue
-        xml = stock_xml(name)
-        if b.get('led'):
-            # watch a different PLC bit than the stock button (e.g. PUMP
-            # watches the real pump output OUT4, not the mist LED, so it
-            # lights whenever the pump runs for any reason)
-            xml = re.sub(r'(<plc_output>\s*<number>)\d+(</number>)',
-                         r'\g<1>%d\g<2>' % b['led'], xml, count=1)
-        _write(os.path.join(d, rn + '.xml'), _retro_xml(name, xml))
+        if b.get('run_line'):
+            # from-scratch action button: no stock XML to derive from. Runs a
+            # line of G-code directly (CNC12 v5.08+). Graphic is the folder SVG.
+            xml = ('<vcp_button>\n\t<run>\n\t\t<line>%s</line>\n'
+                   '\t</run>\n</vcp_button>\n' % b['run_line'])
+            _write(os.path.join(d, rn + '.xml'), xml)
+        else:
+            xml = stock_xml(name)
+            if b.get('led'):
+                # watch a different PLC bit than the stock button (e.g. PUMP
+                # watches the real pump output OUT4, not the mist LED, so it
+                # lights whenever the pump runs for any reason)
+                xml = re.sub(r'(<plc_output>\s*<number>)\d+(</number>)',
+                             r'\g<1>%d\g<2>' % b['led'], xml, count=1)
+            _write(os.path.join(d, rn + '.xml'), _retro_xml(name, xml))
         if b.get('special') == 'reset':
             _write(os.path.join(d, 'retro_reset.svg'),
                    render_reset_svg(False))
@@ -677,6 +688,15 @@ SPIN_ELEMENTS = (
     _seg_label('%', 13, 150),              # "%" hugging the override digits
     _seg_word(77, 18, 48),                 # SpinRPM_W       -> "XXXX"
     _seg_label('RPM', 12, 18))
+
+# carousel tool-bin readout: TargetToolBinDisp_W (W8) is latched to the mapped
+# bin on every M6 and held. Non-modal, always visible -- this replaces the
+# modal M225 popup so the operator can see which bin the tool->bin map picked.
+# Reads "TOOL BIN #": label on the left, number on the right (both right-
+# aligned, ordered by marginright, like the spindle readout).
+BIN_ELEMENTS = (
+    _seg_label('TOOL BIN', 12, 55),        # "TOOL BIN" label on the left
+    _seg_word(8, 22, 18))                  # TargetToolBinDisp_W -> bin number
 
 
 # machine-coordinate readout: X/Y/Z stacked in a 3x2-cell bezel. plc_word
@@ -774,6 +794,17 @@ def render_skin():
              '\t</image>\n')
     for el in SPIN_ELEMENTS:
         p.append(_border(4, 3, 2, 1, outline='Transparent', extra=el))
+    # carousel BIN readout on row 2 cols 1-3 (mirrors the spindle readout at
+    # cols 4-6); TargetToolBinDisp_W (W8) = the bin the last M6 mapped to
+    p.append('\t<image>\n'
+             '\t\t<column_span>3</column_span>\n'
+             '\t\t<column_start>1</column_start>\n'
+             '\t\t<row_span>1</row_span>\n'
+             '\t\t<row_start>2</row_start>\n'
+             '\t\t<path>resources\\vcp\\images\\feedrate_bezel.svg</path>\n'
+             '\t</image>\n')
+    for el in BIN_ELEMENTS:
+        p.append(_border(1, 3, 2, 1, outline='Transparent', extra=el))
     # X/Y/Z machine-coordinate readout right of FLOOD/PUMP (rows 5-6)
     p.append('\t<image>\n'
              '\t\t<column_span>3</column_span>\n'

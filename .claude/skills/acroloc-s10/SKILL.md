@@ -61,7 +61,7 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 | `ATCLocked_I` | INP25 | Piston sensor confirming carousel is locked |
 | `ATC_Z_ClearedToolChanger_I` | INP26 | **TRUE = Z clear of the tool changer** (spindle may run); **FALSE = spindle in changer** (danger zone). Drives the feed-hold interlock's zone-kill |
 | `ATC_Z_Zero_Release_I` | INP27 | Z axis has cleared the tool ring (Z parked high) |
-| `ATC_Pos5_I` | INP28 | Carousel position switch — contributes **+10** to `CarouselToolID_W` (not +16; see encoding note) |
+| `ATC_Pos5_I` | INP28 | Carousel position switch — contributes **+10** to `CurrentToolBin_W` (not +16; see encoding note) |
 | `ATC_Pos4_I` | INP29 | Carousel position switch — contributes +8 |
 | `ATC_Pos3_I` | INP30 | Carousel position switch — contributes +4 |
 | `ATC_Pos2_I` | INP31 | Carousel position switch — contributes +2 |
@@ -80,7 +80,7 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 
 | Symbol | Resource | Role |
 |--------|----------|------|
-| `InToolSelect_M` | MEM443 | Gating flag: set while any position switch is asserted during motor run; cleared when all switches drop |
+| `InBinDecode_M` | MEM443 | Gating flag: set while any position switch is asserted during motor run; cleared when all switches drop |
 
 ### System variable
 
@@ -92,8 +92,10 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 
 | Symbol | Resource | Role |
 |--------|----------|------|
-| `CarouselToolID_W` | W71 | Accumulates current carousel position ID during motor run; compared to target each scan |
-| `ChangeToTool_W` | W72 | Target tool number latched from `SV_TOOL_NUMBER` when `M6_SV` fires |
+| `CurrentToolBin_W` | W71 | Current carousel **bin** ID, decoded from the 5 position switches during motor run; compared to `TargetToolBin_W` each scan |
+| `TargetToolBin_W` | W72 | Target carousel **bin** for the change: the bin whose loaded tool == `SV_TOOL_NUMBER` (via the P701–712 map), or 99 if the tool is in no bin |
+| `TargetToolBinDisp_W` | W8 | Chosen bin held for the retro VCP live `BIN` readout (`plc_word` 8); latched from `TargetToolBin_W` each M6 |
+| `ToolInBin1_W`..`ToolInBin12_W` | W78–W89 | Tool number loaded in bins 1–12, cached from machine parameters **P701–712** at `LoadParametersStage` (re-read each scan) |
 
 ---
 
@@ -104,14 +106,15 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 The M6 flow spans three cooperating places — read all three before changing anything:
 
 1. **`mfunc6.mac`** — G-code orchestrator: stops spindle/coolant, parks Z, asserts `M6_SV`, waits for `ATCStage` to reset, then deasserts `M6_SV`. It drives no ATC hardware directly.
-2. **`MainStage`** (STG4) — latches `ChangeToTool_W = SV_TOOL_NUMBER` and `SET ATCStage` when `M6_SV` fires. Separately, the **spindle-in-changer feed-hold interlock** (not gated on `M6_SV`) keeps the spindle off whenever Z is in the changer zone, and for any program/MDI move entering with the spindle turning it holds feed until `ZeroSpeed_I` (INP12) confirms a stop — `ChangerStopTimer_T` (T23) faults at a 5 s timeout.
-3. **`ATCStage`** (STG16) — unlocks carousel (`ATCUnlocked_O`), starts motor (`ATCMotor_O`), accumulates `CarouselToolID_W` from position switches, and stops/relocks when the ID matches `ChangeToTool_W`.
+2. **`MainStage`** (STG4) — on `M6_SV`, maps the requested tool to its bin (`TargetToolBin_W` = the bin whose loaded tool == `SV_TOOL_NUMBER`, from the P701–712 map; `99` if unmapped) and `SET ATCStage`. Separately, the **spindle-in-changer feed-hold interlock** (not gated on `M6_SV`) keeps the spindle off whenever Z is in the changer zone, and for any program/MDI move entering with the spindle turning it holds feed until `ZeroSpeed_I` (INP12) confirms a stop — `ChangerStopTimer_T` (T23) faults at a 5 s timeout.
+3. **`ATCStage`** (STG16) — unlocks carousel (`ATCUnlocked_O`), starts motor (`ATCMotor_O`), accumulates `CurrentToolBin_W` from position switches, and stops/relocks when the ID matches `TargetToolBin_W`.
 
 Full state-machine details, timing, and exact PLC snippets: **[reference/atc-flow.md](reference/atc-flow.md)**.
 
 **Critical gotchas:**
-- **20 s search watchdog.** `ATCSpin_T` (T24) is armed at M6 kickoff; if the target tool is never matched within `ATC_SPIN_TIMEOUT_MS_C` (20000 ms), `ATCStage` faults `CAROUSEL MOVE TIME OUT` (msg 63) and stops/relocks the carousel. Any edit to the accumulator lines (`+1 / +2 / +4 / +8 / +10`) or to `InToolSelect_M` gating must still be tested with care — a decode error now faults at 20 s rather than spinning forever.
-- **`ATC_Pos5_I` adds +10, not +16.** Tool numbers use base-16 encoded as decimal. Changing Pos5 to +16 breaks tools 10–15 (they will never match).
+- **20 s search watchdog.** `ATCSpin_T` (T24) is armed at M6 kickoff; if the target tool is never matched within `ATC_SPIN_TIMEOUT_MS_C` (20000 ms), `ATCStage` faults `CAROUSEL MOVE TIME OUT` (msg 63) and stops/relocks the carousel. Any edit to the accumulator lines (`+1 / +2 / +4 / +8 / +10`) or to `InBinDecode_M` gating must still be tested with care — a decode error now faults at 20 s rather than spinning forever.
+- **`ATC_Pos5_I` adds +10, not +16.** Carousel bins use base-16 encoded as decimal. Changing Pos5 to +16 breaks bins 10–15 (they will never match).
+- **Tool→bin map lives in the PLC (P160=0), not CNC12.** `P701–712` = the tool loaded in bins 1–12; `MainStage` translates `SV_TOOL_NUMBER`→bin. CNC12's enhanced-ATC modes were ruled out on-machine (random reshuffles the map, non-random forces tool==bin). See [reference/atc-flow.md](reference/atc-flow.md#tool-to-bin-map-p701712--how-m6t-reaches-a-bin).
 
 ### 2. Edit spindle range/shift logic
 

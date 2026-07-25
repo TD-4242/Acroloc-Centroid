@@ -148,6 +148,51 @@
 	</border>
 	<image>
 		<column_span>3</column_span>
+		<column_start>1</column_start>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<path>resources\vcp\images\feedrate_bezel.svg</path>
+	</image>
+	<border>
+		<column_span>3</column_span>
+		<column_start>1</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<text>
+			<content>TOOL BIN</content>
+			<fontsize>12</fontsize>
+			<color>#ff3333</color>
+			<font>Arial</font>
+			<fontstyle>bold</fontstyle>
+			<horizontalalignment>right</horizontalalignment>
+			<verticalalignment>center</verticalalignment>
+			<marginright>55</marginright>
+		</text>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>1</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<plc_word>
+			<number>8</number>
+			<color>#ff3333</color>
+			<fontsize>22</fontsize>
+			<font>DSEG7 Classic</font>
+			<fontstyle>bold</fontstyle>
+			<verticalalignment>center</verticalalignment>
+			<horizontalalignment>right</horizontalalignment>
+			<marginright>18</marginright>
+		</plc_word>
+	</border>
+	<image>
+		<column_span>3</column_span>
 		<column_start>4</column_start>
 		<row_span>2</row_span>
 		<row_start>5</row_start>
@@ -309,6 +354,7 @@
 	<button row="8" column="3">retro_x_negative</button>
 	<button row="8" column="4">retro_tortoise_hare</button>
 	<button row="8" column="5">retro_x_positive</button>
+	<button row="8" column="6">retro_z_park</button>
 	<button row="9" column="1">retro_mpg</button>
 	<button row="9" column="2">retro_single_block</button>
 	<button row="9" column="4">retro_y_negative</button>
