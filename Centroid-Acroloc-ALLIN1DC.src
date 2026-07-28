@@ -1130,7 +1130,7 @@ ToolInBin11_W                   IS W88 ; Acroloc bin 11 loaded tool number (P711
 ToolInBin12_W                   IS W89 ; Acroloc bin 12 loaded tool number (P712)
 InstBinID_W                     IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CurrentToolBin_W
 SpinOverride_W                  IS W76 ; Acroloc spindle override % (mirror of SV_PLC_SPINDLE_KNOB) for the VCP readout
-SpinRPM_W                       IS W77 ; Acroloc commanded spindle RPM (final clamped SpinSpeedCommand_FW) for the VCP readout
+SpinRPM_W                       IS W77 ; Acroloc TRUE spindle RPM for the VCP readout (SpinSpeedCommand_FW / 2; see rung below)
 
 PValue_W                        IS W92
 
@@ -2374,9 +2374,18 @@ IF (SpinSpeedCommand_FW > 0.0) &&
 IF SpinSpeedCommand_FW > (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
    THEN SpinSpeedCommand_FW = (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
 
-; Acroloc: mirror the final clamped commanded RPM into a word so the VCP's
-; seven-segment spindle readout (plc_word 77) can display it.
-IF True_M THEN SpinRPM_W = SpinSpeedCommand_FW
+; Acroloc: mirror the TRUE spindle RPM into a word so the VCP's seven-segment
+; spindle readout (plc_word 77) can display it. SpinSpeedCommand_FW carries 2x the
+; actual spindle RPM: CfgMax is pinned at the safe spindle max (3500), not the ~1750
+; motor-base reference, so the command runs 2x high and the DAC divides it back out
+; via P65/P863 (the spindle is physically correct -- owner-confirmed by tach). The
+; /2 here is DISPLAY-ONLY -- do NOT apply it to SpinSpeedCommand_FW (drives the DAC,
+; src:2411/2414) or to SV_PLC_SPINDLE_SPEED (src:2427, must keep matching the PC
+; command for CNC12's at-speed logic; so the PC-screen DRO stays doubled). This is
+; coupled to the spindle calibration: if CfgMax/P65/P863 are ever retuned so commanded
+; == actual, drop the /2. See docs/plc-spec/gear-shift.md ("Ratio scaling") and
+; docs/testing/spindle-speed-calibration.md.
+IF True_M THEN SpinRPM_W = SpinSpeedCommand_FW / 2.0
 
 ;-------------------------------------------------------------------------------
 ; Acroloc: VCP machine-coordinate readout (plc_word 11/12/13, type Float)

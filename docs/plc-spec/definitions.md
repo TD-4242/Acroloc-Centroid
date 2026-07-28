@@ -280,7 +280,7 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `ChangeToTool_W` | W72 | 1094 | Acroloc | Target tool ID latched from `M6`. [atc.md](atc.md) |
 | `InstToolID_W` | W75 | 1113 | Acroloc | Instantaneous position-switch sum, rebuilt each scan; its per-group peak is latched into `CarouselToolID_W`. [atc.md](atc.md) |
 | `SpinOverride_W` | W76 | 1114 | Acroloc | Mirror of `SV_PLC_SPINDLE_KNOB` (spindle override %), refreshed every scan so the VCP's seven-segment spindle readout can display it as `plc_word` 76. [main-stage.md](main-stage.md) |
-| `SpinRPM_W` | W77 | 1115 | Acroloc | Mirror of the final clamped `SpinSpeedCommand_FW` (commanded RPM after override, gear ratio, and min/max clamps; 0 when the spindle is disabled), for the VCP readout as `plc_word` 77. [main-stage.md](main-stage.md) |
+| `SpinRPM_W` | W77 | 1115 | Acroloc | **True** spindle RPM (`SpinSpeedCommand_FW / 2`; the command runs 2x high because CfgMax is pinned at the safe spindle max, so the DAC divides it back out via P65/P863) for the VCP readout as `plc_word` 77; 0 when the spindle is disabled. Display-only `/2` — `SV_PLC_SPINDLE_SPEED`/PC-DRO keep the doubled command. [main-stage.md](main-stage.md) |
 | `PValue_W` | W92 | 1096 | | Scratch parameter value. [parameters.md](parameters.md) |
 
 ### Float words (FW)
