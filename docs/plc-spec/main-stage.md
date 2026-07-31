@@ -336,11 +336,14 @@ the retro VCP's seven-segment spindle readout. Display-only; nothing reads the w
   `SpinRPM_W` (W77, VCP `plc_word` 77); reads 0 whenever the spindle is disabled.
   `SpinSpeedCommand_FW` runs at **2x** the actual spindle RPM (CfgMax is pinned at the safe
   spindle max 3500, not the ~1750 motor-base reference; the DAC divides the 2x back out via
-  P65/P863, so the spindle is physically correct). The `/2` is **display-only**: it is applied
-  to both display outputs — this word **and** `SV_PLC_SPINDLE_SPEED` (the PC-screen readout,
-  src:2436 below) — but **not** to `SpinSpeedCommand_FW` itself (drives the DAC). Coupled to the
-  spindle calibration: if CfgMax/P65/P863 are retuned so commanded == actual, drop the `/2` in
-  both places. See gear-shift.md ("Ratio scaling") and ../testing/spindle-speed-calibration.md.
+  P65/P863, so the spindle is physically correct). The `/2` is **display-only** and is applied
+  **only** to this cosmetic VCP word — **not** to `SpinSpeedCommand_FW` (drives the DAC) nor to
+  `SV_PLC_SPINDLE_SPEED` (the PC-screen readout, src:2436 below). Halving `SV_PLC_SPINDLE_SPEED`
+  was tried and **dropped the VCP connection on-machine** — CNC12 requires the PLC-reported
+  spindle speed to track the command — so the **PC-screen DRO stays at the command scale (2x)**.
+  Fixing that needs the root-cause re-commission (P863 → ~1.0 + an F510 max-frequency retune),
+  not a display divide. See gear-shift.md ("Ratio scaling") and
+  ../testing/spindle-speed-calibration.md.
 
 ### Machine-coordinate readout (Acroloc, src:2338-2360)
 

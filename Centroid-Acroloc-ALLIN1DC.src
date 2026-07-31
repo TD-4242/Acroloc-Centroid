@@ -2378,14 +2378,14 @@ IF SpinSpeedCommand_FW > (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
 ; spindle readout (plc_word 77) can display it. SpinSpeedCommand_FW carries 2x the
 ; actual spindle RPM: CfgMax is pinned at the safe spindle max (3500), not the ~1750
 ; motor-base reference, so the command runs 2x high and the DAC divides it back out
-; via P65/P863 (the spindle is physically correct -- owner-confirmed by tach). Both
-; DISPLAY outputs -- this VCP word and SV_PLC_SPINDLE_SPEED (PC-screen readout, src
-; below) -- divide the command back by 2 to show true RPM. Do NOT divide
-; SpinSpeedCommand_FW itself (drives the DAC, src:2420/2423). SV_PLC_SPINDLE_SPEED is
-; documented as the on-screen display value and is never read back by this PLC (no
-; at-speed gate exists here), so halving it is display-only. Coupled to the spindle
-; calibration: if CfgMax/P65/P863 are ever retuned so commanded == actual, drop the
-; /2 in both places. See docs/plc-spec/gear-shift.md ("Ratio scaling") and
+; via P65/P863 (the spindle is physically correct -- owner-confirmed by tach). The /2
+; here is DISPLAY-ONLY and applies ONLY to this cosmetic VCP word. Do NOT divide
+; SpinSpeedCommand_FW (drives the DAC, src:2420/2423) or SV_PLC_SPINDLE_SPEED (the
+; PC-screen readout, src below): halving SV_PLC_SPINDLE_SPEED dropped the VCP
+; connection on-machine -- CNC12 requires the reported spindle speed to track the
+; command -- so the PC-screen DRO stays at the command scale (2x true RPM). Coupled to
+; the spindle calibration: if CfgMax/P65/P863 are ever retuned so commanded == actual,
+; drop the /2. See docs/plc-spec/gear-shift.md ("Ratio scaling") and
 ; docs/testing/spindle-speed-calibration.md.
 IF True_M THEN SpinRPM_W = SpinSpeedCommand_FW / 2.0
 
@@ -2434,11 +2434,13 @@ IF TwelveBitSpeed_W > 4095 THEN TwelveBitSpeed_W = 4095
 ; Output to DAC
 IF True_M THEN WTB TwelveBitSpeed_W SpinAnalogOutBit0_O 12
 
-; Display calculated RPM value on PC. Acroloc: /2 to show TRUE spindle RPM (the
-; command runs 2x high; see the SpinRPM_W rung above). Display-only -- this variable
-; is the on-screen readout and is not read back by the PLC; the DAC output above is
-; unaffected. Keep this in step with the SpinRPM_W /2.
-IF True_M THEN SV_PLC_SPINDLE_SPEED = SpinSpeedCommand_FW / 2.0
+; Display calculated RPM value on PC. Acroloc: intentionally left = SpinSpeedCommand_FW
+; (NOT /2). Halving this dropped the VCP connection on-machine -- CNC12 requires the
+; PLC-reported spindle speed to track the commanded speed. So the PC-screen spindle DRO
+; reads the command scale (2x true RPM); only the cosmetic VCP word (SpinRPM_W) is
+; corrected. Fixing the PC DRO would need the root-cause re-commission (P863 -> ~1.0 plus
+; an F510 max-frequency retune so full DAC = 3500 spindle), not a display divide here.
+IF True_M THEN SV_PLC_SPINDLE_SPEED = SpinSpeedCommand_FW
 
 ; Acroloc: clutch truth table (low=OUT19, high=OUT20): exactly one on = that
 ; gear; both on = NEUTRAL (freewheel); BOTH OFF = mechanical LOCKUP (belts fight)
