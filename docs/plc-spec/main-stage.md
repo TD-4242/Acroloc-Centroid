@@ -356,17 +356,24 @@ scaled by the CNC12 axis config (8000 counts/turn x 5 turns/inch = 40000 counts/
 positive, Y and Z reversed, hence the swapped subtraction order). Displays 0.0 until homed;
 re-homing re-latches. Display-only — nothing reads the FWs back.
 
-### RAPID 25% rapids-only override (Acroloc, src:1976-1980)
+### RAPID 25% override — REMOVED 2026-08-06
 
-Feeds the retro VCP's RAPID 25% toggle button (stock `rapid_over` bindings: skin event 82,
-LED OUT1133). `SkinRapid25_M_SV` one-shots through `Rapid25PD_PD` into the `Rapid25_M`
-toggle latch (the same XOR-coil idiom as `PumpManual_M`). While latched,
-`SV_PLC_RAPID_FEEDRATE_OVERRIDE` is written 0.25 each scan (a 0.0-2.0 scale factor,
-parallel to the `SV_PLC_FEEDRATE_OVERRIDE` write at src:1964), cutting rapid (G0) moves to
-25% without touching the feedrate override; when off it is written 1.0 and
-`RapidOverLED_O` goes dark. Independent of the legacy F9/Ctrl-R
-`SelectRapidOverride_SV` toggle directly above it (src:1967-1971), which links rapids to
-the feed override knob.
+This section previously documented an Acroloc RAPID 25% toggle button that wrote
+`SV_PLC_RAPID_FEEDRATE_OVERRIDE = 0.25` to cut rapid (G0) moves without touching the
+feedrate override. **That description was wrong and the feature has been removed.**
+
+Machine testing on 2026-08-06 measured `SV_PLC_RAPID_FEEDRATE_OVERRIDE` scaling G1 feed
+moves as well as G0 rapids — it is a global velocity scale, not a rapids-only one. Because
+the PLC wrote it unconditionally straight to the MPU11, CNC12 could not observe it and could
+not lock it out for a G74/G84 cycle, and a 10-32 tap was fed at 25% of its programmed rate
+and broke. The stock FEED 25% button produces the same slowdown on both G0 and G1 while
+routing through CNC12, where the tapping lockout protects it, so the button was also
+redundant.
+
+`Rapid25_M`, `Rapid25PD_PD`, `SkinRapid25_M_SV` and `RapidOverLED_O` are gone, freeing
+MEM58, PD59, `SV_SKIN_EVENT_82` and OUT1133. The stock F9/Ctrl-R `SelectRapidOverride_SV`
+toggle is untouched and still links rapids to the feed override knob. See
+[../superpowers/specs/2026-08-05-rapid-override-g0-only-design.md](../superpowers/specs/2026-08-05-rapid-override-g0-only-design.md).
 
 ### Coolant (mist/flood) — mfunc7/mfunc8 linkage (src:2086-2127)
 

@@ -389,6 +389,7 @@ software.
 |---|---|---|
 | SV_PLC_FEEDRATE_KNOB | I32. Feedrate knob as the PLC presents it to CNC software. Write only once per PLC pass. | manual |
 | SV_PLC_FEEDRATE_OVERRIDE | F32. Feedrate override factor for MPU11 motion control (0–2.0; 1.0 = no change). Must never be negative. Caps at machine-setup maximum. Write only once per PLC pass. | manual |
+| SV_PLC_RAPID_FEEDRATE_OVERRIDE | F32. 0–2.0 velocity scale written straight to the MPU11. **Despite the name this is NOT rapids-only — measured on an ALLIN1DC 2026-08-06 to scale G1 feed moves as well as G0 rapids.** CNC12 cannot observe the write, so it bypasses SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE and with it the G74/G84 tapping lockout — a tap fed through this scale will break. Used by zero stock Centroid PLCs. There is no system variable exposing motion type, so a PLC-side G0-only gate cannot be built either. | measured |
 | SV_PC_FEEDRATE_PERCENTAGE | I32. 0–200% feedrate adjustment sent by CNC software. Only needed when SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE is set. Externally written — read once per pass. | manual |
 | SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE | M. 1 = feedrate override knob is allowed to change axis motion feedrate. Set by CNC software. | manual |
 | SV_PC_OVERRIDE_CONTROL_FEEDHOLD | M. 1 = feedhold pauses the G-code program. Set by CNC software. | manual |
