@@ -17,8 +17,57 @@ G84 X1.150 Y-0.338 Z-0.500 F7.987 S256.0 R0.000
 of the Z feed that does not equally scale the spindle desynchronises the tap. At
 25% the tap is driven four times slower than the thread it is cutting.
 
-The operator reported the CNC12 feedrate override reading 25%, and that other
-programs did not show the behaviour.
+The operator reported the CNC12 feedrate override reading 25%, and an actual
+feedrate of **approximately 2 ipm**. Programmed feed was `F7.987`:
+
+```
+7.987 * 0.25 = 1.997
+```
+
+The 25% was therefore genuinely applied to the G84 feed. This is arithmetic, not
+inference, and it is the central established fact of this investigation: the tap
+advanced at a quarter of the pitch it was cutting.
+
+What the arithmetic does not establish is **which path** delivered the 25%. See
+"Root cause" (D1 vs D2) and "Test plan".
+
+## Evidence: the job that worked vs the job that broke
+
+The operator has run several prior jobs containing tapping cycles with RAPID 25%
+latched, without incident. Two programs are available for comparison.
+
+| | `Titan-3M-FirstOP-G54.nc` (worked) | `Titan-4M-Op1-G54.nc` (broke) |
+| --- | --- | --- |
+| M6 tool changes | 6 | 9 |
+| G84 blocks | 6 | 3 |
+| Tap spindle | `S128.0` | `S256.0` |
+| Tap feed | `F3.994` | `F7.987` |
+| in/rev | 0.0312 (1/32", correct) | 0.0312 (1/32", correct) |
+| Tool before tap | T7 chamfer, `S3499.6` | T7 chamfer, `S3499.6` |
+| G-code vocabulary | identical | identical |
+| Tapping block structure | identical | identical |
+
+Both programs command the correct 10-32 pitch. The tapping sections are
+structurally identical. The only material difference is that 4M taps at double
+the spindle speed and double the feed.
+
+### Hypotheses falsified by this comparison
+
+- **Gear-range crossover.** S128 and S256 might have straddled the two-speed
+  transmission's crossover, putting the two taps in different ranges. They do
+  not: `P860 = 800`, `P861 = 100`
+  (`docs/testing/rpm-gear-shift-test-plan.md:34`,
+  `.claude/skills/acroloc-s10/reference/spindle-transmission.md:28`), so both
+  taps ran in **low** range. Falsified.
+- **"Earlier tapping jobs had no tool change."** D1 requires an M6 before the tap
+  to fire `M109`. 3M has 6 M6 blocks and 6 G84 blocks, so the missing `M108` was
+  equally in play in the job that ran clean. Falsified as the differentiator.
+
+Neither the program files nor the parameter set explain why 3M was unharmed and
+4M was not. The remaining candidate differences are operator-side state (what the
+feed override was actually sitting at when the first `M109` fired in each run),
+which cannot be recovered from the files. **This is why the test plan, not
+further file analysis, resolves the question.**
 
 ## Root cause
 
@@ -84,23 +133,29 @@ never verified against the firmware.
 `Rapid25_M` (MEM58) is a toggle latch with no power-up clear. Nothing ever
 returns it to a known state.
 
-### Why it surfaced now
+### D1 vs D2: which delivered the 25%
 
-D1 alone was merely inconvenient - you could not adjust override after a tool
-change. The RAPID 25% button was added in `b90529c` (#19), which is when the
-symptom appeared.
+The measured 2 ipm establishes that a 0.25 scale reached the G84 feed. It does
+not establish the path. Both remain live, and they predict **opposite** outcomes
+for the RAPID 25% feature:
 
-Two readings of that timing remain open, and **test 1 discriminates between
-them**:
+| Path | Mechanism | Consequence for the G0-only requirement |
+| --- | --- | --- |
+| **D2** | `SV_PLC_RAPID_FEEDRATE_OVERRIDE` scales G1 at the MPU, invisible to CNC12 and beyond reach of its tapping lockout | Feature **cannot** be built - no other rapid-specific mechanism exists (see "Mechanism survey") |
+| **D1** | `M109 /1/2` froze the feed override at 25%; CNC12's tapping lockout never restored it | Feature already works as intended; `mfunc6.mac` is the entire bug |
 
-- If the SV is rapids-only, D1 is the sole cause: the operator's feed override
-  was at 25% when the first `M109` froze it, and the RAPID 25% button was
-  coincidental. The G0-only feature already works as intended.
-- If the SV leaks into G1, D2 is the cause and D1 is what removed the operator's
-  ability to recover, in which case the feature cannot meet the requirement.
+Under either path, CNC12's documented protection - "The Feed Rate Override knob
+will not work during tapping cycles (G74 and G84)" - failed to guard the cycle.
+That is the safety hole this design closes, independently of which path is
+confirmed.
 
-Either way D1, D2 and D3 are defects and are fixed by this design. What test 1
-determines is whether the RAPID 25% feature survives.
+An earlier draft of this spec argued that the clean prior tapping jobs largely
+falsified D2. That reasoning does not survive the 2 ipm measurement, which is
+equally consistent with either path. D2 is back to even odds and **test 1 is the
+only thing that discriminates.**
+
+D1, D2 and D3 are all defects and are all fixed by this design. What test 1
+determines is whether the RAPID 25% feature survives at all.
 
 ## Requirement
 
@@ -187,11 +242,17 @@ the G0-only requirement. That requires the machine. **Test 1 gates the rest of
 this work.**
 
 1. **G1 leak test** (MDI, no tool, no workpiece). Latch RAPID 25%, run
-   `G1 X1. F10.`, read the actual feedrate. Unlatch and repeat. 10 ipm in both
-   cases means the SV is rapids-only and the feature meets the requirement.
-   Anything lower means it scales G1 and the feature cannot meet the requirement
-   as designed - **stop and reassess**; there is no alternative mechanism to fall
-   back to.
+   `G1 X1. F10.`, read the actual feedrate. Unlatch and repeat.
+
+   - **10 ipm latched** - the SV is rapids-only. D1 is the cause, the
+     `mfunc6.mac` fix is the whole answer, and the G0-only feature already meets
+     the requirement.
+   - **2.5 ipm latched** - the SV scales G1. D2 is the cause, and the feature
+     **cannot** meet the requirement as designed. **Stop and reassess**; there is
+     no alternative mechanism to fall back to.
+
+   Run this before implementing. It is the cheapest decisive measurement
+   available and it determines whether half of this design is worth building.
 2. **G0 effect test.** `G0 X1.` latched vs unlatched. Confirms the cut has an
    effect at all.
 3. **Lockout test.** With RAPID 25% latched, observe
