@@ -249,6 +249,30 @@ not part of this change.
   `SV_PC_TOGGLE_RAPID_OVERRIDE`; migrating it is separate work.
 - Investigating `SV_VELOCITY_RATIO` as a future genuine G0-only mechanism. Worth
   a bench probe someday; not part of a fix for a broken-tap incident.
+
+- **The stock `rapidrate_*` button family (found 2026-08-06 during
+  implementation).** Centroid's button library ships
+  `resources/vcp/Buttons/rapidrate_25|50|75|100` on skin events **114-117** with
+  LEDs **OUT1141-1144** - a discrete rapid-rate override cluster wholly separate
+  from the feedrate family (events 53/111/112/113, LEDs OUT1137-1140). A
+  `rapid_feed` toggle button swaps a `feed_group` for a `rapid_group`, implying
+  the stock panel intends one cluster to be shown at a time.
+
+  This is the strongest remaining candidate for a genuine G0-only 25% cut and
+  should be probed before concluding the requirement is impossible. Two caveats
+  found so far:
+
+  - **No stock ALLIN1DC PLC implements them.** Events 114-117 appear in stock
+    sources only as unnamed placeholders (`;   IS SV_SKIN_EVENT_114`), and
+    OUT1141-1144 appear in none of them.
+  - If the events are PLC-side rather than consumed natively by CNC12, a handler
+    would have nothing to write except `SV_PLC_RAPID_FEEDRATE_OVERRIDE` - the
+    same global-scale SV measured here - and would inherit this same defect.
+
+  The probe is cheap: add `rapidrate_25` to the panel with no PLC handler at all
+  and press it. If rapids change, CNC12 consumes the event natively and this is
+  the mechanism we want. If nothing happens, the event is PLC-side and the
+  requirement remains unachievable.
 - Re-flowing the VCP button grid to fill the vacated cell.
 - The absent `M8` before the tapping section in `Titan-4M-Op1-G54.nc` (a form tap
   running dry) and its `M99` rather than `M30` ending. CAM post-processor
