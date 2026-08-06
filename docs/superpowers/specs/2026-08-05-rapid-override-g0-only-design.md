@@ -1,79 +1,45 @@
-# RAPID 25% G0-only override + tool-change override restore
+# Tool-change override restore + removal of the RAPID 25% bypass
 
-Date: 2026-08-05
-Status: approved, pending machine verification (see "Test plan")
+Date: 2026-08-05 (revised 2026-08-06 after machine testing)
+Status: approved, machine-verified root cause
 
 ## Problem
 
-A 10-32 form tap broke during a G84 tapping cycle in `Titan-4M-Op1-G54.nc`. The
-operator had the VCP **RAPID 25%** button latched. The tap block is:
+A 10-32 form tap broke during a G84 tapping cycle in `Titan-4M-Op1-G54.nc`, with
+the VCP **RAPID 25%** button latched. The tap block is:
 
 ```
 M3 S256.0
 G84 X1.150 Y-0.338 Z-0.500 F7.987 S256.0 R0.000
 ```
 
-7.987 ipm / 256 rpm = 0.0312 in/rev = 1/32", the correct 10-32 pitch. Any scaling
-of the Z feed that does not equally scale the spindle desynchronises the tap. At
-25% the tap is driven four times slower than the thread it is cutting.
+7.987 ipm / 256 rpm = 0.0312 in/rev = 1/32", the correct 10-32 pitch.
 
-The operator reported the CNC12 feedrate override reading 25%, and an actual
-feedrate of **approximately 2 ipm**. Programmed feed was `F7.987`:
+The operator observed an actual feedrate of **~2 ipm** where ~8 was commanded:
 
 ```
 7.987 * 0.25 = 1.997
 ```
 
-The 25% was therefore genuinely applied to the G84 feed. This is arithmetic, not
-inference, and it is the central established fact of this investigation: the tap
-advanced at a quarter of the pitch it was cutting.
+A 0.25 scale reached the tapping feed. The tap advanced at a quarter of the pitch
+it was cutting, and broke.
 
-What the arithmetic does not establish is **which path** delivered the 25%. See
-"Root cause" (D1 vs D2) and "Test plan".
+## Machine test results (2026-08-06)
 
-## Evidence: the job that worked vs the job that broke
+Two measurements, taken on the machine with no code changes, resolve the
+investigation:
 
-The operator has run several prior jobs containing tapping cycles with RAPID 25%
-latched, without incident. Two programs are available for comparison.
+1. **With RAPID 25% latched, both G0 and G1 are scaled.**
+   `SV_PLC_RAPID_FEEDRATE_OVERRIDE` is **not** rapids-only. It is a global
+   velocity scale.
+2. **The stock FEED 25% button also slows both G0 and G1.** Expected:
+   rapid-override mode is `SET` at power-up by stock logic (`src:2002`), which
+   links rapids to the feed override percentage.
 
-| | `Titan-3M-FirstOP-G54.nc` (worked) | `Titan-4M-Op1-G54.nc` (broke) |
-| --- | --- | --- |
-| M6 tool changes | 6 | 9 |
-| G84 blocks | 6 | 3 |
-| Tap spindle | `S128.0` | `S256.0` |
-| Tap feed | `F3.994` | `F7.987` |
-| in/rev | 0.0312 (1/32", correct) | 0.0312 (1/32", correct) |
-| Tool before tap | T7 chamfer, `S3499.6` | T7 chamfer, `S3499.6` |
-| G-code vocabulary | identical | identical |
-| Tapping block structure | identical | identical |
-
-Both programs command the correct 10-32 pitch. The tapping sections are
-structurally identical. The only material difference is that 4M taps at double
-the spindle speed and double the feed.
-
-### Hypotheses falsified by this comparison
-
-- **Gear-range crossover.** S128 and S256 might have straddled the two-speed
-  transmission's crossover, putting the two taps in different ranges. They do
-  not: `P860 = 800`, `P861 = 100`
-  (`docs/testing/rpm-gear-shift-test-plan.md:34`,
-  `.claude/skills/acroloc-s10/reference/spindle-transmission.md:28`), so both
-  taps ran in **low** range. Falsified.
-- **"Earlier tapping jobs had no tool change."** D1 requires an M6 before the tap
-  to fire `M109`. 3M has 6 M6 blocks and 6 G84 blocks, so the missing `M108` was
-  equally in play in the job that ran clean. Falsified as the differentiator.
-
-Neither the program files nor the parameter set explain why 3M was unharmed and
-4M was not. The remaining candidate differences are operator-side state (what the
-feed override was actually sitting at when the first `M109` fired in each run),
-which cannot be recovered from the files. **This is why the test plan, not
-further file analysis, resolves the question.**
+Result 1 falsifies the central assumption this feature was built on. Result 2
+establishes that RAPID 25% is functionally redundant with FEED 25%.
 
 ## Root cause
-
-Three independent defects compound. Only the first is certain to be causal; the
-second is certainly a defect but its contribution is unproven; the third is a
-latent hazard.
 
 ### D1 - `mfunc6.mac` disables overrides and never restores them
 
@@ -84,25 +50,29 @@ mfunc6.mac:13   M109 /1/2       ; Disable overrides
 
 Stock Centroid's ATC macro pairs these: `M109 /1/2` at
 `docs/official/_ALLIN1DC/_atc/_umbrella/cncm/mfunc6.mac:28` and `M108 /1/2` at
-line 94, immediately before its `N600` exit label. Ours has never had the
-re-enable - `git log -S"M108" -- mfunc6.mac` returns no commits, so it has been
-missing since `10e7d68 initial mfunc6.mac commit`.
+line 94, immediately before its `N600` exit. Ours has never had the re-enable -
+`git log -S"M108" -- mfunc6.mac` returns no commits, so it has been missing since
+`10e7d68 initial mfunc6.mac commit`.
 
 Effect: after the **first M6** in any program, CNC12 stops accepting
 `SV_PLC_FEEDRATE_KNOB` and holds the override at whatever value was current when
-`M109` fired. Feed and spindle override are dead for the rest of the run. If the
-override was at 25% at that moment, it is frozen at 25% with no way to back it
-out. `Titan-4M-Op1-G54.nc` performs 8 tool changes before reaching the tap.
+`M109` fired. Feed and spindle override are dead for the rest of the run.
+
+This is more serious than a lost convenience. CNC12's documented tapping
+protection - "The Feed Rate Override knob will not work during tapping cycles
+(G74 and G84)"
+(`.claude/skills/centroid-cnc12-operating/reference/operator-panel.md:104`) -
+operates through override control. With override control disabled by an
+unpaired `M109`, **CNC12 cannot force the override back to 100% for a tapping
+cycle.** The missing `M108` disables the very interlock that exists to stop this
+failure.
 
 Note the apparent contradiction with `src:1971`, which forces
 `FinalFeedOverride_W = 100` whenever the override-control flag is clear. There is
-none: the PLC does set its own word to 100 and sends it, but CNC12 ignores
+none: the PLC does set its own word to 100 and send it, but CNC12 ignores
 `SV_PLC_FEEDRATE_KNOB` entirely while override control is disabled and continues
 applying its own last accepted percentage. The PLC's 100 is written and
 discarded.
-
-This matches the reported DRO reading of 25% exactly and explains why other
-programs did not show it.
 
 ### D2 - the RAPID 25% write bypasses CNC12 entirely
 
@@ -111,185 +81,170 @@ src:2009   IF  Rapid25_M THEN SV_PLC_RAPID_FEEDRATE_OVERRIDE = 0.25
 src:2010   IF !Rapid25_M THEN SV_PLC_RAPID_FEEDRATE_OVERRIDE = 1.0
 ```
 
-Written unconditionally, every scan, straight to the MPU11. The feed path 40
-lines above honours CNC12's lockout flag:
+Written unconditionally, every scan, straight to the MPU11, with no gate on
+CNC12's override-control flag - unlike the feed path 40 lines above at
+`src:1971`. CNC12 cannot see this scale and cannot lock it out for a tapping
+cycle.
 
-```
-src:1971   IF !SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE THEN FinalFeedOverride_W = 100
-```
+Per test result 1 the SV scales G1 as well as G0, so this is a global velocity
+cut applied behind CNC12's back. `SV_PLC_RAPID_FEEDRATE_OVERRIDE` appears in
+**zero** of the ~20 stock Centroid PLC programs under `docs/official/`; the
+rapids-only behaviour asserted at `docs/plc-spec/main-stage.md:350-359` was this
+repo's own assumption and is now disproven.
 
-That is the flag CNC12 clears during G74/G84 tapping cycles (see
-`.claude/skills/centroid-cnc12-operating/reference/operator-panel.md:104`: "The
-Feed Rate Override knob will not work during tapping cycles (G74 and G84)"). The
-rapid write has no equivalent gate, so the tapping lockout cannot reach it.
+### Why it surfaced now
 
-`SV_PLC_RAPID_FEEDRATE_OVERRIDE` appears in **zero** of the ~20 stock Centroid
-PLC programs under `docs/official/`. Its rapids-only behaviour is an assumption
-this repo made, asserted as fact at `docs/plc-spec/main-stage.md:350-359`, and
-never verified against the firmware.
+D1 alone was inconvenient - you could not adjust override after a tool change.
+RAPID 25% was added in `b90529c` (#19). Only once both existed could a global 25%
+scale be active while CNC12's tapping interlock was disabled.
 
-### D3 - `Rapid25_M` has no reset path
+## Evidence: the job that worked vs the job that broke
 
-`Rapid25_M` (MEM58) is a toggle latch with no power-up clear. Nothing ever
-returns it to a known state.
-
-### D1 vs D2: which delivered the 25%
-
-The measured 2 ipm establishes that a 0.25 scale reached the G84 feed. It does
-not establish the path. Both remain live, and they predict **opposite** outcomes
-for the RAPID 25% feature:
-
-| Path | Mechanism | Consequence for the G0-only requirement |
+| | `Titan-3M-FirstOP-G54.nc` (worked) | `Titan-4M-Op1-G54.nc` (broke) |
 | --- | --- | --- |
-| **D2** | `SV_PLC_RAPID_FEEDRATE_OVERRIDE` scales G1 at the MPU, invisible to CNC12 and beyond reach of its tapping lockout | Feature **cannot** be built - no other rapid-specific mechanism exists (see "Mechanism survey") |
-| **D1** | `M109 /1/2` froze the feed override at 25%; CNC12's tapping lockout never restored it | Feature already works as intended; `mfunc6.mac` is the entire bug |
+| M6 tool changes | 6 | 9 |
+| G84 blocks | 6 | 3 |
+| Tap spindle | `S128.0` | `S256.0` |
+| Tap feed | `F3.994` | `F7.987` |
+| in/rev | 0.0312 (1/32", correct) | 0.0312 (1/32", correct) |
+| Tool before tap | T7 chamfer, `S3499.6` | T7 chamfer, `S3499.6` |
+| G-code vocabulary, tapping block structure | identical | identical |
 
-Under either path, CNC12's documented protection - "The Feed Rate Override knob
-will not work during tapping cycles (G74 and G84)" - failed to guard the cycle.
-That is the safety hole this design closes, independently of which path is
-confirmed.
+Both command the correct pitch. The only material difference is that 4M taps at
+double the spindle speed and double the feed. The surviving explanation for 3M
+being unharmed is operator-side state - what the override was actually sitting at
+when each run's first `M109` fired - which is not recoverable from the files and
+does not change the fix.
 
-An earlier draft of this spec argued that the clean prior tapping jobs largely
-falsified D2. That reasoning does not survive the 2 ipm measurement, which is
-equally consistent with either path. D2 is back to even odds and **test 1 is the
-only thing that discriminates.**
+### Hypotheses falsified during investigation
 
-D1, D2 and D3 are all defects and are all fixed by this design. What test 1
-determines is whether the RAPID 25% feature survives at all.
+Recorded so they are not re-explored:
 
-## Requirement
+- **Gear-range crossover.** S128 vs S256 might have straddled the two-speed
+  transmission crossover. They do not: `P860 = 800`, `P861 = 100`
+  (`docs/testing/rpm-gear-shift-test-plan.md:34`), so both taps ran in **low**
+  range.
+- **"Earlier tapping jobs had no tool change."** 3M has 6 M6 and 6 G84 blocks, so
+  the missing `M108` was equally in play in the clean run.
+- **Rapid-override mode being an Acroloc addition.** `src:1998-2002` is
+  byte-identical to stock `allin1dc-umbrella-v7.src:1770-1774`, including the
+  power-up `SET`.
 
-The RAPID 25% button must cut **G0 rapid moves only** and must never affect G1
-feed moves.
+## Requirement, and why it cannot be met
 
-## Mechanism survey
+The stated requirement was a button cutting **G0 only**, never touching G1.
 
-The complete set of rapid/override levers in `mpucomp.exe`:
+**No mechanism in this controller can deliver that.** The complete survey:
 
-| System variable | Kind | Meets "G0 only, fixed 25%"? |
-| --- | --- | --- |
-| `SV_PLC_RAPID_FEEDRATE_OVERRIDE` | rapid-specific percentage (0.0-2.0 scale) | Only candidate |
-| `SV_PC_TOGGLE_RAPID_OVERRIDE` | mode toggle bit, no percentage | No - enabling it makes rapids follow the **feed** override percentage, so 25% rapids requires 25% G1 |
-| `SV_PLC_FEEDRATE_OVERRIDE` / `_KNOB` | feed percentage | No - applies to G1 by definition |
-| `SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE` | enable/lockout flag | Not a percentage; used here as a guard |
+| Mechanism | Verdict |
+| --- | --- |
+| `SV_PLC_RAPID_FEEDRATE_OVERRIDE` | Measured to scale G1. Fails. |
+| `SV_PC_TOGGLE_RAPID_OVERRIDE` | Mode toggle, no percentage; links rapids to the feed override %. Fails. |
+| Machine parameters (Max Rate) | PLC cannot write them - all 82 `SV_MACHINE_PARAMETER` uses in our source are comparisons, never assignments. Operator-menu only (`F2 Mach -> F1 Jog`). Not button-driveable. |
+| `SV_VELOCITY_RATIO` | Present in `mpucomp.exe`, used by zero stock PLCs, absent from all documentation. Unknown semantics. |
+| PLC-side gating on motion type | Not constructible - no system variable exposes whether the current move is a G0 or a G1. |
 
-`SV_PLC_RAPID_FEEDRATE_OVERRIDE` is the only rapid-specific percentage the
-controller exposes. There is no fallback mechanism.
+`SV_VELOCITY_RATIO` is deliberately **not** proposed. Shipping behaviour based on
+an undocumented velocity system variable is exactly the mistake that broke the
+tap.
 
-A PLC-side G0-only gate (assert 0.25 only while a rapid is executing) was
-considered and rejected as **not constructible**: no system variable exposes
-motion type, so the PLC cannot tell a G0 from a G1. The G0-only guarantee must
-come from the firmware's handling of the SV or not at all - which is why the
-test plan gates this work.
+The closest available behaviour is the existing FEED 25% button, which per test
+result 2 already slows both G0 and G1 - the same effect RAPID 25% produced, but
+routed through CNC12 where the tapping lockout can protect it.
 
 ## Design
 
-Two files change.
+Two files change. The RAPID 25% feature is removed rather than repaired.
 
 ### C1 - `mfunc6.mac`: restore overrides
 
 Add `M108 /1/2` immediately before the `N1000` label, mirroring stock.
 
-Placement before the label is deliberate. The macro's
-`IF #4202 || #4201 THEN GOTO 1000` graph/search guard skips `M109` as well, so
-both codes are skipped together and the enable/disable pair stays balanced.
+Placement before the label is deliberate: the macro's
+`IF #4202 || #4201 THEN GOTO 1000` graph/search guard skips `M109` too, so both
+codes are skipped together and the pair stays balanced.
 
-### C2 - `src:2009-2010`: guard the rapid write
+This is the core safety fix. It restores override control, and with it CNC12's
+ability to lock the feed override to 100% during a G74/G84 cycle.
 
-Gate both writes on CNC12's override-control flag, matching the feed path:
+### C2 - remove the RAPID 25% button and its PLC logic
 
-```
-IF  Rapid25_M && SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE
-    THEN SV_PLC_RAPID_FEEDRATE_OVERRIDE = 0.25
-IF !Rapid25_M || !SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE
-    THEN SV_PLC_RAPID_FEEDRATE_OVERRIDE = 1.0
-```
+Justification: per test 1 it is a global velocity cut, not a rapids-only cut, so
+it does not do what its label claims; per test 2 it is redundant with FEED 25%,
+which achieves the same result under CNC12's supervision. Its only distinguishing
+property is that it bypasses the tapping interlock. Removing it costs no
+capability and closes the bypass completely.
 
-The two conditions are exact complements, so the SV is written exactly once per
-scan, preserving the existing structure.
+Remove:
 
-This is defence in depth, not the fix. If the SV is genuinely rapids-only this
-changes nothing observable. If it does leak into G1, this makes it structurally
-impossible for the leak to occur during a tapping cycle, which is the case that
-destroys tooling. Cost is one condition per rung.
+- `src:2004-2011` - the comment block, `Rapid25PD_PD` one-shot, `Rapid25_M`
+  toggle, both `SV_PLC_RAPID_FEEDRATE_OVERRIDE` writes, and the `RapidOverLED_O`
+  coil.
+- Definitions that become unused: `RapidOverLED_O` (`src:494`), `Rapid25_M`
+  (`src:528`), `SkinRapid25_M_SV` (`src:1038`), `Rapid25PD_PD` (`src:1214`).
+- The `rapid_over` entry in `tools/vcpgen.py` (~line 518) and its emitted button.
+  **Regenerate** `resources/vcp/` by running the generator; never hand-edit
+  emitted files.
 
-Side effect, accepted: during a tool change `M109` clears the flag, so rapids run
-at 100% for the duration of the change. This matches stock behaviour.
+Leaving `SV_PLC_RAPID_FEEDRATE_OVERRIDE` entirely unwritten restores the MPU
+default of 1.0. No residual scale can survive.
 
-`RapidOverLED_O` (`src:2011`) continues to follow `Rapid25_M` alone. The LED
-reports operator intent - the mode is still armed - rather than the instantaneous
-applied value, so it does not flicker through every tapping cycle.
+Removing the latch also retires the "no reset path" defect (`Rapid25_M`, MEM58,
+had no power-up clear) without needing separate logic.
 
-### C3 - `Rapid25_M` power-up clear
-
-Add `Rapid25_M` to a power-up reset, alongside the existing `OnAtPowerUp_M`
-(MEM200) rungs in the same region:
-
-```
-IF OnAtPowerUp_M THEN RST Rapid25_M
-```
-
-**No cycle-start clear.** A 25% rapid cut is precisely what an operator wants
-armed during a first proveout run of a new program; clearing it at cycle start
-would remove the feature's primary use case in order to defend against a latched
-button being forgotten. `RapidOverLED_O` is the defence against that. This was
-raised explicitly during design and the trade was accepted.
-
-## Test plan
-
-C2 makes the tapping case safe, but does not establish that the feature meets
-the G0-only requirement. That requires the machine. **Test 1 gates the rest of
-this work.**
-
-1. **G1 leak test** (MDI, no tool, no workpiece). Latch RAPID 25%, run
-   `G1 X1. F10.`, read the actual feedrate. Unlatch and repeat.
-
-   - **10 ipm latched** - the SV is rapids-only. D1 is the cause, the
-     `mfunc6.mac` fix is the whole answer, and the G0-only feature already meets
-     the requirement.
-   - **2.5 ipm latched** - the SV scales G1. D2 is the cause, and the feature
-     **cannot** meet the requirement as designed. **Stop and reassess**; there is
-     no alternative mechanism to fall back to.
-
-   Run this before implementing. It is the cheapest decisive measurement
-   available and it determines whether half of this design is worth building.
-2. **G0 effect test.** `G0 X1.` latched vs unlatched. Confirms the cut has an
-   effect at all.
-3. **Lockout test.** With RAPID 25% latched, observe
-   `SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE` in PLC Detective through a G84 in
-   scrap. Confirms C2's guard has a signal to act on, i.e. that CNC12 really does
-   clear the flag during tapping.
-4. **M108 regression.** Run a program containing an M6, then confirm the feed
-   override buttons still respond after the tool change. Verifies C1.
-
-Test 4 can be run independently of tests 1-3; C1 is a defect fix that stands on
-its own regardless of the outcome of test 1.
+The grid cell at row 11 / col 5 is left empty. Re-flowing the button layout is
+not part of this change.
 
 ## Verification
 
 - `./compile.sh` after each `.src` edit; report the error/warning delta.
-- Confirm the change is program-identical where expected via the plcfmt
-  fingerprint `(program_words, C2, C4)`; the `.plc` md5 is non-deterministic.
-- `.mac` and `.src` edits must stay plain 7-bit ASCII.
+- `python3 tools/test_vcpgen.py` after the generator change.
+- Confirm the fingerprint `(program_words, C2, C4)` reflects the intended
+  removal; the `.plc` md5 is non-deterministic and is not a valid check.
+- `.mac` and `.src` edits stay plain 7-bit ASCII.
+
+### Machine tests after loading
+
+1. **M108 regression.** Run a program containing an M6, then confirm the feed
+   override buttons respond after the tool change. Verifies C1.
+2. **Tapping lockout.** With FEED 25% latched, run a G84 in scrap. The feedrate
+   must **not** drop to 25% - CNC12 should hold it at 100% for the cycle. This is
+   the test that proves the original failure can no longer occur. It could not
+   have passed before C1.
+3. **No residual scale.** Confirm G0 and G1 both run at 100% with no override
+   selected, i.e. nothing is still writing a rapid scale.
 
 ## Documentation updates
 
-- `docs/plc-spec/main-stage.md:350-359` - the section currently asserts
-  rapids-only behaviour as established fact. Rewrite to state the guard, and
-  record the test 1 result as the basis for the rapids-only claim. Re-pin line
-  numbers to the implementing commit.
-- `docs/plc-spec/atc.md:41` - shows the `M109 /1/2` line; add `M108 /1/2`.
-- `.claude/skills/acroloc-s10/reference/atc-flow.md:41` - same.
-- `.claude/skills/acroloc-s10/reference/macros.md:47` - describes `M109 /1/2`
-  disabling overrides; document the pairing requirement with `M108 /1/2`.
+- `docs/plc-spec/main-stage.md:350-359` - delete the "RAPID 25% rapids-only
+  override" section. Record in its place, or in
+  `.claude/skills/centroid-plc-programming/reference/system-variables.md`, the
+  measured finding that `SV_PLC_RAPID_FEEDRATE_OVERRIDE` scales **all** motion
+  and bypasses CNC12's override control, so it is not usable for a rapids-only
+  cut.
+- `docs/plc-spec/definitions.md:181` - remove the `Rapid25_M` row; remove the
+  other three retired definitions.
+- `docs/plc-spec/atc.md:41` and
+  `.claude/skills/acroloc-s10/reference/atc-flow.md:41` - both show the
+  `M109 /1/2` line; add `M108 /1/2`.
+- `.claude/skills/acroloc-s10/reference/macros.md:47` - document that
+  `M109 /1/2` must always be paired with `M108 /1/2`, and why: an unpaired
+  `M109` disables CNC12's tapping override lockout for the rest of the program.
+- `docs/superpowers/specs/2026-07-13-retro-vcp-theme-design.md:48` - describes
+  the RAPID 25% button as a rapids-only cut. Annotate as removed and superseded
+  by this spec.
+- Re-pin line numbers in edited plc-spec sections to the implementing commit.
 
 ## Out of scope
 
 - The `SelectRapidOverride_SV` / `SV_PLC_FUNCTION_34` legacy F9 and Ctrl-R toggle
-  at `src:1998-2002`, which is set at power-up and links rapids to the feed
-  override knob. It is untouched here. `system-variables.md:182` notes the SV is
-  deprecated in favour of `SV_PC_TOGGLE_RAPID_OVERRIDE`; migrating it is separate
-  work.
+  at `src:1998-2002`. It is stock, byte-identical to the vendor source, and is
+  what makes FEED 25% affect rapids - the behaviour we are now relying on.
+  `system-variables.md:182` notes the SV is deprecated in favour of
+  `SV_PC_TOGGLE_RAPID_OVERRIDE`; migrating it is separate work.
+- Investigating `SV_VELOCITY_RATIO` as a future genuine G0-only mechanism. Worth
+  a bench probe someday; not part of a fix for a broken-tap incident.
+- Re-flowing the VCP button grid to fill the vacated cell.
 - The absent `M8` before the tapping section in `Titan-4M-Op1-G54.nc` (a form tap
-  running dry). A CAM post-processor concern, not a controller one.
-- `Titan-4M-Op1-G54.nc` terminating with `M99` rather than `M30`.
+  running dry) and its `M99` rather than `M30` ending. CAM post-processor
+  concerns, not controller ones.
