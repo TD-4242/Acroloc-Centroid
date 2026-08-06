@@ -514,9 +514,6 @@ BUTTONS = [
          run_line='G53 G0 Z0'),
     dict(name='cycle_start', row=11, col=1, lines=['CYCLE', 'START'],
          style='green', style_on='grnlit'),
-    # rapids-only 25% cut; stock rapid_over xml = skin event 82 + LED
-    # OUT1133, both handled by the PLC's Rapid25_M latch
-    dict(name='rapid_over', row=11, col=5, lines=['RAPID', '25%']),
     dict(name='cycle_cancel', row=11, col=2, lines=['CYCLE', 'CANCEL'],
          fs=13, style='red', style_on='lit'),
     dict(name='single_block', row=9, col=2, lines=['SINGLE', 'BLOCK'],

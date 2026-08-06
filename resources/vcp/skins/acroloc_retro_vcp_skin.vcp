@@ -366,7 +366,6 @@
 	<button row="11" column="1">retro_cycle_start</button>
 	<button row="11" column="2">retro_cycle_cancel</button>
 	<button row="11" column="3">retro_feed_hold</button>
-	<button row="11" column="5">retro_rapid_over</button>
 	<button row="12" column="1" column_span="3" row_span="3">retro_reset</button>
 	<button row="13" column="4">retro_feedrate_negative</button>
 	<button row="13" column="5">retro_feedrate_100</button>
