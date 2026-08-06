@@ -233,7 +233,12 @@ not part of this change.
 - `docs/superpowers/specs/2026-07-13-retro-vcp-theme-design.md:48` - describes
   the RAPID 25% button as a rapids-only cut. Annotate as removed and superseded
   by this spec.
-- Re-pin line numbers in edited plc-spec sections to the implementing commit.
+- **Do not re-baseline the plc-spec line pins.** `docs/plc-spec/*.md` pin source
+  line numbers to commit `41f3fd6` via a "Line numbers as of commit 41f3fd6"
+  header. Established practice in this repo is to remove or correct false
+  *content* when editing these files and leave the line-number references and
+  the pin header alone. An earlier draft of this spec called for re-pinning to
+  the implementing commit; that was wrong and is retracted.
 
 ## Out of scope
 
