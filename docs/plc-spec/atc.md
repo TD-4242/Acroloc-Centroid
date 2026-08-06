@@ -51,8 +51,16 @@ G4 p1                              ; mfunc6.mac:24 — 1 s wait (comment asks "c
 M100 /93016                        ; mfunc6.mac:25 — block until ATCStage's bit clears
 M95 /8                             ; mfunc6.mac:26 — RST M6_SV, handshake cleanup
 
+M108 /1/2                          ; re-enable overrides — pairs the M109 /1/2 above
+
 N1000                              ; mfunc6.mac:28 — end
 ```
+
+`M109 /1/2` and `M108 /1/2` must always be balanced. An unpaired `M109` leaves CNC12's
+override control disabled for the remainder of the program, which also disables the lockout
+that normally forces feed override to 100% during a G74/G84 tapping cycle — a tap fed at a
+reduced override will break. See
+[../superpowers/specs/2026-08-05-rapid-override-g0-only-design.md](../superpowers/specs/2026-08-05-rapid-override-g0-only-design.md).
 
 The macro never touches ATC hardware bits directly (no `ATCMotor_O`/`ATCUnlocked_O` writes).
 It stops the spindle and coolant, parks Z, tells the PLC which tool it wants via `M107`

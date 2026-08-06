@@ -27,4 +27,8 @@ G4 p1           ; wait 1 second (can I shorten this wait?)
 M100 /93016     ; ATCStage RST
 M95 /8          ; reset M6_SV to stop tool change stage when done
 
+M108 /1/2       ; Re-enable overrides (pairs the M109 /1/2 above -- an unpaired
+                ; M109 leaves override control off for the rest of the program,
+                ; which also disables CNC12's G74/G84 feed-override lockout)
+
 N1000           ; end of program
