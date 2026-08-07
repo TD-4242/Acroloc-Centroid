@@ -356,6 +356,32 @@ scaled by the CNC12 axis config (8000 counts/turn x 5 turns/inch = 40000 counts/
 positive, Y and Z reversed, hence the swapped subtraction order). Displays 0.0 until homed;
 re-homing re-latches. Display-only — nothing reads the FWs back.
 
+### Feedrate override LEDs and the tapping lockout (src:1969, 1978-1981)
+
+The four VCP feedrate-percentage LEDs are driven off the **applied** override, not the
+operator's selection:
+
+```
+src:1978  IF FinalFeedOverride_W == 100 THEN (FeedOver100LED_O)
+src:1979  IF FinalFeedOverride_W == 75  THEN (FeedOver75LED_O)
+src:1980  IF FinalFeedOverride_W == 50  THEN (FeedOver50LED_O)
+src:1981  IF FinalFeedOverride_W == 25  THEN (FeedOver25LED_O)
+```
+
+`FinalFeedOverride_W` is forced to 100 whenever CNC12 clears its override-control flag
+(src:1969, `IF !SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE THEN FinalFeedOverride_W = 100`),
+which is exactly what CNC12 does for the duration of a G74/G84 tapping cycle.
+
+**Consequence, observed on-machine 2026-08-06 and expected:** with 25% selected, the panel
+jumps to the 100% LED when a tapping cycle starts and returns to 25% when it ends. The
+operator's selection is never lost — `KbOverride_W` retains 25 throughout, because src:1969
+overwrites only `FinalFeedOverride_W`, after the `FinalFeedOverride_W = KbOverride_W` rung
+above it. When the flag returns, `FinalFeedOverride_W` picks `KbOverride_W` back up and the
+LED follows. This is the clearest visual confirmation that the tapping lockout is engaged.
+
+This behaviour only became visible once `mfunc6.mac` was fixed to re-enable overrides after a
+tool change ([atc.md](atc.md)); before that the flag stayed clear for the whole program.
+
 ### RAPID 25% override — REMOVED 2026-08-06
 
 This section previously documented an Acroloc RAPID 25% toggle button that wrote
