@@ -502,8 +502,17 @@ FKNOB_R_LABEL = 101.0
 # so the arrow ends mid-button with its base on the skirt and its point reaching
 # into the tick ring -- the way a skirted knob indicates.
 FKNOB_R_NEEDLE = 74.0   # tip at the skirt edge, aimed at the tick ring
-FKNOB_R_NEEDLE_IN = 56.0
-FKNOB_NEEDLE_HW = 3.2   # half-width at the base
+FKNOB_NEEDLE_LEN = 18.0   # intended length, face units
+FKNOB_NEEDLE_HW = 3.2     # intended half-width at the base
+# Empirical. The VCP does not honour a viewBox window the way the SVG spec says:
+# measured on-machine 2026-08-07, a pointer drawn 56..74 rendered as 32..75 in
+# face units -- the tip landed right but the body was stretched inward 2.40x.
+# The face <image> is unaffected (its skirt measured 93 px for 76 units, exactly
+# as drawn), so only the button art needs this. Divide the intended size by the
+# factor and the rendered result comes out at the intended size. Re-measure from
+# a screenshot if the VCP is ever resized.
+FKNOB_RENDER_STRETCH = 2.40
+FKNOB_R_NEEDLE_IN = FKNOB_R_NEEDLE - FKNOB_NEEDLE_LEN / FKNOB_RENDER_STRETCH
 
 FKNOB_FACE_STOPS = (('0', '#413d38'), ('0.55', '#242220'), ('1', '#121110'))
 # brushed-aluminium skirt: the pointer is black on top of this, per the original
@@ -602,7 +611,7 @@ def render_feedrate_needle_svg(quadrant, on):
         th = _fk_theta(FKNOB_QUADRANTS[quadrant])
         a = math.radians(th)
         px, py = math.cos(a), math.sin(a)      # tangential unit vector
-        hw = FKNOB_NEEDLE_HW
+        hw = FKNOB_NEEDLE_HW / FKNOB_RENDER_STRETCH
         bx, by = _fk_pt(c, c, FKNOB_R_NEEDLE_IN, th)
         tx, ty = _fk_pt(c, c, FKNOB_R_NEEDLE, th)
         p.append('<polygon id="fk-needle" points="%.1f,%.1f %.1f,%.1f '
