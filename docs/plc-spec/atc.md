@@ -4,10 +4,12 @@ One-line purpose: the authoritative, line-referenced spec for the custom Acroloc
 tool changer (ATC) — `mfunc6.mac`'s macro orchestration, the `MainStage` kickoff/safety rungs,
 and the `ATCStage` (STG16) carousel-indexing state machine.
 
-Line numbers as of commit 41f3fd6 (`Centroid-Acroloc-ALLIN1DC.src` unchanged since then —
-verified via `git log -1 --format=%H -- Centroid-Acroloc-ALLIN1DC.src` returning
-`21128a9006ef99abb061276807d38401787105f0`, whose most recent change to this file predates
-41f3fd6, and `git status` shows no working-tree modifications to the `.src`).
+Line numbers as of commit 41f3fd6.
+
+> Both `Centroid-Acroloc-ALLIN1DC.src` and `mfunc6.mac` have moved since that pin. Per this
+> doc set's convention the `src:` / `mfunc6.mac:` references below are **not** re-baselined —
+> they remain pointers into 41f3fd6, so search by symbol rather than jumping to the cited line
+> when reading current source. Lines with no reference are ones added after the pin.
 
 > ⚠️ **Superseded by the tool→bin mapping change (PR #22).** The tool change was reworked:
 > a fixed **tool→bin map** (machine parameters **P701–712**, at `P160 = 0`) now
@@ -51,8 +53,16 @@ G4 p1                              ; mfunc6.mac:24 — 1 s wait (comment asks "c
 M100 /93016                        ; mfunc6.mac:25 — block until ATCStage's bit clears
 M95 /8                             ; mfunc6.mac:26 — RST M6_SV, handshake cleanup
 
+M108 /1/2                          ; re-enable overrides — pairs the M109 /1/2 above
+
 N1000                              ; mfunc6.mac:28 — end
 ```
+
+`M109 /1/2` and `M108 /1/2` must always be balanced. An unpaired `M109` leaves CNC12's
+override control disabled for the remainder of the program, which also disables the lockout
+that normally forces feed override to 100% during a G74/G84 tapping cycle — a tap fed at a
+reduced override will break. See
+[../superpowers/specs/2026-08-05-rapid-override-g0-only-design.md](../superpowers/specs/2026-08-05-rapid-override-g0-only-design.md).
 
 The macro never touches ATC hardware bits directly (no `ATCMotor_O`/`ATCUnlocked_O` writes).
 It stops the spindle and coolant, parks Z, tells the PLC which tool it wants via `M107`

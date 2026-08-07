@@ -491,7 +491,6 @@ FeedHoldLED_O                   IS OUT1104 ; Row 10 Column 4
 
 ; LED for VCP 2.0
 SkinResetSet_O                  IS OUT1107 ; VCP Reset Button "LED"
-RapidOverLED_O                  IS OUT1133 ; Acroloc VCP RAPID 25% button LED (stock rapid_over LED number)
 FeedOver100LED_O                IS OUT1137
 FeedOver75LED_O                 IS OUT1138
 FeedOver50LED_O                 IS OUT1139
@@ -525,7 +524,6 @@ ProbeFault_M                    IS MEM54  ; 0 = okay, 1 = tried to start spindle
 JogProbeFault_M                 IS MEM55  ; 0 = okay, 1 = tripped probe while jogging
 SpindleFault_M                  IS MEM56  ; 0 = okay, 1 = spindle drive fault
 OtherFault_M                    IS MEM57
-Rapid25_M                       IS MEM58  ; Acroloc latched by the VCP RAPID 25% button; rapids cut to 25% while set
 
 ; Axis1FiberOk_M                IS MEM70
 ; Axis2FiberOk_M                IS MEM71
@@ -1034,7 +1032,6 @@ SkinJogAx8Plus_SV               IS SV_SKIN_EVENT_63
 SkinJogAx8Minus_SV              IS SV_SKIN_EVENT_64
 SkinAux15_SV                    IS SV_SKIN_EVENT_68
 SkinAux16_SV                    IS SV_SKIN_EVENT_69
-SkinRapid25_M_SV                IS SV_SKIN_EVENT_82 ; Acroloc VCP RAPID 25% button (stock rapid_over event number)
 SkinJogAx1MinusAx2Plus_M        IS SV_SKIN_EVENT_107
 SkinJogAx1Ax2Plus_M             IS SV_SKIN_EVENT_108
 SkinJogAx1Ax2Minus_M            IS SV_SKIN_EVENT_109
@@ -1211,7 +1208,6 @@ Aux16PD_PD                      IS PD56
 
 SkinFeedOverMinusPD_PD          IS PD57
 SkinFeedOverPlusPD_PD           IS PD58
-Rapid25PD_PD                    IS PD59 ; Acroloc one-shot for the VCP RAPID 25% toggle
 
 ;------------------------------------------------------------------------------
 ;                    34initions
@@ -1999,15 +1995,6 @@ IF KbTogRapidOver_M || (F9PD_PD && (SV_PROGRAM_RUNNING || SV_MDI_MODE))
    THEN (RapidOverPD_PD)
 IF RapidOverPD_PD^ SelectRapidOverride_SV THEN (SelectRapidOverride_SV)
 IF OnAtPowerUp_M THEN SET SelectRapidOverride_SV
-
-; Acroloc: VCP RAPID 25% button - rapids-only cut. While latched, rapid (G0)
-; moves run at 25% via SV_PLC_RAPID_FEEDRATE_OVERRIDE (a 0.0-2.0 scale like
-; SV_PLC_FEEDRATE_OVERRIDE above); the feedrate override is untouched.
-IF SkinRapid25_M_SV THEN (Rapid25PD_PD)
-IF (Rapid25_M ^ Rapid25PD_PD) THEN (Rapid25_M)
-IF Rapid25_M THEN SV_PLC_RAPID_FEEDRATE_OVERRIDE = 0.25
-IF !Rapid25_M THEN SV_PLC_RAPID_FEEDRATE_OVERRIDE = 1.0
-IF Rapid25_M THEN (RapidOverLED_O)
 
 IF (CycleCancelKey_I || KbCycleCancel_M || MpgResetKey_M || SkinCycleCancel_M_SV) || ErrorFlag_M
    THEN (DoCycleCancel_SV)

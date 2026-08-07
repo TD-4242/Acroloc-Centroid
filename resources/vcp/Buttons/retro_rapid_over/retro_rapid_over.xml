@@ -1,8 +1,0 @@
-<vcp_button>
-	<skin_event_num>82</skin_event_num>
-	<plc_output>
-		<number>1133</number>
-		<image_on>retro_rapid_over_on.svg</image_on>
-		<image_off>retro_rapid_over.svg</image_off>
-	</plc_output>
-</vcp_button>

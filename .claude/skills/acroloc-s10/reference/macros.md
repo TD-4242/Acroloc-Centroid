@@ -44,10 +44,16 @@ the order; the logic is fine as written.
 The full flow is in [atc-flow.md](./atc-flow.md). The macro's sequence is:
 
 1. `IF #50001` — prevents lookahead buffering during the tool change
-2. `M109 /1/2` — disables feed and speed overrides
+2. `M109 /1/2` — disables feed and speed overrides. **Always paired with `M108 /1/2` at
+   the end of the macro.** An unpaired `M109` leaves override control off for the remainder
+   of the program, which also disables CNC12's lockout that forces feed override to 100%
+   during G74/G84 tapping cycles — a tap fed at a reduced override will break.
 3. `S0` / `M5` / `M9` — zero spindle speed, stop spindle, turn off coolant
 4. `G53 Z0` — retract Z to machine home (tool-change position)
 5. `M107` — send target tool number to PLC
 6. `M94 /8` — assert `M6_SV` (bit 8) to trigger `ATCStage` in the PLC
 7. `M100 /93016` — block until `ATCStage` (STG16) resets (carousel cycle complete)
 8. `M95 /8` — deassert `M6_SV` to close out the tool-change handshake
+9. `M108 /1/2` — re-enables the overrides disabled in step 2. Placed before the `N1000`
+   label so the graph/search guard skips it together with the `M109`, keeping the pair
+   balanced in every execution path.

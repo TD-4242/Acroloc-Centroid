@@ -41,6 +41,12 @@ IF #50001                           ; prevent lookahead
 M109 /1/2                           ; disable overrides
 ```
 
+The macro ends with `M108 /1/2`, re-enabling the overrides that `M109 /1/2` turned off.
+The pair must always be balanced: an unpaired `M109` leaves CNC12's override control
+disabled for the rest of the program, which also disables the lockout that normally forces
+feed override to 100% during a G74/G84 tapping cycle — a tap fed at a reduced override will
+break.
+
 The macro does **not** drive any ATC hardware directly. It relies entirely
 on the PLC stage to index the carousel and signal completion. The chosen bin is
 shown on the **retro VCP** as a live `BIN` readout (`plc_word` 8 =

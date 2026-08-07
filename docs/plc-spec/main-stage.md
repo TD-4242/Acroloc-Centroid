@@ -356,17 +356,28 @@ scaled by the CNC12 axis config (8000 counts/turn x 5 turns/inch = 40000 counts/
 positive, Y and Z reversed, hence the swapped subtraction order). Displays 0.0 until homed;
 re-homing re-latches. Display-only — nothing reads the FWs back.
 
-### RAPID 25% rapids-only override (Acroloc, src:1976-1980)
+### Feedrate override LEDs and the tapping lockout (src:1969, 1978-1981)
 
-Feeds the retro VCP's RAPID 25% toggle button (stock `rapid_over` bindings: skin event 82,
-LED OUT1133). `SkinRapid25_M_SV` one-shots through `Rapid25PD_PD` into the `Rapid25_M`
-toggle latch (the same XOR-coil idiom as `PumpManual_M`). While latched,
-`SV_PLC_RAPID_FEEDRATE_OVERRIDE` is written 0.25 each scan (a 0.0-2.0 scale factor,
-parallel to the `SV_PLC_FEEDRATE_OVERRIDE` write at src:1964), cutting rapid (G0) moves to
-25% without touching the feedrate override; when off it is written 1.0 and
-`RapidOverLED_O` goes dark. Independent of the legacy F9/Ctrl-R
-`SelectRapidOverride_SV` toggle directly above it (src:1967-1971), which links rapids to
-the feed override knob.
+The four VCP feedrate-percentage LEDs are driven off the **applied** override, not the
+operator's selection:
+
+```
+src:1978  IF FinalFeedOverride_W == 100 THEN (FeedOver100LED_O)
+src:1979  IF FinalFeedOverride_W == 75  THEN (FeedOver75LED_O)
+src:1980  IF FinalFeedOverride_W == 50  THEN (FeedOver50LED_O)
+src:1981  IF FinalFeedOverride_W == 25  THEN (FeedOver25LED_O)
+```
+
+`FinalFeedOverride_W` is forced to 100 whenever CNC12 clears its override-control flag
+(src:1969, `IF !SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE THEN FinalFeedOverride_W = 100`),
+which is exactly what CNC12 does for the duration of a G74/G84 tapping cycle.
+
+**Consequence at the panel:** with 25% selected, the LED jumps to 100% when a tapping cycle
+starts and returns to 25% when it ends. The operator's selection is never lost —
+`KbOverride_W` retains 25 throughout, because src:1969 overwrites only `FinalFeedOverride_W`,
+after the `FinalFeedOverride_W = KbOverride_W` rung above it. When the flag returns,
+`FinalFeedOverride_W` picks `KbOverride_W` back up and the LED follows. This is the clearest
+visual confirmation that the tapping lockout is engaged.
 
 ### Coolant (mist/flood) — mfunc7/mfunc8 linkage (src:2086-2127)
 

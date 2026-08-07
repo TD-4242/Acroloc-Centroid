@@ -124,5 +124,16 @@ outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71` (`Current
   but it now faults at 20 s instead of spinning forever.
 - `plc.map` is gitignored build output; never hand-edit it and don't rely on its line numbers
   staying in sync after you edit the `.src`.
-- When changing the PLC source, update the affected docs/plc-spec/ section(s) and their
-  pinned commit hash as part of the change.
+- When changing the PLC source, update the affected docs/plc-spec/ section(s) as part of the
+  change, so their **content** is true. Do **not** re-baseline the `src:` line references or
+  the `Line numbers as of commit <hash>` header — those are deliberately pinned to a snapshot
+  (see the note at `docs/plc-spec/definitions.md:20`). Fix false statements, leave the numbers
+  alone, and give lines added after the pin **no** line reference rather than a number from a
+  different baseline.
+- **Current docs describe the current state — never what it used to be.** `docs/plc-spec/`
+  and the `.claude/skills/` references document what the machine does *now*. When a feature is
+  removed, delete its section outright; do not leave a tombstone (`REMOVED`, "previously
+  documented", "this used to…"). The record of what changed and why belongs in
+  `docs/superpowers/specs/`, which is where historical design documents live and may be
+  annotated freely. Documenting *vendor* behaviour that still exists — a system variable's
+  measured semantics, say — is current fact, not a tombstone, and stays.

@@ -104,6 +104,13 @@ moves (lines, arcs, canned cycles, etc.). This percentage can be from 0% to 200%
 > **CAUTION:** The Feed Rate Override knob will not work during tapping cycles (G74 and
 > G84). See `centroid-cnc12-gmcodes` for tapping cycle details.
 
+> **Expected panel behaviour during a tapping cycle:** because the override is locked out,
+> the percentage buttons/LEDs follow the *applied* override, not the one you selected. A
+> selected 25% will visibly jump to **100%** when a G74/G84 cycle starts and return to
+> **25%** when it finishes. This is correct and self-restoring — the operator's selection is
+> retained the whole time; only the applied value changes. It is also the easiest visual
+> confirmation that the tapping lockout is actually engaged.
+
 ## 2.9 Feed Hold
 
 **Feed Hold** decelerates the motion of the current movement to a stop, pausing the job
