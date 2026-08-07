@@ -4,10 +4,16 @@ One-line purpose: the authoritative, line-referenced spec for the custom Acroloc
 tool changer (ATC) — `mfunc6.mac`'s macro orchestration, the `MainStage` kickoff/safety rungs,
 and the `ATCStage` (STG16) carousel-indexing state machine.
 
-Line numbers as of commit 41f3fd6 (`Centroid-Acroloc-ALLIN1DC.src` unchanged since then —
-verified via `git log -1 --format=%H -- Centroid-Acroloc-ALLIN1DC.src` returning
-`21128a9006ef99abb061276807d38401787105f0`, whose most recent change to this file predates
-41f3fd6, and `git status` shows no working-tree modifications to the `.src`).
+Line numbers as of commit 41f3fd6.
+
+> **Both annotated files have changed since that pin.** `Centroid-Acroloc-ALLIN1DC.src` (RAPID
+> 25% removal) and `mfunc6.mac` (`M108 /1/2` restore) were both edited by the
+> [rapid-override fix](../superpowers/specs/2026-08-05-rapid-override-g0-only-design.md);
+> earlier, PR #22 reworked the ATC. Per this doc set's convention the `src:`/`mfunc6.mac:`
+> references below are **not** re-baselined — they remain pointers into 41f3fd6. When reading
+> current source, search by symbol rather than jumping to the cited line. Lines added after the
+> pin (such as the `M108 /1/2` entry in the excerpt below) intentionally carry **no** line
+> reference rather than a number from a different baseline.
 
 > ⚠️ **Superseded by the tool→bin mapping change (PR #22).** The tool change was reworked:
 > a fixed **tool→bin map** (machine parameters **P701–712**, at `P160 = 0`) now
