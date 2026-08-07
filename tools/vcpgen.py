@@ -462,6 +462,79 @@ def render_knob_svg(on, title, labels):
         + '</g></svg>\n')
 
 
+# --------------------------------------------- feedrate preset knob -------
+# A 2x2 dial assembled from four ordinary 1x1 buttons. The dial centre sits on
+# the cell corner all four share, so each cell shows a 90-degree sector and each
+# preset's needle falls entirely inside its own cell -- the property that makes
+# this work when a VCP button can only swap its own image (one PLC bit, two
+# states). Scale: theta = FKNOB_THETA0 + FKNOB_SWEEP * value / 100, measured
+# clockwise from straight up. Re-aim the dial by tuning THETA0/SWEEP alone.
+FKNOB_THETA0 = 180.0    # value 0 sits at the bottom
+FKNOB_SWEEP = 300.0     # 0 -> 100 sweeps 300 deg clockwise (60 deg stop gap)
+FKNOB_R_FACE = 86.0     # tick ring outer radius, viewBox units
+FKNOB_R_CAP = 44.0      # knob cap radius
+FKNOB_R_NEEDLE = 74.0   # needle tip radius
+
+# quadrant -> (centre x, centre y, sector start deg, preset value)
+FKNOB_QUADRANTS = {
+    'NW': (VB_W, VB_H, 270.0, 50),
+    'NE': (0.0, VB_H, 0.0, 75),
+    'SW': (VB_W, 0.0, 180.0, 25),
+    'SE': (0.0, 0.0, 90.0, 100),
+}
+
+
+def _fk_pt(cx, cy, r, th):
+    """Point at radius r and angle th (degrees clockwise from straight up)."""
+    a = math.radians(th)
+    return cx + r * math.sin(a), cy - r * math.cos(a)
+
+
+def render_feedrate_knob_svg(quadrant, on):
+    """One cell of the 2x2 feedrate preset dial.
+
+    `on` adds the needle for this quadrant's preset. The bezel is drawn as a
+    single 2x2 panel offset into this cell so the four cells join seamlessly
+    rather than showing four separate button borders."""
+    cx, cy, th_lo, preset = FKNOB_QUADRANTS[quadrant]
+    th_hi = th_lo + 90.0
+    # block-relative origin, so the bezel spans all four cells as one panel
+    bx, by = cx - VB_W, cy - VB_H
+    p = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
+         'viewBox="0 0 %d %d">' % (RENDER_W, RENDER_H, VB_W, VB_H),
+         '<rect x="0" y="0" width="%d" height="%d" fill="#141210"/>'
+         % (VB_W, VB_H),
+         '<defs>' + _bezel_grad('bz', VB_W * 2, VB_H * 2) + '</defs>',
+         '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="8" '
+         'fill="url(#bz)" stroke="#100f0d" stroke-width="1.5"/>'
+         % (bx + 3, by + 3, VB_W * 2 - 6, VB_H * 2 - 6)]
+    for i in range(0, 101, 5):
+        th = FKNOB_THETA0 + FKNOB_SWEEP * i / 100.0
+        if not (th_lo <= th % 360.0 < th_hi):
+            continue
+        major = (i % 25 == 0 and i > 0)
+        x1, y1 = _fk_pt(cx, cy, 78.0 if major else 81.0, th)
+        x2, y2 = _fk_pt(cx, cy, FKNOB_R_FACE, th)
+        p.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" '
+                 'stroke-width="%.1f"/>'
+                 % (x1, y1, x2, y2,
+                    '#e3ac5c' if major else '#6a645c', 2.0 if major else 1.0))
+        if major:
+            lx, ly = _fk_pt(cx, cy, 64.0, th)
+            p.append(text_el(str(i), lx, ly + 4, 12, '#b0a898'))
+    p.append('<circle cx="%.1f" cy="%.1f" r="%.1f" fill="#2a2724" '
+             'stroke="#0c0b0a" stroke-width="2"/>' % (cx, cy, FKNOB_R_CAP))
+    if on:
+        th = FKNOB_THETA0 + FKNOB_SWEEP * preset / 100.0
+        x1, y1 = _fk_pt(cx, cy, 10.0, th)
+        x2, y2 = _fk_pt(cx, cy, FKNOB_R_NEEDLE, th)
+        p.append('<line id="fk-needle" x1="%.1f" y1="%.1f" x2="%.1f" '
+                 'y2="%.1f" stroke="#e3ac5c" stroke-width="4" '
+                 'stroke-linecap="round"/>' % (x1, y1, x2, y2))
+    p.append('</svg>\n')
+    return ''.join(p)
+
+
 # ------------------------------------------------------- buttons table ----
 # text_y values are in content coordinates (mockup center-58 system).
 BUTTONS = [

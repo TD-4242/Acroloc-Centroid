@@ -95,6 +95,41 @@ class TestReset(unittest.TestCase):
         self.assertIn('TRIPPED', tripped)
 
 
+class TestFeedrateKnob(unittest.TestCase):
+    QUADS = ('NW', 'NE', 'SW', 'SE')
+
+    def test_all_quadrants_render_and_parse(self):
+        for q in self.QUADS:
+            for on in (False, True):
+                svg = vcpgen.render_feedrate_knob_svg(q, on)
+                ET.fromstring(svg)
+                svg.encode('ascii')
+
+    def test_on_state_adds_a_needle(self):
+        for q in self.QUADS:
+            off = vcpgen.render_feedrate_knob_svg(q, False)
+            on = vcpgen.render_feedrate_knob_svg(q, True)
+            self.assertNotIn('fk-needle', off)
+            self.assertIn('fk-needle', on)
+
+    def test_needle_stays_inside_its_own_cell(self):
+        # The whole design rests on this: each preset's needle must fall in
+        # its own button's cell, because a VCP button can only swap its own
+        # image. A needle crossing into a neighbour would be invisible.
+        for q in self.QUADS:
+            cx, cy, _, preset = vcpgen.FKNOB_QUADRANTS[q]
+            th = vcpgen.FKNOB_THETA0 + vcpgen.FKNOB_SWEEP * preset / 100.0
+            x, y = vcpgen._fk_pt(cx, cy, vcpgen.FKNOB_R_NEEDLE, th)
+            self.assertTrue(0 <= x <= vcpgen.VB_W,
+                            '%s needle x=%.1f outside cell' % (q, x))
+            self.assertTrue(0 <= y <= vcpgen.VB_H,
+                            '%s needle y=%.1f outside cell' % (q, y))
+
+    def test_each_preset_owned_by_exactly_one_quadrant(self):
+        presets = sorted(v[3] for v in vcpgen.FKNOB_QUADRANTS.values())
+        self.assertEqual(presets, [25, 50, 75, 100])
+
+
 class TestEmitButtons(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
