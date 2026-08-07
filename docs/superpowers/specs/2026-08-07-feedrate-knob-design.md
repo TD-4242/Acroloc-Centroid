@@ -1,0 +1,157 @@
+# Feedrate preset knob: four buttons rendered as one analog dial
+
+Date: 2026-08-07
+Status: approved
+
+## Goal
+
+Replace the four flat feedrate preset buttons (25 / 50 / 75 / 100%) on the retro VCP with a
+single analog-looking rotary dial, in the style of the machine's original panel hardware. The
+dial is built from four ordinary VCP buttons tiled 2x2; the selected preset draws a needle.
+
+Visual reference: `~/switch.png`, the original FEEDRATE OVERRIDE knob (see "Dial face range"
+for why the reproduction is deliberately not exact).
+
+## Constraint that shapes the whole design
+
+A VCP button has exactly **two** image states, `image_on` / `image_off`, selected by a single
+PLC output bit (`.claude/skills/centroid-vcp/reference/visual-states.md`). There is no
+rotation primitive, no gauge widget, and no way to drive an image from a PLC *word* — a
+`<plc_word>` renders numeric text only. A continuously-swept needle is therefore impossible.
+Every needle position must be baked into a static SVG chosen by a binary bit.
+
+Four buttons x two states is the entire budget.
+
+## Design
+
+### Geometry
+
+The dial's centre sits on the **shared corner of a 2x2 block of cells**, so each button owns
+one 90-degree sector of the circle. The needle for a given preset is drawn from that centre
+outward into its own sector, which means it lies **entirely within its own button's cell** —
+the property that makes the whole scheme work with per-button binary state.
+
+Angles below are measured clockwise from straight up (North).
+
+| Cell | Grid position | Sector | Preset | Needle angle |
+| --- | --- | --- | --- | --- |
+| NW | row 13, col 4 | 270-360 | **50%** | 330 |
+| NE | row 13, col 5 | 0-90 | **75%** | 45 |
+| SW | row 14, col 4 | 180-270 | **25%** | 255 |
+| SE | row 14, col 5 | 90-180 | **100%** | 120 |
+
+The scale runs 0 at the bottom (180) sweeping **300 degrees clockwise** to 100 (at 120), a
+3.0 degrees-per-percent scale, leaving a 60-degree dead gap between the 100 end and the 0 start.
+Every preset lands inside a distinct sector with at least **15 degrees** of clearance from the
+nearest cell boundary (the tightest is 25% at 255, which is 15 degrees off the 270 boundary).
+
+> **This geometry is a starting point, tuned on paper.** The sweep, start angle and gap are
+> single constants in the generator. Expect to adjust them once the dial is seen on the actual
+> panel; that is a one-line change plus a regenerate, not a redesign.
+
+Face detail: minor ticks every 5%, major labelled ticks at 25 / 50 / 75 / 100, a knob cap
+drawn across all four cells, and the existing retro palette. The cap and face render
+identically in both states — **only the needle differs between `image_off` and `image_on`** —
+so switching presets changes nothing on screen except which needle appears.
+
+### Layout
+
+```
+        col 4        col 5        col 6
+row 13  +---------------------+  +--------+
+        |   50 \      / 75    |  |   -    |
+        |       \    /        |  +--------+
+row 14  |   25 --(o)-- 100    |  |   +    |
+        +---------------------+  +--------+
+         knob spans 2x2          stacked
+```
+
+`feedrate_negative` and `feedrate_positive` move to column 6, stacked. This consumes exactly
+the **same six cells** the flat buttons use today (rows 13-14, cols 4-6), inside the existing
+`FEEDRATE` group box. Row 14 is the last row of the grid, so no other arrangement fits.
+
+### No PLC change
+
+Each quadrant keeps the skin event and LED bit its flat predecessor already used:
+
+| Preset | Skin event | PLC output |
+| --- | --- | --- |
+| 25% | 113 | OUT1140 |
+| 50% | 112 | OUT1139 |
+| 75% | 111 | OUT1138 |
+| 100% | 53 | OUT1137 |
+
+`Centroid-Acroloc-ALLIN1DC.src` is **not touched**. The existing rungs at src:1978-1981 drive
+these four bits off `FinalFeedOverride_W == 100 / 75 / 50 / 25`, which are mutually exclusive
+by construction, so at most one needle is ever drawn.
+
+Because the LED is replaced by a whole-image swap, each button's `<plc_output>` block carries
+`<image_on>` / `<image_off>` instead of `<color_on>` / `<color_off>` — the same shape the
+`reset` button already uses.
+
+### Off-preset behaviour: no needle
+
+The rungs test **exact equality**, so at any value the `-` / `+` buttons produce that is not
+exactly 25/50/75/100 — including anything above 100, which P39 permits — **no bit is lit and
+no needle is drawn.** The bare dial face shows.
+
+This is intentional and was chosen over range-based ("snap to nearest") bits. A needle that
+pointed at 75 while the true override was 63 would be a machine control lying about its state.
+The seven-segment `FEEDRATE` readout, which displays `FinalFeedOverride_W` directly, remains
+the source of truth and is unchanged.
+
+Consequence worth expecting: during a G74/G84 tapping cycle CNC12 forces the applied override
+to 100, so the needle jumps to the 100 position for the cycle and returns afterward. That is
+the same behaviour the flat LEDs already show (see
+[../../plc-spec/main-stage.md](../../plc-spec/main-stage.md), "Feedrate override LEDs and the
+tapping lockout").
+
+### Dial face range: 0-100, not 0-200
+
+`switch.png` is a 0-200 face with 50/100/150 labelled. **That cannot be reproduced by this
+scheme, and the two are mutually exclusive.** On a 0-200 face the presets 25/50/75/100 all fall
+within roughly the first half of the sweep, clustering into one or two sectors — two buttons
+would own two presets each and two would own none, destroying the one-needle-per-cell property
+the design depends on.
+
+The face therefore reads 0-100. It will read as an analog knob in the spirit of the original,
+not as a replica of it. This trade was raised explicitly during design and the four-button
+knob was chosen over photo fidelity.
+
+## Implementation
+
+All work is in `tools/vcpgen.py` and its generated output. **Never hand-edit anything under
+`resources/vcp/`** — it is emitted.
+
+- Add `render_feedrate_knob_svg(quadrant, on)` returning the SVG for one cell. It sits
+  alongside the existing `render_knob_svg()` (tools/vcpgen.py:394), which already performs the
+  same rotate-a-knob-by-a-PLC-bit trick for the two-position SPIN/CLNT/JOG mode selectors and
+  is the pattern to follow for artboard sizing and palette.
+- Replace the four `feedrate_25/50/75/100` entries in `BUTTONS` with the 2x2 knob quadrants,
+  and move `feedrate_negative` / `feedrate_positive` to column 6.
+- Emit eight SVGs (four quadrants x on/off) plus the four button XMLs carrying
+  `image_on`/`image_off`.
+- Extend `tools/test_vcpgen.py`.
+
+The generator only ever creates and overwrites; **it never deletes stale output.** The
+previously emitted `retro_feedrate_25/50/75/100` button directories will be orphaned and must
+be removed explicitly with `git rm -r`.
+
+## Verification
+
+- `python3 tools/test_vcpgen.py` — existing 21 tests plus new coverage.
+- `./compile.sh` — expected **unchanged** at main's baseline (5040 tokens, 190 warnings), since
+  no `.src` edit is made. Any change here means something was touched that should not have been.
+- No orphaned `retro_feedrate_*` directories remain; no skin reference points at a deleted
+  button (a skin referencing a missing button directory is the usual cause of the VCP failing
+  to load).
+- Machine check: load the VCP, confirm it opens, confirm each of the four quadrants selects its
+  preset and draws its needle, and confirm the needle disappears after a `-` / `+` nudge.
+
+## Out of scope
+
+- Any change to `Centroid-Acroloc-ALLIN1DC.src`.
+- Range-based / "snap to nearest" needle behaviour.
+- Reproducing the 0-200 face from `switch.png`.
+- The `-` / `+` button artwork beyond relocating them to column 6.
+- The seven-segment `FEEDRATE` numeric readout, which is unchanged.
