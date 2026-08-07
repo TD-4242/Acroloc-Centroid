@@ -40,7 +40,10 @@ class TestButtonSvg(unittest.TestCase):
             for svg in (vcpgen.render_button_svg(['A'], style),
                         vcpgen.render_reset_svg(False),
                         vcpgen.render_reset_svg(True),
-                        vcpgen.render_nameplate_svg()):
+                        vcpgen.render_nameplate_svg(),
+                        vcpgen.render_feedrate_dial_face_svg(),
+                        vcpgen.render_feedrate_needle_svg('SW', True),
+                        vcpgen.render_feedrate_needle_svg('SW', False)):
                 self.assertNotIn('<filter', svg)
                 self.assertNotIn('feMerge', svg)
                 # transform function lists stack glyphs at the origin on the
@@ -138,9 +141,9 @@ class TestFeedrateKnob(unittest.TestCase):
             cx, cy, _, preset = vcpgen.FKNOB_QUADRANTS[q]
             th = vcpgen.FKNOB_THETA0 + vcpgen.FKNOB_SWEEP * preset / 100.0
             x, y = vcpgen._fk_pt(cx, cy, vcpgen.FKNOB_R_NEEDLE, th)
-            self.assertTrue(0 <= x <= vcpgen.VB_W,
+            self.assertTrue(0 <= x <= vcpgen.FK_VB,
                             '%s needle x=%.1f outside cell' % (q, x))
-            self.assertTrue(0 <= y <= vcpgen.VB_H,
+            self.assertTrue(0 <= y <= vcpgen.FK_VB,
                             '%s needle y=%.1f outside cell' % (q, y))
 
     def test_each_preset_owned_by_exactly_one_quadrant(self):
