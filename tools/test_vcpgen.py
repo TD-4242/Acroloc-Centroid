@@ -133,22 +133,33 @@ class TestFeedrateKnob(unittest.TestCase):
                 self.assertNotIn('<rect', svg)
                 self.assertNotIn('fill="#141210"', svg)
 
-    def test_needle_stays_inside_its_own_cell(self):
-        # The whole design rests on this: each preset's needle must fall in
-        # its own button's cell, because a VCP button can only swap its own
-        # image. A needle crossing into a neighbour would be invisible.
+    def test_needle_tip_lands_inside_its_own_window(self):
+        # The whole design rests on this. A button can only draw inside its own
+        # window, and the VCP's gaps are wide enough that the windows do not
+        # reach the dial centre -- an earlier 255-degree pointer for 25% missed
+        # its window entirely and would have been invisible.
+        c = vcpgen.FK_FACE_C
         for q in self.QUADS:
-            cx, cy, _, preset = vcpgen.FKNOB_QUADRANTS[q]
-            th = vcpgen.FKNOB_THETA0 + vcpgen.FKNOB_SWEEP * preset / 100.0
-            x, y = vcpgen._fk_pt(cx, cy, vcpgen.FKNOB_R_NEEDLE, th)
-            self.assertTrue(0 <= x <= vcpgen.FK_VB,
-                            '%s needle x=%.1f outside cell' % (q, x))
-            self.assertTrue(0 <= y <= vcpgen.FK_VB,
-                            '%s needle y=%.1f outside cell' % (q, y))
+            x0, y0, w, h = vcpgen._fk_window(q)
+            th = vcpgen._fk_theta(vcpgen.FKNOB_QUADRANTS[q])
+            x, y = vcpgen._fk_pt(c, c, vcpgen.FKNOB_R_NEEDLE, th)
+            self.assertTrue(x0 <= x <= x0 + w,
+                            '%s tip x=%.1f outside window %.1f..%.1f'
+                            % (q, x, x0, x0 + w))
+            self.assertTrue(y0 <= y <= y0 + h,
+                            '%s tip y=%.1f outside window %.1f..%.1f'
+                            % (q, y, y0, y0 + h))
+
+    def test_window_aspect_matches_button_aspect(self):
+        # if these diverge the SVG letterboxes and every pointer shifts
+        bw, bh = vcpgen.FK_BTN_PX
+        for q in self.QUADS:
+            _, _, w, h = vcpgen._fk_window(q)
+            self.assertAlmostEqual(w / h, bw / bh, places=6)
 
     def test_each_preset_owned_by_exactly_one_quadrant(self):
-        presets = sorted(v[3] for v in vcpgen.FKNOB_QUADRANTS.values())
-        self.assertEqual(presets, [25, 50, 75, 100])
+        self.assertEqual(sorted(vcpgen.FKNOB_QUADRANTS.values()),
+                         [25, 50, 75, 100])
 
 
 class TestEmitButtons(unittest.TestCase):

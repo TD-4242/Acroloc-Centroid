@@ -50,6 +50,36 @@ pivot back onto that centre. It ships at `0.0`; at realistic VCP spacing (2-4 px
 tip error is under 2 degrees against 15-degree tick spacing, but if the arrows visibly miss the
 printed face, that is the single number to raise.
 
+### Revision 2: face-space windows, measured calibration, vintage skirt
+
+Machine screenshots showed the pointer displaced outward along each quadrant's diagonal.
+Measuring them settled why. On this VCP a button is **79 x 63 px on a 111 px column pitch and
+a 107 px row pitch** — a 41 px vertical gap, about 40% of the pitch. Consequences:
+
+- **A button window does not reach the dial centre.** Its nearest corner is ~26 px away, about
+  one cap radius. No amount of pivot compensation fixes that; `FKNOB_GAP_COMP` is deleted.
+- **Pointers must lie along their window's diagonal.** The previous 255-degree angle for 25%
+  fell entirely outside the SW window and would have rendered invisible. The presets therefore
+  sit on the four diagonals, 90 degrees apart: `theta = 3.6 * value + 135`. That puts a
+  90-degree dead zone at the bottom, like a real knob stop, and the scale is drawn from 25 to
+  100 only.
+- **Everything is expressed in face coordinates.** Each needle SVG declares a `viewBox` equal
+  to the exact window of face space its button covers, so face and pointer share one
+  coordinate system and align by construction. Each window's aspect equals its button's
+  aspect, so nothing letterboxes. The window also clips the pointer's inner end, so it appears
+  to emerge from the cap rather than from a pivot the button cannot reach.
+
+An earlier revision had a second letterbox bug worth recording: a VCP button viewport is not
+the 116x97 ordinary buttons assume, so a mismatched artboard is scaled to fit one axis and
+centred on the other. Ordinary buttons never notice because their content is centred anyway,
+but corner-anchored geometry shifts. Matching the viewBox aspect to the viewport is the fix.
+
+Appearance follows the original hardware: a **silver/aluminium skirt** out to the tick marks,
+a **black pointer on top of it**, and a black bakelite cap at the centre.
+
+The five calibration numbers (`FK_BTN_PX`, `FK_COL_PITCH`, `FK_ROW_PITCH`, `FK_PX_PER_UNIT`,
+`FK_PAD_PX`) are the only things to re-measure if the VCP is resized or the grid changes.
+
 ### Geometry
 
 The dial's centre is the centre of the 2x2 cell range. Each button owns one 90-degree sector,
