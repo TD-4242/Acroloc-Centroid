@@ -372,34 +372,12 @@ src:1981  IF FinalFeedOverride_W == 25  THEN (FeedOver25LED_O)
 (src:1969, `IF !SV_PC_OVERRIDE_CONTROL_FEEDRATE_OVERRIDE THEN FinalFeedOverride_W = 100`),
 which is exactly what CNC12 does for the duration of a G74/G84 tapping cycle.
 
-**Consequence, observed on-machine 2026-08-06 and expected:** with 25% selected, the panel
-jumps to the 100% LED when a tapping cycle starts and returns to 25% when it ends. The
-operator's selection is never lost — `KbOverride_W` retains 25 throughout, because src:1969
-overwrites only `FinalFeedOverride_W`, after the `FinalFeedOverride_W = KbOverride_W` rung
-above it. When the flag returns, `FinalFeedOverride_W` picks `KbOverride_W` back up and the
-LED follows. This is the clearest visual confirmation that the tapping lockout is engaged.
-
-This behaviour only became visible once `mfunc6.mac` was fixed to re-enable overrides after a
-tool change ([atc.md](atc.md)); before that the flag stayed clear for the whole program.
-
-### RAPID 25% override — REMOVED 2026-08-06
-
-This section previously documented an Acroloc RAPID 25% toggle button that wrote
-`SV_PLC_RAPID_FEEDRATE_OVERRIDE = 0.25` to cut rapid (G0) moves without touching the
-feedrate override. **That description was wrong and the feature has been removed.**
-
-Machine testing on 2026-08-06 measured `SV_PLC_RAPID_FEEDRATE_OVERRIDE` scaling G1 feed
-moves as well as G0 rapids — it is a global velocity scale, not a rapids-only one. Because
-the PLC wrote it unconditionally straight to the MPU11, CNC12 could not observe it and could
-not lock it out for a G74/G84 cycle, and a 10-32 tap was fed at 25% of its programmed rate
-and broke. The stock FEED 25% button produces the same slowdown on both G0 and G1 while
-routing through CNC12, where the tapping lockout protects it, so the button was also
-redundant.
-
-`Rapid25_M`, `Rapid25PD_PD`, `SkinRapid25_M_SV` and `RapidOverLED_O` are gone, freeing
-MEM58, PD59, `SV_SKIN_EVENT_82` and OUT1133. The stock F9/Ctrl-R `SelectRapidOverride_SV`
-toggle is untouched and still links rapids to the feed override knob. See
-[../superpowers/specs/2026-08-05-rapid-override-g0-only-design.md](../superpowers/specs/2026-08-05-rapid-override-g0-only-design.md).
+**Consequence at the panel:** with 25% selected, the LED jumps to 100% when a tapping cycle
+starts and returns to 25% when it ends. The operator's selection is never lost —
+`KbOverride_W` retains 25 throughout, because src:1969 overwrites only `FinalFeedOverride_W`,
+after the `FinalFeedOverride_W = KbOverride_W` rung above it. When the flag returns,
+`FinalFeedOverride_W` picks `KbOverride_W` back up and the LED follows. This is the clearest
+visual confirmation that the tapping lockout is engaged.
 
 ### Coolant (mist/flood) — mfunc7/mfunc8 linkage (src:2086-2127)
 
