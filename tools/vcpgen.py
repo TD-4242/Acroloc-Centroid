@@ -495,10 +495,15 @@ FKNOB_TICK_LO = 25      # scale is drawn from 25 to 100; below 25 is the stop ga
 FKNOB_R_CAP = 30.0      # black knob cap
 FKNOB_R_DISK = 76.0     # silver skirt, out to the tick marks
 FKNOB_R_TICK_IN = 78.0
-FKNOB_R_FACE = 88.0     # tick outer radius
+FKNOB_R_FACE = 88.0     # tick outer radius, on the dark panel
 FKNOB_R_LABEL = 101.0
-FKNOB_R_NEEDLE = 72.0   # pointer tip, on the skirt
-FKNOB_R_NEEDLE_IN = 34.0
+# Short skirt pointer, not a full-length gauge hand. The tip sits at 83.6, which
+# is the centre of every button's window (all four are equidistant by symmetry),
+# so the arrow ends mid-button with its base on the skirt and its point reaching
+# into the tick ring -- the way a skirted knob indicates.
+FKNOB_R_NEEDLE = 74.0   # tip at the skirt edge, aimed at the tick ring
+FKNOB_R_NEEDLE_IN = 56.0
+FKNOB_NEEDLE_HW = 3.2   # half-width at the base
 
 FKNOB_FACE_STOPS = (('0', '#413d38'), ('0.55', '#242220'), ('1', '#121110'))
 # brushed-aluminium skirt: the pointer is black on top of this, per the original
@@ -597,7 +602,7 @@ def render_feedrate_needle_svg(quadrant, on):
         th = _fk_theta(FKNOB_QUADRANTS[quadrant])
         a = math.radians(th)
         px, py = math.cos(a), math.sin(a)      # tangential unit vector
-        hw = 5.0
+        hw = FKNOB_NEEDLE_HW
         bx, by = _fk_pt(c, c, FKNOB_R_NEEDLE_IN, th)
         tx, ty = _fk_pt(c, c, FKNOB_R_NEEDLE, th)
         p.append('<polygon id="fk-needle" points="%.1f,%.1f %.1f,%.1f '
