@@ -130,7 +130,11 @@ class TestFeedrateKnob(unittest.TestCase):
         for q in self.QUADS:
             for on in (False, True):
                 svg = vcpgen.render_feedrate_needle_svg(q, on)
-                self.assertNotIn('<rect', svg)
+                # one near-invisible anchor rect is required (see vcpgen);
+                # anything opaque would hide the dial face behind it
+                self.assertLessEqual(svg.count("<rect"), 1)
+                if "<rect" in svg:
+                    self.assertIn("fill-opacity=\"0.01\"", svg)
                 self.assertNotIn('fill="#141210"', svg)
 
     def test_needle_tip_lands_inside_its_own_window(self):

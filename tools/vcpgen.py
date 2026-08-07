@@ -502,17 +502,9 @@ FKNOB_R_LABEL = 101.0
 # so the arrow ends mid-button with its base on the skirt and its point reaching
 # into the tick ring -- the way a skirted knob indicates.
 FKNOB_R_NEEDLE = 74.0   # tip at the skirt edge, aimed at the tick ring
-FKNOB_NEEDLE_LEN = 18.0   # intended length, face units
-FKNOB_NEEDLE_HW = 3.2     # intended half-width at the base
-# Empirical. The VCP does not honour a viewBox window the way the SVG spec says:
-# measured on-machine 2026-08-07, a pointer drawn 56..74 rendered as 32..75 in
-# face units -- the tip landed right but the body was stretched inward 2.40x.
-# The face <image> is unaffected (its skirt measured 93 px for 76 units, exactly
-# as drawn), so only the button art needs this. Divide the intended size by the
-# factor and the rendered result comes out at the intended size. Re-measure from
-# a screenshot if the VCP is ever resized.
-FKNOB_RENDER_STRETCH = 2.40
-FKNOB_R_NEEDLE_IN = FKNOB_R_NEEDLE - FKNOB_NEEDLE_LEN / FKNOB_RENDER_STRETCH
+FKNOB_NEEDLE_LEN = 18.0   # length, face units
+FKNOB_NEEDLE_HW = 3.2     # half-width at the base
+FKNOB_R_NEEDLE_IN = FKNOB_R_NEEDLE - FKNOB_NEEDLE_LEN
 
 FKNOB_FACE_STOPS = (('0', '#413d38'), ('0.55', '#242220'), ('1', '#121110'))
 # brushed-aluminium skirt: the pointer is black on top of this, per the original
@@ -605,13 +597,23 @@ def render_feedrate_needle_svg(quadrant, on):
     x, y, w, h = _fk_window(quadrant)
     p = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
          'viewBox="%.2f %.2f %.2f %.2f">'
-         % (int(FK_BTN_PX[0]), int(FK_BTN_PX[1]), x, y, w, h)]
+         % (int(FK_BTN_PX[0]), int(FK_BTN_PX[1]), x, y, w, h),
+         # Full-artboard anchor rect, all but invisible. Measured on-machine:
+         # the VCP scales a button's SVG *content* to fill the button, ignoring
+         # the declared size and the viewBox, so a lone small polygon gets blown
+         # up to fill the cell -- drawing the pointer smaller made it render
+         # BIGGER (7.5 units rendered as 252). Every other button in this panel
+         # escapes that only because it paints a full-bleed bezel. This rect
+         # gives the pointer the same full-artboard extent without hiding the
+         # dial face <image> behind it.
+         '<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="#000000" '
+         'fill-opacity="0.01"/>' % (x, y, w, h)]
     if on:
         c = FK_FACE_C
         th = _fk_theta(FKNOB_QUADRANTS[quadrant])
         a = math.radians(th)
         px, py = math.cos(a), math.sin(a)      # tangential unit vector
-        hw = FKNOB_NEEDLE_HW / FKNOB_RENDER_STRETCH
+        hw = FKNOB_NEEDLE_HW
         bx, by = _fk_pt(c, c, FKNOB_R_NEEDLE_IN, th)
         tx, ty = _fk_pt(c, c, FKNOB_R_NEEDLE, th)
         p.append('<polygon id="fk-needle" points="%.1f,%.1f %.1f,%.1f '
