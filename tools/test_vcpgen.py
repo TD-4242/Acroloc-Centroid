@@ -229,6 +229,28 @@ class TestSkin(unittest.TestCase):
                 self.out, 'resources', 'vcp', 'Buttons', n, n + '.xml')),
                 'skin references missing button ' + str(n))
 
+    def _skin_cells(self):
+        """{(row, col): button_name} parsed from the emitted skin."""
+        skin_path = os.path.join(self.out, 'resources', 'vcp', 'skins',
+                                 'acroloc_retro_vcp_skin.vcp')
+        with open(skin_path) as f:
+            root = ET.fromstring(f.read())
+        return dict(((int(el.get('row')), int(el.get('column'))), el.text)
+                    for el in root.iter('button'))
+
+    def test_feedrate_knob_occupies_the_2x2_block(self):
+        want = {(13, 4): 'retro_feedrate_50', (13, 5): 'retro_feedrate_75',
+                (14, 4): 'retro_feedrate_25', (14, 5): 'retro_feedrate_100'}
+        got = self._skin_cells()
+        for cell, name in want.items():
+            self.assertEqual(got.get(cell), name,
+                             'cell %s should hold %s' % (cell, name))
+
+    def test_feedrate_step_buttons_stacked_in_column_6(self):
+        got = self._skin_cells()
+        self.assertEqual(got.get((13, 6)), 'retro_feedrate_negative')
+        self.assertEqual(got.get((14, 6)), 'retro_feedrate_positive')
+
     def test_grid_positions_in_range(self):
         for b in vcpgen.BUTTONS:
             self.assertTrue(1 <= b['row'] <= 14 and 1 <= b['col'] <= 6)

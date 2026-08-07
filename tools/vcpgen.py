@@ -593,14 +593,22 @@ BUTTONS = [
          fs=13),
     dict(name='tool_check', row=10, col=6, lines=['TOOL', 'CHECK']),
     dict(name='feed_hold', row=11, col=3, lines=['FEED', 'HOLD']),
-    dict(name='feedrate_negative', row=13, col=4, lines=['-'], fs=20,
+    # FEEDRATE preset dial: four 1x1 buttons tiled 2x2 whose sectors join into
+    # one knob. Each keeps its stock skin event and LED bit, so the PLC is
+    # untouched; only the artwork changes. See
+    # docs/superpowers/specs/2026-08-07-feedrate-knob-design.md
+    dict(name='feedrate_50', row=13, col=4,
+         special='fknob', fknob_quadrant='NW'),
+    dict(name='feedrate_75', row=13, col=5,
+         special='fknob', fknob_quadrant='NE'),
+    dict(name='feedrate_25', row=14, col=4,
+         special='fknob', fknob_quadrant='SW'),
+    dict(name='feedrate_100', row=14, col=5,
+         special='fknob', fknob_quadrant='SE'),
+    dict(name='feedrate_negative', row=13, col=6, lines=['-'], fs=20,
          icon='down', text_y=[52]),
-    dict(name='feedrate_100', row=13, col=5, lines=['FEED', '100%']),
-    dict(name='feedrate_positive', row=13, col=6, lines=['+'], fs=20,
+    dict(name='feedrate_positive', row=14, col=6, lines=['+'], fs=20,
          icon='up', text_y=[79]),
-    dict(name='feedrate_25', row=14, col=4, lines=['25%']),
-    dict(name='feedrate_50', row=14, col=5, lines=['50%']),
-    dict(name='feedrate_75', row=14, col=6, lines=['75%']),
     dict(name='reset', row=12, col=1, row_span=3, col_span=3,
          special='reset'),
 ]
@@ -647,6 +655,18 @@ def emit_buttons(out_dir):
                    render_knob_svg(False, title, labels))
             _write(os.path.join(d, rn + '_on.svg'),
                    render_knob_svg(True, title, labels))
+            continue
+        if b.get('special') == 'fknob':
+            # one sector of the 2x2 feedrate dial; XML is the stock button's
+            # (skin event + LED number), which _retro_xml turns into an
+            # image_on/image_off swap pointing at the two SVGs below
+            _write(os.path.join(d, rn + '.xml'),
+                   _retro_xml(name, stock_xml(name)))
+            q = b['fknob_quadrant']
+            _write(os.path.join(d, rn + '.svg'),
+                   render_feedrate_knob_svg(q, False))
+            _write(os.path.join(d, rn + '_on.svg'),
+                   render_feedrate_knob_svg(q, True))
             continue
         if b.get('run_line'):
             # from-scratch action button: no stock XML to derive from. Runs a
