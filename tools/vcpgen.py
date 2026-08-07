@@ -474,6 +474,13 @@ FKNOB_SWEEP = 300.0     # 0 -> 100 sweeps 300 deg clockwise (60 deg stop gap)
 FKNOB_R_FACE = 78.0     # tick ring outer radius, viewBox units
 FKNOB_R_CAP = 30.0      # knob cap radius
 FKNOB_R_NEEDLE = 66.0   # needle tip radius
+# Half the inter-button gap, in viewBox units. The dial face <image> spans the
+# whole cell range *including* the gaps the VCP leaves between buttons, but each
+# needle is drawn in its own button's coordinate system, whose shared corner
+# therefore sits half a gap outside the face's true centre. This shifts each
+# needle's pivot back onto that centre. If the arrows do not line up with the
+# printed face on the machine, this is the one number to adjust.
+FKNOB_GAP_COMP = 0.0
 
 # quadrant -> (centre x, centre y, sector start deg, preset value)
 FKNOB_QUADRANTS = {
@@ -490,34 +497,24 @@ def _fk_pt(cx, cy, r, th):
     return cx + r * math.sin(a), cy - r * math.cos(a)
 
 
-def render_feedrate_knob_svg(quadrant, on):
-    """One cell of the 2x2 feedrate preset dial.
+def render_feedrate_dial_face_svg():
+    """The whole 2x2 dial face, emitted as a skin <image>.
 
-    `on` adds the needle for this quadrant's preset. The bezel is drawn as a
-    single 2x2 panel offset into this cell so the four cells join seamlessly
-    rather than showing four separate button borders."""
-    cx, cy, th_lo, preset = FKNOB_QUADRANTS[quadrant]
-    th_hi = th_lo + 90.0
-    # block-relative origin, so the bezel spans all four cells as one panel
-    bx, by = cx - VB_W, cy - VB_H
+    A skin <image> covers a cell range with no button chrome and, crucially,
+    no inter-button gaps. That is the only way to get a continuous graphic
+    across cells: four separate buttons are always drawn with gaps between
+    them, so a dial split into four button images can never join up. The
+    needles are drawn by the four transparent buttons sitting on top of this
+    (see render_feedrate_needle_svg)."""
+    W, H = VB_W * 2, VB_H * 2
+    cx, cy = float(VB_W), float(VB_H)
     p = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
-         'viewBox="0 0 %d %d">' % (RENDER_W, RENDER_H, VB_W, VB_H),
-         '<rect x="0" y="0" width="%d" height="%d" fill="#141210"/>'
-         % (VB_W, VB_H),
-         # the bezel gradient is userSpaceOnUse, so it must be offset into
-         # block coordinates too -- otherwise every cell paints the same
-         # highlight at its own origin and the four cells show visible seams
-         '<defs>' + _grad('bz', 'radial', BEZEL_STOPS,
-                          dict(cx=bx + 0.3 * VB_W * 2,
-                               cy=by + 0.2 * VB_H * 2,
-                               r=0.8 * VB_W * 2)) + '</defs>',
-         '<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="8" '
-         'fill="url(#bz)" stroke="#100f0d" stroke-width="1.5"/>'
-         % (bx + 3, by + 3, VB_W * 2 - 6, VB_H * 2 - 6)]
+         'viewBox="0 0 %d %d">' % (RENDER_W * 2, RENDER_H * 2, W, H),
+         '<defs>' + _bezel_grad('bz', W, H) + '</defs>',
+         '<rect x="3" y="3" width="%d" height="%d" rx="10" fill="url(#bz)" '
+         'stroke="#100f0d" stroke-width="1.5"/>' % (W - 6, H - 6)]
     for i in range(0, 101, 5):
         th = FKNOB_THETA0 + FKNOB_SWEEP * i / 100.0
-        if not (th_lo <= th % 360.0 < th_hi):
-            continue
         major = (i % 25 == 0 and i > 0)
         x1, y1 = _fk_pt(cx, cy, 68.0 if major else 72.0, th)
         x2, y2 = _fk_pt(cx, cy, FKNOB_R_FACE, th)
@@ -527,15 +524,37 @@ def render_feedrate_knob_svg(quadrant, on):
                     '#e3ac5c' if major else '#8a837a', 2.5 if major else 1.5))
         if major:
             lx, ly = _fk_pt(cx, cy, 56.0, th)
-            p.append(text_el(str(i), lx, ly + 4, 12, '#cfc6b6'))
+            p.append(text_el(str(i), lx, ly + 4, 13, '#cfc6b6'))
+    # cap: also hides the small centre misalignment between this image (whose
+    # centre is the cell-range centre) and the needles (drawn in button
+    # coordinates, which the inter-button gap offsets slightly inward)
+    p.append('<circle cx="%.1f" cy="%.1f" r="%.1f" fill="#000000" '
+             'opacity="0.35"/>' % (cx, cy + 2, FKNOB_R_CAP + 3))
     p.append('<circle cx="%.1f" cy="%.1f" r="%.1f" fill="#2a2724" '
              'stroke="#0c0b0a" stroke-width="2"/>' % (cx, cy, FKNOB_R_CAP))
+    p.append('</svg>\n')
+    return ''.join(p)
+
+
+def render_feedrate_needle_svg(quadrant, on):
+    """One cell's needle on a fully transparent background.
+
+    No background rect at all, so the dial-face <image> behind shows through
+    -- including through the gaps the VCP leaves between buttons. The needle
+    starts outside the cap radius so the cap masks the centre offset."""
+    cx, cy, _th_lo, preset = FKNOB_QUADRANTS[quadrant]
+    # push the pivot off this cell's corner and onto the face image's true
+    # centre, which the inter-button gap displaces outward by half a gap
+    cx += FKNOB_GAP_COMP if cx > 0 else -FKNOB_GAP_COMP
+    cy += FKNOB_GAP_COMP if cy > 0 else -FKNOB_GAP_COMP
+    p = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
+         'viewBox="0 0 %d %d">' % (RENDER_W, RENDER_H, VB_W, VB_H)]
     if on:
         th = FKNOB_THETA0 + FKNOB_SWEEP * preset / 100.0
-        x1, y1 = _fk_pt(cx, cy, 6.0, th)
+        x1, y1 = _fk_pt(cx, cy, FKNOB_R_CAP + 2.0, th)
         x2, y2 = _fk_pt(cx, cy, FKNOB_R_NEEDLE, th)
         p.append('<line id="fk-needle" x1="%.1f" y1="%.1f" x2="%.1f" '
-                 'y2="%.1f" stroke="#e3ac5c" stroke-width="4" '
+                 'y2="%.1f" stroke="#e3ac5c" stroke-width="5" '
                  'stroke-linecap="round"/>' % (x1, y1, x2, y2))
     p.append('</svg>\n')
     return ''.join(p)
@@ -670,9 +689,9 @@ def emit_buttons(out_dir):
                    _retro_xml(name, stock_xml(name)))
             q = b['fknob_quadrant']
             _write(os.path.join(d, rn + '.svg'),
-                   render_feedrate_knob_svg(q, False))
+                   render_feedrate_needle_svg(q, False))
             _write(os.path.join(d, rn + '_on.svg'),
-                   render_feedrate_knob_svg(q, True))
+                   render_feedrate_needle_svg(q, True))
             continue
         if b.get('run_line'):
             # from-scratch action button: no stock XML to derive from. Runs a
@@ -866,6 +885,17 @@ def render_skin():
     p = ['<vcp_skin>\n']
     p.append('\t<background>#141210</background>\n')
     p.append(_border(4, 3, 13, 2, label='FEEDRATE'))
+    # continuous dial face behind the four preset buttons. It has to be an
+    # <image> rather than button art: separate buttons are always drawn with
+    # gaps between them, so a face split across four button images can never
+    # join up. The buttons on top are transparent apart from their needle.
+    p.append('\t<image>\n'
+             '\t\t<column_span>2</column_span>\n'
+             '\t\t<column_start>4</column_start>\n'
+             '\t\t<row_span>2</row_span>\n'
+             '\t\t<row_start>13</row_start>\n'
+             '\t\t<path>resources\\vcp\\images\\feedrate_dial.svg</path>\n'
+             '\t</image>\n')
     # readout: drawn bezel image (smaller than the cell span) under two
     # transparent borders carrying the 7-seg digits and the % label
     p.append('\t<image>\n'
@@ -941,6 +971,8 @@ def generate(out_dir):
            render_nameplate_svg())
     _write(os.path.join(img_dir, 'feedrate_bezel.svg'),
            render_readout_bezel_svg(318))
+    _write(os.path.join(img_dir, 'feedrate_dial.svg'),
+           render_feedrate_dial_face_svg())
     _write(os.path.join(img_dir, 'dro_bezel.svg'),
            render_dro_bezel_svg())
     skin_dir = os.path.join(out_dir, 'resources', 'vcp', 'skins')

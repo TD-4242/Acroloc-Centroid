@@ -24,12 +24,38 @@ Four buttons x two states is the entire budget.
 
 ## Design
 
+### Revision 2026-08-07: the face is a skin `<image>`, not button art
+
+The first implementation split the dial face across the four button images. **It does not work,
+and cannot.** The VCP always draws separate buttons with a gap between them and the skin
+exposes no spacing control, so a face split across four button images is rendered as four
+tiles with visible gaps — confirmed on the machine. The stock `coolant_auto_man` and
+`incr_cont` knobs look continuous only because each is a *single* button with
+`row_span=2 col_span=2`; one button means one skin event, which cannot carry four presets.
+
+The fix is to separate the face from the needles:
+
+- The **face** — panel, tick ring, labels, knob cap — is a skin `<image>` spanning rows 13-14,
+  cols 4-5. An `<image>` covers a cell range without button chrome and without inter-button
+  gaps, so it renders as one continuous graphic. This repo already uses the mechanism for
+  `feedrate_bezel.svg`.
+- The **needles** stay in the four buttons, which keep their skin events and LED bits, but
+  their SVGs are now *fully transparent apart from the needle* so the face shows through,
+  including through the gaps. The off state is an empty SVG.
+
+One consequence needs calibration: the face `<image>` spans the whole cell range **including**
+the gaps, while each needle is drawn in its own button's coordinate system, whose shared corner
+therefore sits half a gap outside the face's true centre. `FKNOB_GAP_COMP` shifts each needle's
+pivot back onto that centre. It ships at `0.0`; at realistic VCP spacing (2-4 px) the resulting
+tip error is under 2 degrees against 15-degree tick spacing, but if the arrows visibly miss the
+printed face, that is the single number to raise.
+
 ### Geometry
 
-The dial's centre sits on the **shared corner of a 2x2 block of cells**, so each button owns
-one 90-degree sector of the circle. The needle for a given preset is drawn from that centre
-outward into its own sector, which means it lies **entirely within its own button's cell** —
-the property that makes the whole scheme work with per-button binary state.
+The dial's centre is the centre of the 2x2 cell range. Each button owns one 90-degree sector,
+and the needle for a given preset is drawn from that centre outward into its own sector, so it
+lies **entirely within its own button's cell** — still required, because a button can only
+draw inside itself.
 
 Angles below are measured clockwise from straight up (North).
 
@@ -123,7 +149,11 @@ knob was chosen over photo fidelity.
 All work is in `tools/vcpgen.py` and its generated output. **Never hand-edit anything under
 `resources/vcp/`** — it is emitted.
 
-- Add `render_feedrate_knob_svg(quadrant, on)` returning the SVG for one cell. It sits
+- Add `render_feedrate_dial_face_svg()` (the continuous 2x2 face, emitted to
+  `resources/vcp/images/feedrate_dial.svg` and placed by a skin `<image>`) and
+  `render_feedrate_needle_svg(quadrant, on)` (transparent, needle only). Superseded first
+  attempt, kept for the record: a single `render_feedrate_knob_svg(quadrant, on)` returning
+  the SVG for one cell, face included. It sits
   alongside the existing `render_knob_svg()` (tools/vcpgen.py:394), which already performs the
   same rotate-a-knob-by-a-PLC-bit trick for the two-position SPIN/CLNT/JOG mode selectors and
   is the pattern to follow for artboard sizing and palette.

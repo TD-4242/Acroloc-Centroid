@@ -101,16 +101,34 @@ class TestFeedrateKnob(unittest.TestCase):
     def test_all_quadrants_render_and_parse(self):
         for q in self.QUADS:
             for on in (False, True):
-                svg = vcpgen.render_feedrate_knob_svg(q, on)
+                svg = vcpgen.render_feedrate_needle_svg(q, on)
                 ET.fromstring(svg)
                 svg.encode('ascii')
 
+    def test_face_renders_and_parses(self):
+        svg = vcpgen.render_feedrate_dial_face_svg()
+        ET.fromstring(svg)
+        svg.encode('ascii')
+        # the face carries the ticks and cap but never a needle
+        self.assertNotIn('fk-needle', svg)
+        for label in ('25', '50', '75', '100'):
+            self.assertIn('>%s<' % label, svg)
+
     def test_on_state_adds_a_needle(self):
         for q in self.QUADS:
-            off = vcpgen.render_feedrate_knob_svg(q, False)
-            on = vcpgen.render_feedrate_knob_svg(q, True)
+            off = vcpgen.render_feedrate_needle_svg(q, False)
+            on = vcpgen.render_feedrate_needle_svg(q, True)
             self.assertNotIn('fk-needle', off)
             self.assertIn('fk-needle', on)
+
+    def test_needle_art_is_transparent(self):
+        # no background rect of any kind, or it would hide the face image
+        # behind it and reintroduce the visible per-button tiles
+        for q in self.QUADS:
+            for on in (False, True):
+                svg = vcpgen.render_feedrate_needle_svg(q, on)
+                self.assertNotIn('<rect', svg)
+                self.assertNotIn('fill="#141210"', svg)
 
     def test_needle_stays_inside_its_own_cell(self):
         # The whole design rests on this: each preset's needle must fall in

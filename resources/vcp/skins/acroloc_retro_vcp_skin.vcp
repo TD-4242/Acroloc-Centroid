@@ -20,6 +20,13 @@
 		</text>
 	</border>
 	<image>
+		<column_span>2</column_span>
+		<column_start>4</column_start>
+		<row_span>2</row_span>
+		<row_start>13</row_start>
+		<path>resources\vcp\images\feedrate_dial.svg</path>
+	</image>
+	<image>
 		<column_span>3</column_span>
 		<column_start>4</column_start>
 		<row_span>1</row_span>
