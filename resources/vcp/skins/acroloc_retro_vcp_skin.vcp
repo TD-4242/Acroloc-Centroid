@@ -376,8 +376,8 @@
 	<button row="12" column="1" column_span="3" row_span="3">retro_reset</button>
 	<button row="13" column="4">retro_feedrate_50</button>
 	<button row="13" column="5">retro_feedrate_75</button>
-	<button row="13" column="6">retro_feedrate_negative</button>
+	<button row="13" column="6">retro_feedrate_positive</button>
 	<button row="14" column="4">retro_feedrate_25</button>
 	<button row="14" column="5">retro_feedrate_100</button>
-	<button row="14" column="6">retro_feedrate_positive</button>
+	<button row="14" column="6">retro_feedrate_negative</button>
 </vcp_skin>

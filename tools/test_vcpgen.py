@@ -284,8 +284,9 @@ class TestSkin(unittest.TestCase):
 
     def test_feedrate_step_buttons_stacked_in_column_6(self):
         got = self._skin_cells()
-        self.assertEqual(got.get((13, 6)), 'retro_feedrate_negative')
-        self.assertEqual(got.get((14, 6)), 'retro_feedrate_positive')
+        # + on top so the up arrow is the upper button
+        self.assertEqual(got.get((13, 6)), 'retro_feedrate_positive')
+        self.assertEqual(got.get((14, 6)), 'retro_feedrate_negative')
 
     def test_grid_positions_in_range(self):
         for b in vcpgen.BUTTONS:

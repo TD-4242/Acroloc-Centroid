@@ -695,10 +695,13 @@ BUTTONS = [
          special='fknob', fknob_quadrant='SW'),
     dict(name='feedrate_100', row=14, col=5,
          special='fknob', fknob_quadrant='SE'),
-    dict(name='feedrate_negative', row=13, col=6, lines=['-'], fs=20,
-         icon='down', text_y=[52]),
-    dict(name='feedrate_positive', row=14, col=6, lines=['+'], fs=20,
+    # stacked: + on top, - below, so the up arrow is the upper button. These
+    # were side by side (- left, + right) before the dial went in; carrying that
+    # order straight into a vertical stack put the down arrow on top.
+    dict(name='feedrate_positive', row=13, col=6, lines=['+'], fs=20,
          icon='up', text_y=[79]),
+    dict(name='feedrate_negative', row=14, col=6, lines=['-'], fs=20,
+         icon='down', text_y=[52]),
     dict(name='reset', row=12, col=1, row_span=3, col_span=3,
          special='reset'),
 ]
