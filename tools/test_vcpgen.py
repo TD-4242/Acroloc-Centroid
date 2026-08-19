@@ -40,7 +40,10 @@ class TestButtonSvg(unittest.TestCase):
             for svg in (vcpgen.render_button_svg(['A'], style),
                         vcpgen.render_reset_svg(False),
                         vcpgen.render_reset_svg(True),
-                        vcpgen.render_nameplate_svg()):
+                        vcpgen.render_nameplate_svg(),
+                        vcpgen.render_feedrate_dial_face_svg(),
+                        vcpgen.render_feedrate_needle_svg('SW', True),
+                        vcpgen.render_feedrate_needle_svg('SW', False)):
                 self.assertNotIn('<filter', svg)
                 self.assertNotIn('feMerge', svg)
                 # transform function lists stack glyphs at the origin on the
@@ -93,6 +96,74 @@ class TestReset(unittest.TestCase):
         self.assertIn('RESET', normal)
         self.assertNotIn('TRIPPED', normal)
         self.assertIn('TRIPPED', tripped)
+
+
+class TestFeedrateKnob(unittest.TestCase):
+    QUADS = ('NW', 'NE', 'SW', 'SE')
+
+    def test_all_quadrants_render_and_parse(self):
+        for q in self.QUADS:
+            for on in (False, True):
+                svg = vcpgen.render_feedrate_needle_svg(q, on)
+                ET.fromstring(svg)
+                svg.encode('ascii')
+
+    def test_face_renders_and_parses(self):
+        svg = vcpgen.render_feedrate_dial_face_svg()
+        ET.fromstring(svg)
+        svg.encode('ascii')
+        # the face carries the ticks and cap but never a needle
+        self.assertNotIn('fk-needle', svg)
+        for label in ('25', '50', '75', '100'):
+            self.assertIn('>%s<' % label, svg)
+
+    def test_on_state_adds_a_needle(self):
+        for q in self.QUADS:
+            off = vcpgen.render_feedrate_needle_svg(q, False)
+            on = vcpgen.render_feedrate_needle_svg(q, True)
+            self.assertNotIn('fk-needle', off)
+            self.assertIn('fk-needle', on)
+
+    def test_needle_art_is_transparent(self):
+        # no background rect of any kind, or it would hide the face image
+        # behind it and reintroduce the visible per-button tiles
+        for q in self.QUADS:
+            for on in (False, True):
+                svg = vcpgen.render_feedrate_needle_svg(q, on)
+                # one near-invisible anchor rect is required (see vcpgen);
+                # anything opaque would hide the dial face behind it
+                self.assertLessEqual(svg.count("<rect"), 1)
+                if "<rect" in svg:
+                    self.assertIn("fill-opacity=\"0.01\"", svg)
+                self.assertNotIn('fill="#141210"', svg)
+
+    def test_needle_tip_lands_inside_its_own_window(self):
+        # The whole design rests on this. A button can only draw inside its own
+        # window, and the VCP's gaps are wide enough that the windows do not
+        # reach the dial centre -- an earlier 255-degree pointer for 25% missed
+        # its window entirely and would have been invisible.
+        c = vcpgen.FK_FACE_C
+        for q in self.QUADS:
+            x0, y0, w, h = vcpgen._fk_window(q)
+            th = vcpgen._fk_theta(vcpgen.FKNOB_QUADRANTS[q])
+            x, y = vcpgen._fk_pt(c, c, vcpgen.FKNOB_R_NEEDLE, th)
+            self.assertTrue(x0 <= x <= x0 + w,
+                            '%s tip x=%.1f outside window %.1f..%.1f'
+                            % (q, x, x0, x0 + w))
+            self.assertTrue(y0 <= y <= y0 + h,
+                            '%s tip y=%.1f outside window %.1f..%.1f'
+                            % (q, y, y0, y0 + h))
+
+    def test_window_aspect_matches_button_aspect(self):
+        # if these diverge the SVG letterboxes and every pointer shifts
+        bw, bh = vcpgen.FK_BTN_PX
+        for q in self.QUADS:
+            _, _, w, h = vcpgen._fk_window(q)
+            self.assertAlmostEqual(w / h, bw / bh, places=6)
+
+    def test_each_preset_owned_by_exactly_one_quadrant(self):
+        self.assertEqual(sorted(vcpgen.FKNOB_QUADRANTS.values()),
+                         [25, 50, 75, 100])
 
 
 class TestEmitButtons(unittest.TestCase):
@@ -193,6 +264,29 @@ class TestSkin(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(
                 self.out, 'resources', 'vcp', 'Buttons', n, n + '.xml')),
                 'skin references missing button ' + str(n))
+
+    def _skin_cells(self):
+        """{(row, col): button_name} parsed from the emitted skin."""
+        skin_path = os.path.join(self.out, 'resources', 'vcp', 'skins',
+                                 'acroloc_retro_vcp_skin.vcp')
+        with open(skin_path) as f:
+            root = ET.fromstring(f.read())
+        return dict(((int(el.get('row')), int(el.get('column'))), el.text)
+                    for el in root.iter('button'))
+
+    def test_feedrate_knob_occupies_the_2x2_block(self):
+        want = {(13, 4): 'retro_feedrate_50', (13, 5): 'retro_feedrate_75',
+                (14, 4): 'retro_feedrate_25', (14, 5): 'retro_feedrate_100'}
+        got = self._skin_cells()
+        for cell, name in want.items():
+            self.assertEqual(got.get(cell), name,
+                             'cell %s should hold %s' % (cell, name))
+
+    def test_feedrate_step_buttons_stacked_in_column_6(self):
+        got = self._skin_cells()
+        # + on top so the up arrow is the upper button
+        self.assertEqual(got.get((13, 6)), 'retro_feedrate_positive')
+        self.assertEqual(got.get((14, 6)), 'retro_feedrate_negative')
 
     def test_grid_positions_in_range(self):
         for b in vcpgen.BUTTONS:

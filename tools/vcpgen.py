@@ -462,6 +462,169 @@ def render_knob_svg(on, title, labels):
         + '</g></svg>\n')
 
 
+# --------------------------------------------- feedrate preset knob -------
+# A 2x2 dial: one continuous face drawn by a skin <image>, with the pointer for
+# the selected preset drawn by whichever of the four buttons sits over it.
+#
+# Everything is expressed in FACE coordinates (a 232x232 artboard, dial centre at
+# 116,116). Each needle SVG then declares a viewBox that is exactly the window of
+# face space its button covers, so face and needle share one coordinate system
+# and line up by construction -- no per-cell pivot arithmetic, and no letterbox,
+# because each window's aspect equals its button's aspect.
+#
+# Calibrated from machine screenshots (2026-08-07): buttons measure 79x63 px on a
+# 111 px column pitch and 107 px row pitch, and the face image letterboxes to
+# 214x214 inside a 222x214 region (4 px of padding each side). If the VCP is ever
+# resized or the grid changes, these five numbers are what to re-measure.
+FK_FACE_VB = 232.0      # face artboard, square; dial centre at FK_FACE_C
+FK_FACE_C = 116.0
+FK_PX_PER_UNIT = 214.0 / FK_FACE_VB     # face units -> screen px
+FK_BTN_PX = (79.0, 63.0)                # measured button size
+FK_COL_PITCH, FK_ROW_PITCH = 111.0, 107.0
+FK_PAD_PX = 4.0                         # face letterbox padding, x only
+
+# The gaps between VCP buttons are large -- ~40% of the row pitch -- so a button
+# window does not reach the dial centre. A needle must therefore point along its
+# window's diagonal or it falls outside the drawable area entirely (a 255 deg
+# needle for 25% missed its window completely). So the presets sit on the four
+# diagonals, 90 deg apart, which puts the 90 deg dead zone at the bottom like a
+# real knob stop. theta = 3.6 * value + 135, clockwise from straight up.
+FKNOB_THETA0 = 135.0    # theta at value 0 (in the dead zone; not drawn)
+FKNOB_SWEEP = 360.0     # 3.6 deg per percent
+FKNOB_TICK_LO = 25      # scale is drawn from 25 to 100; below 25 is the stop gap
+FKNOB_R_CAP = 30.0      # black knob cap
+FKNOB_R_DISK = 76.0     # silver skirt, out to the tick marks
+FKNOB_R_TICK_IN = 78.0
+FKNOB_R_FACE = 88.0     # tick outer radius, on the dark panel
+FKNOB_R_LABEL = 101.0
+# Short skirt pointer, not a full-length gauge hand. The tip sits at 83.6, which
+# is the centre of every button's window (all four are equidistant by symmetry),
+# so the arrow ends mid-button with its base on the skirt and its point reaching
+# into the tick ring -- the way a skirted knob indicates.
+FKNOB_R_NEEDLE = 74.0   # tip at the skirt edge, aimed at the tick ring
+FKNOB_NEEDLE_LEN = 18.0   # length, face units
+FKNOB_NEEDLE_HW = 3.2     # half-width at the base
+FKNOB_R_NEEDLE_IN = FKNOB_R_NEEDLE - FKNOB_NEEDLE_LEN
+
+FKNOB_FACE_STOPS = (('0', '#413d38'), ('0.55', '#242220'), ('1', '#121110'))
+# brushed-aluminium skirt: the pointer is black on top of this, per the original
+FKNOB_DISK_STOPS = (('0', '#f2f0ec'), ('0.5', '#cbc7c0'), ('1', '#8e8a83'))
+
+# quadrant -> preset value; the pointer angle follows from the value alone
+FKNOB_QUADRANTS = {'NW': 50, 'NE': 75, 'SW': 25, 'SE': 100}
+
+
+def _fk_theta(value):
+    """Pointer angle in degrees clockwise from straight up."""
+    return FKNOB_THETA0 + FKNOB_SWEEP * value / 100.0
+
+
+def _fk_pt(cx, cy, r, th):
+    """Point at radius r and angle th (degrees clockwise from straight up)."""
+    a = math.radians(th)
+    return cx + r * math.sin(a), cy - r * math.cos(a)
+
+
+def _fk_window(quadrant):
+    """This button's window into face space: (x, y, width, height)."""
+    s = FK_PX_PER_UNIT
+    bw, bh = FK_BTN_PX
+    col = 1 if quadrant in ('NE', 'SE') else 0
+    row = 1 if quadrant in ('SW', 'SE') else 0
+    x = (col * FK_COL_PITCH + (FK_COL_PITCH - bw) / 2.0 - FK_PAD_PX) / s
+    y = (row * FK_ROW_PITCH + (FK_ROW_PITCH - bh) / 2.0) / s
+    return x, y, bw / s, bh / s
+
+
+def render_feedrate_dial_face_svg():
+    """The whole dial face, emitted as a skin <image>.
+
+    A skin <image> covers a cell range with no button chrome and, crucially, no
+    inter-button gaps. That is the only way to get a continuous graphic across
+    cells: separate buttons are always drawn with gaps between them, so a face
+    split across four button images can never join up. The pointers are drawn by
+    the four transparent buttons on top (see render_feedrate_needle_svg)."""
+    V = FK_FACE_VB
+    c = FK_FACE_C
+    p = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
+         'viewBox="0 0 %d %d">' % (int(V), int(V), int(V), int(V)),
+         '<defs>'
+         + _grad('bz', 'radial', FKNOB_FACE_STOPS,
+                 dict(cx=0.35 * V, cy=0.28 * V, r=0.78 * V))
+         + _grad('dk', 'radial', FKNOB_DISK_STOPS,
+                 dict(cx=c - 26, cy=c - 30, r=FKNOB_R_DISK * 1.45))
+         + '</defs>',
+         '<rect x="3" y="3" width="%d" height="%d" rx="10" fill="url(#bz)" '
+         'stroke="#0a0908" stroke-width="1.5"/>' % (V - 6, V - 6),
+         # silver skirt, out to the tick marks
+         '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="#000000" opacity="0.4"/>'
+         % (c, c + 3, FKNOB_R_DISK + 2),
+         '<circle cx="%.1f" cy="%.1f" r="%.1f" fill="url(#dk)" '
+         'stroke="#6f6b64" stroke-width="1.2"/>' % (c, c, FKNOB_R_DISK)]
+    for i in range(FKNOB_TICK_LO, 101, 5):
+        th = _fk_theta(i)
+        major = (i % 25 == 0)
+        x1, y1 = _fk_pt(c, c, FKNOB_R_TICK_IN, th)
+        x2, y2 = _fk_pt(c, c, FKNOB_R_FACE if major else FKNOB_R_FACE - 4.0, th)
+        p.append('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" '
+                 'stroke-width="%.1f"/>'
+                 % (x1, y1, x2, y2,
+                    '#f0e6d4' if major else '#a49b8f', 3.0 if major else 1.8))
+        if major:
+            lx, ly = _fk_pt(c, c, FKNOB_R_LABEL, th)
+            p.append(text_el(str(i), lx, ly + 5, 15, '#f4eee2'))
+    # black bakelite cap, on top of the skirt
+    p.append('<circle cx="%.1f" cy="%.1f" r="%.1f" fill="#000000" '
+             'opacity="0.45"/>' % (c, c + 3, FKNOB_R_CAP + 4))
+    p.append('<circle cx="%.1f" cy="%.1f" r="%.1f" fill="#211f1d" '
+             'stroke="#0a0908" stroke-width="2"/>' % (c, c, FKNOB_R_CAP))
+    p.append('<circle cx="%.1f" cy="%.1f" r="%.1f" fill="none" '
+             'stroke="#5d564d" stroke-width="1.2" opacity="0.65"/>'
+             % (c, c, FKNOB_R_CAP - 4.0))
+    p.append('</svg>\n')
+    return ''.join(p)
+
+
+def render_feedrate_needle_svg(quadrant, on):
+    """This button's pointer, drawn in face coordinates on a transparent ground.
+
+    The viewBox is exactly this button's window into face space, so the pointer
+    aligns with the face <image> by construction. No background of any kind, so
+    the face shows through -- including through the gaps between buttons. The
+    off state is an empty SVG. The pointer is black, sitting on the silver
+    skirt, and the window clips its inner end so it appears to emerge from the
+    cap rather than from a pivot the button cannot actually reach."""
+    x, y, w, h = _fk_window(quadrant)
+    p = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
+         'viewBox="%.2f %.2f %.2f %.2f">'
+         % (int(FK_BTN_PX[0]), int(FK_BTN_PX[1]), x, y, w, h),
+         # Full-artboard anchor rect, all but invisible. Measured on-machine:
+         # the VCP scales a button's SVG *content* to fill the button, ignoring
+         # the declared size and the viewBox, so a lone small polygon gets blown
+         # up to fill the cell -- drawing the pointer smaller made it render
+         # BIGGER (7.5 units rendered as 252). Every other button in this panel
+         # escapes that only because it paints a full-bleed bezel. This rect
+         # gives the pointer the same full-artboard extent without hiding the
+         # dial face <image> behind it.
+         '<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="#000000" '
+         'fill-opacity="0.01"/>' % (x, y, w, h)]
+    if on:
+        c = FK_FACE_C
+        th = _fk_theta(FKNOB_QUADRANTS[quadrant])
+        a = math.radians(th)
+        px, py = math.cos(a), math.sin(a)      # tangential unit vector
+        hw = FKNOB_NEEDLE_HW
+        bx, by = _fk_pt(c, c, FKNOB_R_NEEDLE_IN, th)
+        tx, ty = _fk_pt(c, c, FKNOB_R_NEEDLE, th)
+        p.append('<polygon id="fk-needle" points="%.1f,%.1f %.1f,%.1f '
+                 '%.1f,%.1f" fill="#1b1917" stroke="#000000" '
+                 'stroke-width="0.8" stroke-linejoin="round"/>'
+                 % (bx + px * hw, by + py * hw,
+                    bx - px * hw, by - py * hw, tx, ty))
+    p.append('</svg>\n')
+    return ''.join(p)
+
+
 # ------------------------------------------------------- buttons table ----
 # text_y values are in content coordinates (mockup center-58 system).
 BUTTONS = [
@@ -520,14 +683,25 @@ BUTTONS = [
          fs=13),
     dict(name='tool_check', row=10, col=6, lines=['TOOL', 'CHECK']),
     dict(name='feed_hold', row=11, col=3, lines=['FEED', 'HOLD']),
-    dict(name='feedrate_negative', row=13, col=4, lines=['-'], fs=20,
-         icon='down', text_y=[52]),
-    dict(name='feedrate_100', row=13, col=5, lines=['FEED', '100%']),
+    # FEEDRATE preset dial: four 1x1 buttons tiled 2x2 whose sectors join into
+    # one knob. Each keeps its stock skin event and LED bit, so the PLC is
+    # untouched; only the artwork changes. See
+    # docs/superpowers/specs/2026-08-07-feedrate-knob-design.md
+    dict(name='feedrate_50', row=13, col=4,
+         special='fknob', fknob_quadrant='NW'),
+    dict(name='feedrate_75', row=13, col=5,
+         special='fknob', fknob_quadrant='NE'),
+    dict(name='feedrate_25', row=14, col=4,
+         special='fknob', fknob_quadrant='SW'),
+    dict(name='feedrate_100', row=14, col=5,
+         special='fknob', fknob_quadrant='SE'),
+    # stacked: + on top, - below, so the up arrow is the upper button. These
+    # were side by side (- left, + right) before the dial went in; carrying that
+    # order straight into a vertical stack put the down arrow on top.
     dict(name='feedrate_positive', row=13, col=6, lines=['+'], fs=20,
          icon='up', text_y=[79]),
-    dict(name='feedrate_25', row=14, col=4, lines=['25%']),
-    dict(name='feedrate_50', row=14, col=5, lines=['50%']),
-    dict(name='feedrate_75', row=14, col=6, lines=['75%']),
+    dict(name='feedrate_negative', row=14, col=6, lines=['-'], fs=20,
+         icon='down', text_y=[52]),
     dict(name='reset', row=12, col=1, row_span=3, col_span=3,
          special='reset'),
 ]
@@ -574,6 +748,18 @@ def emit_buttons(out_dir):
                    render_knob_svg(False, title, labels))
             _write(os.path.join(d, rn + '_on.svg'),
                    render_knob_svg(True, title, labels))
+            continue
+        if b.get('special') == 'fknob':
+            # one sector of the 2x2 feedrate dial; XML is the stock button's
+            # (skin event + LED number), which _retro_xml turns into an
+            # image_on/image_off swap pointing at the two SVGs below
+            _write(os.path.join(d, rn + '.xml'),
+                   _retro_xml(name, stock_xml(name)))
+            q = b['fknob_quadrant']
+            _write(os.path.join(d, rn + '.svg'),
+                   render_feedrate_needle_svg(q, False))
+            _write(os.path.join(d, rn + '_on.svg'),
+                   render_feedrate_needle_svg(q, True))
             continue
         if b.get('run_line'):
             # from-scratch action button: no stock XML to derive from. Runs a
@@ -767,6 +953,17 @@ def render_skin():
     p = ['<vcp_skin>\n']
     p.append('\t<background>#141210</background>\n')
     p.append(_border(4, 3, 13, 2, label='FEEDRATE'))
+    # continuous dial face behind the four preset buttons. It has to be an
+    # <image> rather than button art: separate buttons are always drawn with
+    # gaps between them, so a face split across four button images can never
+    # join up. The buttons on top are transparent apart from their needle.
+    p.append('\t<image>\n'
+             '\t\t<column_span>2</column_span>\n'
+             '\t\t<column_start>4</column_start>\n'
+             '\t\t<row_span>2</row_span>\n'
+             '\t\t<row_start>13</row_start>\n'
+             '\t\t<path>resources\\vcp\\images\\feedrate_dial.svg</path>\n'
+             '\t</image>\n')
     # readout: drawn bezel image (smaller than the cell span) under two
     # transparent borders carrying the 7-seg digits and the % label
     p.append('\t<image>\n'
@@ -842,6 +1039,8 @@ def generate(out_dir):
            render_nameplate_svg())
     _write(os.path.join(img_dir, 'feedrate_bezel.svg'),
            render_readout_bezel_svg(318))
+    _write(os.path.join(img_dir, 'feedrate_dial.svg'),
+           render_feedrate_dial_face_svg())
     _write(os.path.join(img_dir, 'dro_bezel.svg'),
            render_dro_bezel_svg())
     skin_dir = os.path.join(out_dir, 'resources', 'vcp', 'skins')
