@@ -3055,6 +3055,7 @@ IF ATCStage && !ZeroSpeed_I THEN
   RST ATCUnlocked_O,
   RST M6_SV,
   TargetToolBin_W = 0,
+  CurrentToolBin_W = 0,   ; Acroloc enhanced ATC: aborted mid-decode -> bin unknown, report 0 not a partial peak
   RST ATCSpin_T,
   RST ATCStage
 
@@ -3066,6 +3067,7 @@ IF !ATC_Z_Zero_Release_I THEN
   RST ATCUnlocked_O,
   RST M6_SV,
   TargetToolBin_W = 0,
+  CurrentToolBin_W = 0,   ; Acroloc enhanced ATC: aborted mid-decode -> bin unknown, report 0 not a partial peak
   RST ATCSpin_T,
   RST ATCStage
 
@@ -3130,6 +3132,7 @@ IF ATCStage && ATCSpin_T THEN
   RST ATCUnlocked_O,
   RST M6_SV,
   TargetToolBin_W = 0,
+  CurrentToolBin_W = 0,   ; Acroloc enhanced ATC: aborted mid-decode -> bin unknown, report 0 not a partial peak
   RST ATCSpin_T,
   RST ATCStage
 
