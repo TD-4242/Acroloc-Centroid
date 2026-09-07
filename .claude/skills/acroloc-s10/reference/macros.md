@@ -18,10 +18,11 @@ assert/deassert PLC bits (`M94 /bit`, `M95 /bit`), see the general skill's
 > On this machine OUT4 (`CoolantPump_O`) is the coolant pump and OUT3 (`FloodValve_O`) is the flood valve. The macros just select the mode; the PLC derives the outputs — `M8` = flood (pump + valve), `M7` = wash/hose (pump only). See [main-stage.md](../../../docs/plc-spec/main-stage.md).
 | `mfunc10`  | M10      | Sets clamp on (`M94 /4`) |
 | `mfunc11`  | M11      | Clears clamp (`M95 /4`) |
+| `mfunc18`  | M18      | ATC Reset (enhanced ATC): pulses `M94 /18` / `M95 /18` so the PLC re-seeds the carousel bin from `SV_ATC_CAROUSEL_POSITION`. Run by CNC12's F6 ATC Reset in the Tool Library (P164 = 1); never from MDI |
 
 ## Shared guard — preserve when editing
 
-All seven macros skip execution in graph/search mode using the following guard at the top of
+All eight macros skip execution in graph/search mode using the following guard at the top of
 the file, and they all terminate at the `N1000` label:
 
 ```
@@ -36,7 +37,7 @@ graphic/search mode will otherwise execute side-effectful hardware commands duri
 ### mfunc6 guard note
 
 `mfunc6.mac` uses reversed operand order (`IF #4202 || #4201`) and omits the inline comment
-— functionally identical to the other six macros, but visually different. Do not "correct"
+— functionally identical to the other seven macros, but visually different. Do not "correct"
 the order; the logic is fine as written.
 
 ## mfunc6 key steps (abbreviated)
@@ -50,7 +51,7 @@ The full flow is in [atc-flow.md](./atc-flow.md). The macro's sequence is:
    during G74/G84 tapping cycles — a tap fed at a reduced override will break.
 3. `S0` / `M5` / `M9` — zero spindle speed, stop spindle, turn off coolant
 4. `G53 Z0` — retract Z to machine home (tool-change position)
-5. `M107` — send target tool number to PLC
+5. `M107` — send the requested tool's **bin** to the PLC (`SV_TOOL_NUMBER`; at P160 = 1 CNC12 looks the bin up in the Tool Library)
 6. `M94 /8` — assert `M6_SV` (bit 8) to trigger `ATCStage` in the PLC
 7. `M100 /93016` — block until `ATCStage` (STG16) resets (carousel cycle complete)
 8. `M95 /8` — deassert `M6_SV` to close out the tool-change handshake

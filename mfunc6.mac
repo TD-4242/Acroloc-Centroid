@@ -17,7 +17,7 @@ M5              ; stop spindle
 M9              ; Turn off coolant
 M101 /50012     ; wait for ZeroSpeed_I (INP12) ON = spindle confirmed stopped before Z enters changer
 G53 Z0          ; Move Z to tool change position
-M107            ; Send tool number 
+M107            ; Send the requested tool's BIN (enhanced ATC, P160=1: CNC12 looks it up in the Tool Library)
 G4 P.1          ; wait .1 second
 M94 /8          ; Set M6_SV to start tool change stage
 G4 p1           ; wait 1 second (can I shorten this wait?)
