@@ -109,7 +109,8 @@ for anything that doesn't have its own dedicated bit (`AxisFault_M`, `SpindleFau
 `LubeFault_M`, `ProbeFault_M`, `PLCFault_M`). Producers seen across this file and
 main-stage.md: JogBoard link/online failures (src:2554,
 src:2558), MiniPLC board mismatches (src:2574-2588), and the
-ATC clutch double-engagement interlock (main-stage.md, src:2396-2405).
+ATC clutch double-engagement interlock (main-stage.md, src:2396-2405), the ATC kickoff bin
+guard (`ATC_BIN_RANGE_MSG_C`, 9067, unpinned) and the three `ATCStage` abort rungs (atc.md).
 `OtherFault_M` participates in the same central OR-gate as every other fault bit
 (main-stage.md, `SV_STOP` rung at src:2841) and the same blanket recovery rung
 (main-stage.md, src:2872-2875) — it has no separate clear/recovery path of its
@@ -130,7 +131,7 @@ main-stage.md's blanket recovery rung, src:2872-2875).
 | `SpindleFault_M` | (see definitions.md) | Spindle-inverter-not-ok, gated on `Initialize_T` (main-stage.md, src:2891-2892) | Aggregate only |
 | `LubeFault_M` | (see definitions.md) | Lube-not-ok while not running, gated on `Initialize_T` (main-stage.md, src:2853-2854) | Aggregate only |
 | `ProbeFault_M` | (see definitions.md) | Probe-tripped-while-jogging (main-stage.md, src:2711-2718) | Aggregate only (message-sent guard `ProbeMsgSent_M` per main-stage.md's own noted gotcha, src:2881-2882) |
-| `OtherFault_M` | MEM57, definitions.md src:506 | JogBoard link/online (src:2587-2591), MiniPLC board mismatch (src:2607-2621), spindle transmission clutch both-off lockup backstop (OUT19/OUT20; also posts `SPINDLE_FAULT_MSG_C`, main-stage.md, src:2431-2438) | Aggregate only |
+| `OtherFault_M` | MEM57, definitions.md src:506 | JogBoard link/online (src:2587-2591), MiniPLC board mismatch (src:2607-2621), spindle transmission clutch both-off lockup backstop (OUT19/OUT20; also posts `SPINDLE_FAULT_MSG_C`, main-stage.md, src:2431-2438), the ATC kickoff bin guard (`ATC_BIN_RANGE_MSG_C`, 9067, unpinned) and the three `ATCStage` abort rungs (atc.md) | Aggregate only |
 | `SV_STALL_ERROR` | CNC12 system variable, not a PLC-defined bit | Set by CNC12's own servo-stall detection, outside this file | Aggregate only |
 | `SoftwareNotReady_M` / `PLCExecutorFault_M` | (see definitions.md) | Set during `WatchDogStage`/`InitialStage` boot sequencing (boot.md) | Checked only in the aggregate recovery rung (main-stage.md, src:2872-2875); not part of the `SET SV_STOP` OR itself |
 

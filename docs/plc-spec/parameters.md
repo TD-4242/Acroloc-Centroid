@@ -22,6 +22,7 @@ Line numbers as of commit 41f3fd6
 | Param | Meaning | Read at (src:NNNN) | Subsystem | Value semantics / intended value |
 |---|---|---|---|---|
 | P1 | Jog-key configuration bitmask (`JogKeyCfg_W`); bit 1 = invert axis-2 jog keys, bit 2 = swap axes | `JogKeyCfg_W = SV_MACHINE_PARAMETER_1` (src:1364) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Bitmask; consumed by `JogKeysNormalStage`/etc. in [jog-and-mpg.md](jog-and-mpg.md#jogkeysnormalstage--jogkeysinvert2stage--jogkeysswappedstage--jogkeysswapandinvert2stage) |
+| P6 | ATC installed (CNC12-side; not read by the PLC) | none | [atc.md](atc.md) | 1: with P160 non-zero the on-screen tool updates after M6 |
 | P19 | MPG mode value (`PValue_W`); bit 1 = lock out x100 on an axis per P820 | `PValue_W = SV_MACHINE_PARAMETER_19` (src:1305) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Bitmask; `MpgX100LockOut_M` consumed in [jog-and-mpg.md](jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085) |
 | P33 | **Not used by the gear code (tried, abandoned).** Wired as the high-range ratio but is not writable from the CNC12 param screen on this control (reads a fixed ~2.0), so it could not be tuned. High ratio moved to **P863**. | (formerly read at src:2342) | [gear-shift.md](gear-shift.md) | Do not use for tuning; see P863 |
 | P39 | Feedrate override percentage limit (ceiling on jog-panel knob, keyboard override, and final override) | `FeedrateKnob_W` clamp (src:1907-1908); `KbOverride_W` clamp (src:1980-1981); `FinalFeedOverride_W` clamp (src:1994-1995) | [jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085](jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085) | Percent (0-200 scale); each of the three override values is clamped to this ceiling independently |
@@ -33,6 +34,9 @@ Line numbers as of commit 41f3fd6
 | P146 | Feed-hold threshold (`P146Value_W`) | `P146Value_W = SV_MACHINE_PARAMETER_146` (src:1312) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Threshold compared against `FinalFeedOverride_W` in [jog-and-mpg.md](jog-and-mpg.md#jogpanelstage-stg3-src1195--jog-and-mpg-rung-groups-src1774-2085) (src:1850-1854) to trigger a feed-hold prompt |
 | P148 | Misc jogging options bitmask (`P148Value_W`); bit 1 = disable keyboard jogging (CNC10 back-compat) | `P148Value_W = SV_MACHINE_PARAMETER_148` (src:1313); `BITTST P148Value_W 1 DisableKbInput_M` (src:1348) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Bitmask; bit 1 set forces `RST AllowKbInput_M` regardless of P170 |
 | P153 | Probe-protection enable | `IF SV_MACHINE_PARAMETER_153 == 0 THEN RST ProbeProtectionEnable_M` / `> 0 THEN SET` (src:1374-1375) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | 0 = disabled, >0 = enabled; consumed in [main-stage.md](main-stage.md#probe-protection-while-jogging-src2670-2756) |
+| P160 | Enhanced ATC type (CNC12-side; not read by the PLC) | none | [atc.md](atc.md) | **1** = non-random: `M107` sends the requested tool's Tool-Library bin in `SV_TOOL_NUMBER`. 0 = off (a PLC-side map would be needed; not used). 2 = random: reshuffles bins, wrong for this carousel |
+| P161 | ATC Maximum Tool Bins (`MaxToolBins_W`) | `MaxToolBins_W = SV_MACHINE_PARAMETER_161` in `LoadParametersStage` (unpinned) | [atc.md](atc.md) | **12**; M6 faults 9067 for a bin outside 1..P161. CNC12 sends it to the PLC at power-up: reboot after changing |
+| P164 | ATC feature bit (CNC12-side; not read by the PLC) | none | [atc.md](atc.md) | 1 = F6 ATC Reset in the Tool Library, which runs `mfunc18.mac` |
 | P170 | Keyboard-jogging enable bitmask (`P170Value_W`): bit 0 = allow keyboard input, bit 1 = jog-override-only, bit 2 = keyboard-override-only | `P170Value_W = SV_MACHINE_PARAMETER_170` (src:1314); `BITTST` decode (src:1349-1351) | [boot.md#loadparametersstage](boot.md#loadparametersstage-src1284-1376) | Bitmask; also referenced directly at src:1791-1792 (P820 axis-lock interaction) and documented inline at src:1460-1471 |
 | P179 | Lube-pump timing, packed `MMMSS` (minutes/seconds) — **RETIRED** | no longer read by the PLC | [main-stage.md](main-stage.md) | The former lube-timer stages were removed; the oil pump on `Lube_O` (OUT2) is now driven by the `MainStage` oil-pump coil (`SV_JOB_IN_PROGRESS && !SV_MDI_MODE && !FeedHoldLED_O && EStopOk_M`). Any value here has no effect. |
 | P218 | MPG wiring mode: 0 = wired MPG, >0 = wireless/USB MPG; also doubles as USB active-axes bitmask | `SV_MACHINE_PARAMETER_218 == 0` / `> 0` stage select (src:1299-1300); `UsbMpgActiveAxes_W = SV_MACHINE_PARAMETER_218` (src:1689) | [jog-and-mpg.md#mpgstage-stg7-src1199--hardwired-mpg-src1647-1682](jog-and-mpg.md#mpgstage-stg7-src1199--hardwired-mpg-src1647-1682) / [jog-and-mpg.md#wirelessmpgstage-stg60-src1214--usbwireless-mpg-src1683-1770](jog-and-mpg.md#wirelessmpgstage-stg60-src1214--usbwireless-mpg-src1683-1770) | Selects `MPGStage` vs `WirelessMpgStage`; bits also gate `UsbMpgAxisNActive_M` via `WTB` |
@@ -140,11 +144,10 @@ from the tracked copy after any upgrade.
 
 Every distinct `SV_MACHINE_PARAMETER_n` surfaced by
 `grep -n "SV_MACHINE_PARAMETER" Centroid-Acroloc-ALLIN1DC.src` (103 hits, 60 distinct
-parameter numbers: 1, 19, 33, 39, 57, 65, 66, 67, 146, 148, 153, 170, 179, 218, 219, 348, 351,
+parameter numbers: 1, 19, 33, 39, 57, 65, 66, 67, 146, 148, 153, 161, 170, 179, 218, 219, 348, 351,
 354, 441, 442, 443, 820, 860, 861, 862, 900, 911-940, 999) appears in the table above or in the
 comment-only-mentions section — P219 and P999 have no executable read and are called out
 explicitly rather than given a fabricated one. Every `(src:NNNN)` citation was checked against
 `Centroid-Acroloc-ALLIN1DC.src` with `sed -n` at the cited line(s) and confirmed to reference
-the stated `SV_MACHINE_PARAMETER_n`. `Centroid-Acroloc-ALLIN1DC.src` has had no commits touching
-it between 41f3fd6 and the current HEAD on this branch (`git log 41f3fd6..HEAD -- <file>` is
-empty), so line numbers cited here match the current working tree.
+the stated `SV_MACHINE_PARAMETER_n`. Lines added after 41f3fd6 (the P161 read) are cited by rung text, not line number, per the
+pinning convention.

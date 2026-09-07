@@ -14,9 +14,10 @@ below are defined in [scan-model.md](scan-model.md); resource name -> line looku
 
 `WatchDogStage IS STG1` (src:1193), `InitialStage IS STG2` (src:1194),
 `LoadParametersStage IS STG10` (src:1202). All three are stock Centroid ALLIN1DC stages —
-none of the rungs in `WatchDogStage` or `LoadParametersStage` are tagged `; Acroloc`. The
-only Acroloc-specific content in this file is the power-up gear-state init inside
-`InitialStage` (src:1276-1280), called out below.
+none of the rungs in `WatchDogStage` are tagged `; Acroloc`. The Acroloc-specific content
+in this file is the power-up gear-state init and carousel-bin seed inside `InitialStage`
+(src:1276-1280 plus one unpinned line), and the P161 cache in `LoadParametersStage`
+(`MaxToolBins_W = SV_MACHINE_PARAMETER_161`, unpinned), called out below.
 
 `WatchDogStage` is always SET (never explicitly RST anywhere in the program) — it is the
 program's entry stage and runs every scan, every scan, for the life of the PLC task.
@@ -102,6 +103,10 @@ Rung-by-rung (src:1257-1281), grouped by effect:
   `SET Spindle_Low_gear_O`, `SET Spindle_High_gear_O` (both on = **neutral**),
   `EngagedRange_W = 0` (gear unknown), `DesiredRange_W = 0`, `SpindleRange_W = 1`. See
   [Power-up defaults](#power-up-defaults) below.
+- **Acroloc carousel-bin seed** (unpinned, tagged `; Acroloc enhanced ATC`):
+  `CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION` — seeds the carousel bin from the position
+  CNC12 persisted in `cncm.job`, for the enhanced-ATC position report described in
+  [atc.md](atc.md).
 - `RST InitialStage` (src:1281) — the last clause of the rung; ends the stage so it does not
   run again next scan (`True_M` being set is what stops `WatchDogStage` from re-arming it,
   but this `RST` is what actually stops `InitialStage`'s own body from running a second
@@ -172,6 +177,9 @@ Grouped by function:
   `JogPanelRequired_M`.
 - **Probe protection** (src:1373-1375): parameter 153 nonzero sets
   `ProbeProtectionEnable_M`.
+- **ATC bin count** (unpinned, tagged `; Acroloc -- enhanced ATC (P160=1)`):
+  `IF True_M THEN MaxToolBins_W = SV_MACHINE_PARAMETER_161` — P161 (ATC Maximum Tool Bins)
+  re-read every scan; the M6 kickoff bin guard's upper bound. [atc.md](atc.md)
 
 None of these parameter-driven selections touch the Acroloc gear-shift or ATC state —
 `LoadParametersStage` has no `; Acroloc` markers and its stage-selection rungs only target

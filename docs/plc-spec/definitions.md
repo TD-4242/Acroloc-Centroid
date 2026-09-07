@@ -268,6 +268,8 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `SpindleRange_W` | W64 | 1079 | | 1 = low ... 4 = high, range reported to CNC. [gear-shift.md](gear-shift.md) |
 | `DesiredRange_W` | W73 | 1080 | Acroloc | Gear wanted by RPM logic (1 = low, 4 = high). [gear-shift.md](gear-shift.md) |
 | `EngagedRange_W` | W74 | 1081 | Acroloc | Gear currently engaged (open-loop, tracks clutch outputs; 0 = unknown/forced-neutral, see src:2397-2402). [gear-shift.md](gear-shift.md) |
+| `ReportedToolBin_W` | W78 | — | Acroloc | Settled carousel bin reported to CNC12 via `SV_PLC_CAROUSEL_POSITION` (latched while `ATCStage` idle; 0 = unknown). [atc.md](atc.md) |
+| `MaxToolBins_W` | W79 | — | Acroloc | P161 cached every scan; upper bound of the M6 bin guard. [atc.md](atc.md), [parameters.md](parameters.md) |
 | `PrevFeedOverride_W` | W65 | 1086 | | Previous feed override value. [jog-and-mpg.md](jog-and-mpg.md) |
 | `P148Value_W` | W66 | 1087 | | Cached `SV_MACHINE_PARAMETER_148`. [parameters.md](parameters.md) |
 | `P146Value_W` | W67 | 1088 | | Cached `SV_MACHINE_PARAMETER_146`. [parameters.md](parameters.md) |
@@ -338,6 +340,7 @@ significance beyond "one-shot edge of the same-named key/event".
 | `M10_SV` | `SV_M94_M95_4` | 1038 | | Clamp M-function trigger. [main-stage.md](main-stage.md) |
 | `M7_SV` | `SV_M94_M95_5` | 1039 | | Mist M-function trigger. [main-stage.md](main-stage.md) |
 | `HomeSync_SV` | `SV_M94_M95_6` | 1064 | Acroloc | Pulsed by `cncm.hom` (`M94 /6` .. `M95 /6`) with every axis at machine zero; latches home encoder counts for the VCP machine-coordinate readout. [main-stage.md](main-stage.md) |
+| `M18_SV` | `SV_M94_M95_18` | — | Acroloc | ATC Reset pulse from `mfunc18.mac` (CNC12 F6 ATC Reset); re-seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION`. [atc.md](atc.md) |
 
 `SV_M94_M95_6` and `SV_M94_M95_7` (src:1040-1041) are commented placeholders with no
 identifier bound — no name to cite.
@@ -383,6 +386,7 @@ identifier bound — no name to cite.
 | `ATC_Lock_Not_Released_C` | 44290 (2+256*173) | 201 | Acroloc | "Tool Carousel not locked." [atc.md](atc.md) |
 | `ATC_Lock_Released_C` | 44546 (2+256*174) | 202 | Acroloc | "Tool Carousel locked." — see message-encoding example above. [atc.md](atc.md) |
 | `CAROUSEL_TIMEOUT_MSG_C` | 16130 (2+256*63) | 211 | Acroloc | "CAROUSEL MOVE TIME OUT" — carousel search-timeout fault (reuses stock message 63). [atc.md](atc.md) |
+| `ATC_BIN_RANGE_MSG_C` | 17154 (2+256*67) | — | Acroloc | "ATC BIN OUT OF RANGE" — M6 kickoff fault when CNC12 sends a bin outside 1..P161 (message 67, added to `plcmsg.txt`). [atc.md](atc.md) |
 | `ATC_SPIN_TIMEOUT_MS_C` | 20000 | 212 | Acroloc | Carousel search timeout, ms (armed into `ATCSpin_T`). [atc.md](atc.md) |
 
 ## Stages

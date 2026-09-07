@@ -11,16 +11,15 @@ Line numbers as of commit 41f3fd6.
 > they remain pointers into 41f3fd6, so search by symbol rather than jumping to the cited line
 > when reading current source. Lines with no reference are ones added after the pin.
 
-> ⚠️ **Superseded by the tool→bin mapping change (PR #22).** The tool change was reworked:
-> a fixed **tool→bin map** (machine parameters **P701–712**, at `P160 = 0`) now
-> translates `SV_TOOL_NUMBER` to a carousel bin in `MainStage`, and the ATC variables were
-> renamed for tool-vs-bin clarity — `CarouselToolID_W → CurrentToolBin_W`,
-> `ChangeToTool_W → TargetToolBin_W`, `InstToolID_W → InstBinID_W`,
-> `InToolSelect_M → InBinDecode_M` (plus `ToolInBin1_W..12_W`, `TargetToolBinDisp_W`).
-> The line numbers **and** variable names below reflect the 41f3fd6 snapshot and no longer
-> match the current program. For the current flow and the map, see
+> ⚠️ **Variable names below are the 41f3fd6 snapshot's.** Current names:
+> `CarouselToolID_W → CurrentToolBin_W`, `ChangeToTool_W → TargetToolBin_W`,
+> `InstToolID_W → InstBinID_W`, `InToolSelect_M → InBinDecode_M`; added since the pin:
+> `TargetToolBinDisp_W` (W8, VCP readout), `ReportedToolBin_W` (W78, position report),
+> `MaxToolBins_W` (W79, P161), `M18_SV`. The tool->bin map is CNC12's Tool Library
+> (non-random enhanced ATC, `P160 = 1`); `SV_TOOL_NUMBER` arrives as a **bin**. For the
+> current flow see
 > [`../../.claude/skills/acroloc-s10/reference/atc-flow.md`](../../.claude/skills/acroloc-s10/reference/atc-flow.md).
-> This pinned spec should be re-based to the merge commit as a dedicated pass (re-deriving
+> This pinned spec should be re-based to a current commit as a dedicated pass (re-deriving
 > the citations), per the "don't re-baseline line refs piecemeal" convention.
 
 Resource name -> definition-line lookups are in [definitions.md](definitions.md); stage sweep
@@ -81,17 +80,42 @@ edit.
 
 Summarized in [main-stage.md#atc-kickoff](main-stage.md#atc-kickoff); full detail here.
 
-**Kickoff** (`src:2910-2911`, tagged `; Acroloc tool stage start` at `src:2910`):
+**Kickoff** (tagged `; Acroloc tool stage start`; the 41f3fd6 rung at `src:2910-2911` was
+`IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage`). The current program has
+three rungs here, none with a pinned line:
 ```plc
-IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
+IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CurrentToolBin_W = 0
+IF M6_SV && !ATCStage && (SV_TOOL_NUMBER < 1 || SV_TOOL_NUMBER > MaxToolBins_W) THEN
+  FaultMsg_W = ATC_BIN_RANGE_MSG_C, SET ShowFaultStage, SET OtherFault_M,
+  RST M6_SV, RST ATCSpin_T, TargetToolBinDisp_W = SV_TOOL_NUMBER
+IF M6_SV && !ATCStage THEN
+  TargetToolBin_W = SV_TOOL_NUMBER, TargetToolBinDisp_W = SV_TOOL_NUMBER, SET ATCStage
 ```
-The instant `mfunc6.mac`'s `M94 /8` sets `M6_SV` (`SV_M94_M95_8`, `M6_SV` (src:1036)),
-this rung latches the CNC's currently-selected tool number (`SV_TOOL_NUMBER`, the system
-variable `M107` populated) into `ChangeToTool_W` (`W72`, `ChangeToTool_W` (src:1094))
-and `SET`s `ATCStage`. Because `ATCStage` (`STG16`, `ATCStage` (src:1207)) is swept
-**after** `MainStage` (`STG4`) in file order, per `scan-model.md` this `SET` takes effect in
-the **same scan** — `ATCStage`'s body runs immediately on the same pass that saw `M6_SV`
-go true.
+The machine runs CNC12's non-random enhanced ATC (`P160 = 1`), so `SV_TOOL_NUMBER` (the
+system variable `M107` populates) is the requested tool's **carousel bin** as assigned in the
+Tool Library, not the tool number. The first rung arms the 20 s watchdog and clears the stale
+bin; the second faults `ATC_BIN_RANGE_MSG_C` (9067) for a bin outside 1..P161
+(`MaxToolBins_W`) without starting the carousel; the third latches the bin into
+`TargetToolBin_W` (`W72`; `ChangeToTool_W` (src:1094) at the pin) and the VCP readout word
+and `SET`s `ATCStage`. All three are gated on `M6_SV` (`SV_M94_M95_8`, `M6_SV` (src:1036)),
+which `mfunc6.mac`'s `M94 /8` sets. Because `ATCStage`
+(`STG16`, `ATCStage` (src:1207)) is swept **after** `MainStage` (`STG4`) in file order, per
+`scan-model.md` this `SET` takes effect in the **same scan**.
+
+**Position report and reset** (tagged `; Acroloc -- enhanced ATC handshake` and
+`; Acroloc -- enhanced ATC reset`, directly after the kickoff; no pinned line):
+```plc
+IF !ATCStage THEN ReportedToolBin_W = CurrentToolBin_W
+IF True_M THEN SV_PLC_CAROUSEL_POSITION = ReportedToolBin_W
+IF M18_SV && !ATCStage THEN CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION
+```
+CNC12 will not run a tool change until the PLC reports a carousel position, monitors it
+continuously, and at the end of every M6 records it as the new tool's putback bin. The report
+is latched only while `ATCStage` is idle so mid-spin partial sums never reach CNC12; every
+`ATCStage` abort rung zeroes `CurrentToolBin_W`, so a fault reports 0 (unknown), as does a
+manual unlock. `InitialStage` seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION`
+(CNC12's persisted last position) and `M18` (`mfunc18.mac`, run by the Tool Library's F6 ATC
+Reset at `P164 = 1`) re-seeds it after the operator declares the true position.
 
 **Manual carousel unlock** (`src:2913-2922`, tagged `; Acroloc manual tool changes`):
 ```plc
