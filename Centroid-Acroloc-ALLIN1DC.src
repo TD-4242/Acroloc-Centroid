@@ -209,6 +209,7 @@ ATC_Spindle_Not_Parked_C        IS 44034; (2+256*172) Spindle not parked.  Z Axi
 ATC_Lock_Not_Released_C         IS 44290; (2+256*173) Tool Carousel not locked.
 ATC_Lock_Released_C             IS 44546; (2+256*174) Tool Carousel locked.
 CAROUSEL_TIMEOUT_MSG_C          IS 16130 ; (2+256*63) CAROUSEL MOVE TIME OUT
+ATC_BIN_RANGE_MSG_C             IS 17154 ; (2+256*67) ATC BIN OUT OF RANGE -- Acroloc: CNC12 sent a bin outside 1..P161 at M6 kickoff
 ATC_SPIN_TIMEOUT_MS_C           IS 20000 ; Acroloc carousel search timeout (ms)
 
 ;------------------------------------------------------------------------------
@@ -1062,6 +1063,7 @@ M8_SV                           IS SV_M94_M95_3 ; (Flood mode: coolant pump + fl
 M10_SV                          IS SV_M94_M95_4 ; Clamp
 M7_SV                           IS SV_M94_M95_5 ; (Mist/wash mode: coolant pump only)
 HomeSync_SV                     IS SV_M94_M95_6 ; Acroloc pulsed by cncm.hom (M94/6 .. M95/6) at machine zero to latch home encoder counts
+M18_SV                          IS SV_M94_M95_18 ; Acroloc ATC Reset (mfunc18.mac, run by CNC12's F6 ATC Reset): re-seed the carousel bin from SV_ATC_CAROUSEL_POSITION
 ;                                IS SV_M94_M95_7 ;
 
 ;------------------------------------------------------------------------------
@@ -1113,18 +1115,8 @@ MiniPLCStatus_W                 IS W70
 CurrentToolBin_W                IS W71 ; Acroloc
 TargetToolBin_W                 IS W72 ; Acroloc
 TargetToolBinDisp_W             IS W8  ; Acroloc last chosen carousel bin, held for the retro VCP live BIN readout (plc_word 8)
-ToolInBin1_W                    IS W78 ; Acroloc bin 1 loaded tool number (from P701; fixed tool-bin map)
-ToolInBin2_W                    IS W79 ; Acroloc bin 2 loaded tool number (P702)
-ToolInBin3_W                    IS W80 ; Acroloc bin 3 loaded tool number (P703)
-ToolInBin4_W                    IS W81 ; Acroloc bin 4 loaded tool number (P704)
-ToolInBin5_W                    IS W82 ; Acroloc bin 5 loaded tool number (P705)
-ToolInBin6_W                    IS W83 ; Acroloc bin 6 loaded tool number (P706)
-ToolInBin7_W                    IS W84 ; Acroloc bin 7 loaded tool number (P707)
-ToolInBin8_W                    IS W85 ; Acroloc bin 8 loaded tool number (P708)
-ToolInBin9_W                    IS W86 ; Acroloc bin 9 loaded tool number (P709)
-ToolInBin10_W                   IS W87 ; Acroloc bin 10 loaded tool number (P710)
-ToolInBin11_W                   IS W88 ; Acroloc bin 11 loaded tool number (P711)
-ToolInBin12_W                   IS W89 ; Acroloc bin 12 loaded tool number (P712)
+ReportedToolBin_W               IS W78 ; Acroloc settled carousel bin reported to CNC12 via SV_PLC_CAROUSEL_POSITION (enhanced ATC handshake); 0 = unknown
+MaxToolBins_W                   IS W79 ; Acroloc P161 (ATC Maximum Tool Bins) cached every scan; upper bound of the M6 bin guard
 InstBinID_W                     IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CurrentToolBin_W
 SpinOverride_W                  IS W76 ; Acroloc spindle override % (mirror of SV_PLC_SPINDLE_KNOB) for the VCP readout
 SpinRPM_W                       IS W77 ; Acroloc TRUE spindle RPM for the VCP readout (SpinSpeedCommand_FW / 2; see rung below)
@@ -1317,6 +1309,7 @@ IF 1==1 THEN SET True_M,
              EngagedRange_W = 0,       ; Acroloc gear unknown -> first spin-up engages a gear
              DesiredRange_W = 0,       ; Acroloc boot placeholder (decision overwrites next scan)
              SpindleRange_W = 1,       ; Acroloc safe default ratio until first engage
+             CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION, ; Acroloc enhanced ATC: seed the last known bin CNC12 persisted (cncm.job)
              RST InitialStage
 
 ;=============================================================================
@@ -1337,22 +1330,9 @@ IF True_M THEN P146Value_W = SV_MACHINE_PARAMETER_146,  ; Feed hold threshold
                P148Value_W = SV_MACHINE_PARAMETER_148,  ; Misc Jogging Options
                P170Value_W = SV_MACHINE_PARAMETER_170  ; Enable Keyboard Jogging
 
-; Acroloc -- fixed tool->bin map: P701-712 = the tool number loaded in bins 1-12.
-; Re-read every scan here, so editing a bin's tool on the parameter screen takes
-; effect without a reboot. The M6 kickoff (MainStage) looks the requested tool up
-; in these to pick the carousel bin.
-IF True_M THEN ToolInBin1_W  = SV_MACHINE_PARAMETER_701,  ; Acroloc
-               ToolInBin2_W  = SV_MACHINE_PARAMETER_702,  ; Acroloc
-               ToolInBin3_W  = SV_MACHINE_PARAMETER_703,  ; Acroloc
-               ToolInBin4_W  = SV_MACHINE_PARAMETER_704,  ; Acroloc
-               ToolInBin5_W  = SV_MACHINE_PARAMETER_705,  ; Acroloc
-               ToolInBin6_W  = SV_MACHINE_PARAMETER_706,  ; Acroloc
-               ToolInBin7_W  = SV_MACHINE_PARAMETER_707,  ; Acroloc
-               ToolInBin8_W  = SV_MACHINE_PARAMETER_708,  ; Acroloc
-               ToolInBin9_W  = SV_MACHINE_PARAMETER_709,  ; Acroloc
-               ToolInBin10_W = SV_MACHINE_PARAMETER_710,  ; Acroloc
-               ToolInBin11_W = SV_MACHINE_PARAMETER_711,  ; Acroloc
-               ToolInBin12_W = SV_MACHINE_PARAMETER_712   ; Acroloc
+; Acroloc -- enhanced ATC (P160=1): P161 = number of carousel bins. Re-read every
+; scan; the M6 kickoff (MainStage) rejects any bin CNC12 sends outside 1..P161.
+IF True_M THEN MaxToolBins_W = SV_MACHINE_PARAMETER_161  ; Acroloc
 
 IF True_M THEN (SV_ENABLE_IO_OVERRIDE),
                SV_INVERT_INP1_16_BITS      = SV_MACHINE_PARAMETER_911,
@@ -2958,29 +2938,40 @@ IF True_M THEN RST OnAtPowerUp_M
 ; Acroloc: once per change (before SET ATCStage below, so !ATCStage is true only on the
 ; first scan): arm the carousel search watchdog, AND clear CurrentToolBin_W so a stale
 ; value from the previous change cannot cause an immediate match -- the carousel always
-; re-indexes to the requested tool, even the same tool (a manual change may have left the
-; wrong tool under the spindle).
+; re-indexes to the requested bin.
 IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CurrentToolBin_W = 0
-; Acroloc -- fixed tool->bin map: translate the requested TOOL number to its BIN.
-; ToolInBin1_W..ToolInBin12_W hold the tool loaded in each bin (from P701-712). Set
-; TargetToolBin_W to the bin whose loaded tool == SV_TOOL_NUMBER. Default 99 (an
-; unreachable bin) so a tool that is in no bin never matches and faults on the
-; 20 s ATCSpin_T watchdog instead of false-matching bin 0 and completing without
-; moving. ATCStage then indexes the carousel to TargetToolBin_W exactly as before.
-IF M6_SV THEN TargetToolBin_W = 99
-IF M6_SV && ToolInBin1_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 1
-IF M6_SV && ToolInBin2_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 2
-IF M6_SV && ToolInBin3_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 3
-IF M6_SV && ToolInBin4_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 4
-IF M6_SV && ToolInBin5_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 5
-IF M6_SV && ToolInBin6_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 6
-IF M6_SV && ToolInBin7_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 7
-IF M6_SV && ToolInBin8_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 8
-IF M6_SV && ToolInBin9_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 9
-IF M6_SV && ToolInBin10_W == SV_TOOL_NUMBER THEN TargetToolBin_W = 10
-IF M6_SV && ToolInBin11_W == SV_TOOL_NUMBER THEN TargetToolBin_W = 11
-IF M6_SV && ToolInBin12_W == SV_TOOL_NUMBER THEN TargetToolBin_W = 12
-IF M6_SV THEN TargetToolBinDisp_W = TargetToolBin_W, SET ATCStage  ; Acroloc hold chosen bin for the VCP BIN readout
+; Acroloc -- enhanced ATC (P160=1): CNC12 looks the requested tool up in its Tool
+; Library and M107 sends that tool's BIN in SV_TOOL_NUMBER. Guard it: anything
+; outside 1..P161 (an unassigned tool, a bad library, P161 unset) faults here and
+; never starts the carousel. The 9xxx fault cancels the job during mfunc6's G4 P1
+; dwell, so CNC12 does not record the change as complete.
+IF M6_SV && !ATCStage && (SV_TOOL_NUMBER < 1 || SV_TOOL_NUMBER > MaxToolBins_W) THEN
+  FaultMsg_W = ATC_BIN_RANGE_MSG_C,
+  SET ShowFaultStage,
+  SET OtherFault_M,
+  RST M6_SV,
+  RST ATCSpin_T,
+  TargetToolBinDisp_W = SV_TOOL_NUMBER
+; Bin in range: latch it as the search target and arm ATCStage (its search/decode/
+; match logic is unchanged). TargetToolBinDisp_W feeds the retro VCP TOOL BIN readout.
+IF M6_SV && !ATCStage THEN
+  TargetToolBin_W = SV_TOOL_NUMBER,
+  TargetToolBinDisp_W = SV_TOOL_NUMBER,
+  SET ATCStage
+
+; Acroloc -- enhanced ATC handshake: report the SETTLED carousel bin to CNC12.
+; Latched only while no change is running, so mid-spin partial sums never reach
+; CNC12. CNC12 records this value as the new tool's putback bin at the end of M6,
+; so it must be right the moment ATCStage clears -- and it is: the match rung
+; leaves CurrentToolBin_W = the matched bin, and every abort path zeroes it.
+; 0 is reported honestly whenever the bin is unknown.
+IF !ATCStage THEN ReportedToolBin_W = CurrentToolBin_W
+IF True_M THEN SV_PLC_CAROUSEL_POSITION = ReportedToolBin_W
+
+; Acroloc -- enhanced ATC reset: CNC12's F6 ATC Reset (P164=1) sends the operator-
+; entered carousel position in SV_ATC_CAROUSEL_POSITION and then runs mfunc18.mac,
+; which pulses M18_SV. Re-seed the known bin from it.
+IF M18_SV && !ATCStage THEN CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION
 
 ; Acroloc manual tool changes
 ; Manual unlock lets the operator hand-spin the carousel to ANY bin, forward or
