@@ -58,25 +58,43 @@ would pause the change until dismissed.
 In `MainStage` (STG4), two blocks handle the ATC entry. Search the `.src`
 for the comment `; Acroloc tool stage start` to find them.
 
-**Kickoff — translate the requested tool to its bin, then set the stage:**
+**Kickoff — guard the bin CNC12 sent, then set the stage:**
 
-At `P160 = 0` (this machine's mode) `SV_TOOL_NUMBER` is the **raw tool number**
-(`M6T##`). MainStage maps it to a carousel **bin** through the fixed loadout
-table — machine parameters **P701–712** = the tool loaded in bins 1–12, cached
-in `ToolInBin1_W..ToolInBin12_W` at `LoadParametersStage`:
+The machine runs CNC12's non-random enhanced ATC (`P160 = 1`), so `SV_TOOL_NUMBER`
+is the requested tool's **carousel bin** as assigned in the Tool Library — `M107`
+sends the bin, not the tool number:
 ```plc
-IF M6_SV THEN TargetToolBin_W = 99                          ; default: tool in no bin
-IF M6_SV && ToolInBin1_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 1
-IF M6_SV && ToolInBin2_W  == SV_TOOL_NUMBER THEN TargetToolBin_W = 2
-; ... bins 3..12 ...
-IF M6_SV THEN TargetToolBinDisp_W = TargetToolBin_W, SET ATCStage
+IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CurrentToolBin_W = 0
+IF M6_SV && !ATCStage && (SV_TOOL_NUMBER < 1 || SV_TOOL_NUMBER > MaxToolBins_W) THEN
+  FaultMsg_W = ATC_BIN_RANGE_MSG_C, SET ShowFaultStage, SET OtherFault_M,
+  RST M6_SV, RST ATCSpin_T, TargetToolBinDisp_W = SV_TOOL_NUMBER
+IF M6_SV && !ATCStage THEN
+  TargetToolBin_W = SV_TOOL_NUMBER, TargetToolBinDisp_W = SV_TOOL_NUMBER, SET ATCStage
 ```
-`M6_SV` is `SV_M94_M95_8`. `TargetToolBin_W` (W72) becomes the bin whose loaded
-tool equals the request; the **99** default is an unreachable bin, so a tool in
-no bin never matches and faults on the 20 s watchdog instead of false-matching
-bin 0. `TargetToolBinDisp_W` (W8) holds the chosen bin for the retro VCP `BIN`
+`M6_SV` is `SV_M94_M95_8`. `MaxToolBins_W` (W79) is P161, re-read every scan. A
+bin outside 1..P161 (an unassigned tool, a bad library, P161 unset) faults
+`9067 ATC BIN OUT OF RANGE` at once and never starts the carousel; the 9xxx fault
+cancels the job during mfunc6's `G4 P1` dwell, so CNC12 does not record the change
+as complete. `TargetToolBinDisp_W` (W8) holds the bin for the retro VCP `BIN`
 readout (`plc_word` 8). `ATCStage` (STG16) then indexes the carousel to
 `TargetToolBin_W` — its search/decode/match logic is unchanged.
+
+**Position report and ATC Reset — the CNC12 handshake:**
+```plc
+IF !ATCStage THEN ReportedToolBin_W = CurrentToolBin_W
+IF True_M THEN SV_PLC_CAROUSEL_POSITION = ReportedToolBin_W
+IF M18_SV && !ATCStage THEN CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION
+```
+CNC12 refuses to run a tool change until the PLC reports a carousel position, and
+at the end of every M6 it records the reported value as the new tool's putback bin
+(its bin field is restored from that when the tool is next swapped out). So the
+report must be the **settled** bin: it is latched only while `ATCStage` is idle,
+the match rung leaves `CurrentToolBin_W` at the matched bin, and every abort rung
+and the manual unlock zero it, so 0 (unknown) is reported honestly.
+`InitialStage` seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION`, the
+position CNC12 persisted in `cncm.job`. `M18` (`mfunc18.mac`) is run by the Tool
+Library's F6 ATC Reset (`P164 = 1`) after the operator enters the true position;
+the rung re-seeds from the value CNC12 sent.
 
 **Spindle-in-changer feed-hold interlock — `ChangerStopTimer_T` and `ZeroSpeed_I`:**
 
@@ -124,9 +142,10 @@ the carousel by hand, but only when Z is clear (`ATC_Z_Zero_Release_I`,
 INP27) and `ATCStage` is not running. Because this is a **Z-motion changer**
 (the spindle is empty at Z0 — see [atc.md](atc.md)), a hand-spin is a full tool
 swap: the known bin is now stale, so both `CurrentToolBin_W` and the VCP readout
-`TargetToolBinDisp_W` are forced to **0 = unknown**. The PLC cannot clear CNC12's
-current tool at `P160 = 0`, so the operator re-establishes the tool after a manual
-swap; the next `M6` re-derives the bin by absolute-switch search regardless.
+`TargetToolBinDisp_W` are forced to **0 = unknown**. CNC12 sees the 0 through the position
+report; the operator declares the new state with the Tool Library's F6 ATC Reset
+(position, tool in spindle, its bin), and the next `M6` re-derives the bin by
+absolute-switch search regardless.
 
 ### 3. `ATCStage` (STG16) — carousel indexing and match
 
@@ -224,8 +243,8 @@ under the spindle).
 
 The five position switches (INP28–INP32, highest to lowest bit) encode the
 carousel **bin (physical position)** in **base-16 written as decimal** — not the
-tool number. (Bin and tool coincide only for a 1:1 loadout; the P701–712 map
-decouples them.) The bit weights in source are:
+tool number. (Bin and tool coincide only for a 1:1 loadout; the Tool Library's Bin
+column decouples them.) The bit weights in source are:
 
 | Switch | Input | Adds to CurrentToolBin_W |
 |--------|-------|--------------------------|
@@ -270,27 +289,32 @@ must account for this timing sensitivity.
 
 ---
 
-## Tool-to-bin map (P701–712) — how M6T## reaches a bin
+## Tool-to-bin map — how M6T## reaches a bin
 
-This machine runs at **`P160 = 0`** (Centroid's built-in ATC modes are *not*
-used — see below). A tool number is mapped to a fixed carousel bin entirely in
-the PLC:
+This machine runs CNC12's **non-random enhanced ATC**: `P160 = 1`, `P161 = 12`
+(bins), `P6 = 1` (ATC installed), `P164 = 1` (F6 ATC Reset). The map is CNC12's:
 
-- **`P701–712` = the tool number loaded in bins 1–12** (end-user parameters).
-  Set `P702 = 31` to say "bin 2 holds tool 31"; a plain 1:1 loadout is
-  `P701=1 … P712=12`; an empty bin is left `0`. Cached into
-  `ToolInBin1_W..ToolInBin12_W` at `LoadParametersStage` **every scan**, so
-  edits on the parameter screen take effect with no reboot.
-- The `MainStage` kickoff (above) sets `TargetToolBin_W` to the bin whose loaded
-  tool equals `SV_TOOL_NUMBER`, or `99` if none — then `ATCStage` indexes there.
-- `mfunc6` prints `Change to T# in bin # (P70#)` (or "not assigned to a bin" for
-  the `99` case).
+- **Tool Library Bin column** (F1 Setup > F2 Tool > F2 Tool Lib): any of the 200
+  tools can be given any bin 1-12; several tools may share a bin; dashes (F1
+  Clear Bin) = not in the carousel; 0 = in the spindle (set by CNC12, not by
+  hand). F10 saves. The column is locked at `P160 = 0`.
+- **`M6T##`**: CNC12 skips the change if tool ## is already in the spindle;
+  otherwise `M107` sends that tool's bin in `SV_TOOL_NUMBER` and the kickoff
+  (above) guards and latches it.
+- **End of M6** (CNC12 bookkeeping, non-random): the previous tool's bin field is
+  restored from its putback field; the new tool gets bin = 0 and putback = the
+  bin the PLC is reporting. That is why the report must be settled and correct
+  when `ATCStage` clears. The M6 start sets an ATC error flag in the job file and
+  a normal end clears it; an interrupted or faulted change leaves it set, and the
+  next job or MDI start prompts the operator to clear it with Y.
+- **After a manual unlock / hand-spin** the operator uses **F6 ATC Reset** to
+  declare the position, the tool under the spindle and its bin; that runs
+  `mfunc18.mac`.
 
-**Why not CNC12's enhanced ATC (P160≠0):** ruled out on-machine. Random
-(`P160=2`) reshuffles the bin map after every change (it assumes tools move
-between bins); non-random (`P160=1`) forces tool == bin. This is a **fixed-pocket**
-carousel (a tool from bin 5 always returns to bin 5), so it needs an
-arbitrary-but-fixed map, which only the PLC table provides.
+Vendor references: CNC12 Mill Operator Manual 15.4.118 (Parameter 160), Tool
+Library p.64; ATC3 Umbrella Operating Instructions (tool library interface, ATC
+Reset). Random mode (`P160 = 2`) is wrong here: it puts the outgoing tool in the
+bin the incoming one left, reshuffling the map after every change.
 
 ---
 
