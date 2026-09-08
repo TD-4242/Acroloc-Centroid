@@ -114,7 +114,7 @@ continuously, and at the end of every M6 records it as the new tool's putback bi
 is latched only while `ATCStage` is idle so mid-spin partial sums never reach CNC12; every
 `ATCStage` abort rung zeroes `CurrentToolBin_W`, so a fault reports 0 (unknown), as does a
 manual unlock. `InitialStage` seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION`
-(CNC12's persisted last position) and `M18` (`mfunc18.mac`, run by the Tool Library's F6 ATC
+(CNC12's persisted last position) and `M18` (`mfunc18.mac`, run by the Tool Library's F2 ATC
 Reset at `P164 = 1`) re-seeds it after the operator declares the true position.
 
 **Hand-moved carousel interlock** (tagged `; Acroloc -- hand-moved carousel interlock`,
