@@ -2985,6 +2985,7 @@ IF ToolSelected_M && !M6_SV && !CarouselMovedByHand_M THEN ToolInSpindleDisp_W =
 ; which pulses M18_SV. Re-seed the known bin from it.
 IF M18_SV && !ATCStage THEN
   CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION,
+  TargetToolBinDisp_W = SV_ATC_CAROUSEL_POSITION,   ; Acroloc VCP BIN readout shows the declared bin
   RST CarouselMovedByHand_M,
   RST ToolSelected_M,
   ToolInSpindleDisp_W = SV_ATC_TOOL_IN_SPINDLE   ; Acroloc the tool the operator declared in the reset
