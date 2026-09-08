@@ -1,7 +1,7 @@
 # Enhanced ATC, non-random mode (P160 = 1): tool->bin map in the Tool Library - Design
 
 Date: 2026-09-06
-Status: implemented on branch; on-machine verification in progress (Phase A passed the bootstrap and first changes, 2026-09-08)
+Status: implemented on branch; on-machine: Phases A and B pass (bootstrap, arbitrary tool->bin, putback round-trip over 10 changes, 2026-09-08); Phase C (hand-move interlock) and Q1/Q3/Q4 pending
 Branch: `feature/enhanced-atc-nonrandom` (worktree `.worktrees/enhanced-atc-nonrandom`, from `main`)
 Supersedes: `2026-07-22-tool-bin-mapping-design.md` (the P701-P712 PLC map) once verified on-machine
 
@@ -262,10 +262,17 @@ tool before the spindle will run.
 
 ### 8. Macros
 
-- `mfunc6.mac`: unchanged flow plus one line after `M95 /8`: `G10 P700 R[#4120]`
-  hands the PLC the requested tool number for the VCP `TOOL` readout. It must
-  stay after `M95 /8` (see section 10). The graph/search guard and `N1000`
-  pattern stay.
+- `mfunc6.mac`: two additions, both order-critical. **`G4 P2` between
+  `M100 /93016` and `M95 /8`:** CNC12 records the new tool's putback from the
+  carousel position it *last observed* on its own monitoring schedule, not from
+  a read at the instant the M6 ends. Without the dwell this macro ended within
+  about 100 ms of the match and the putback intermittently kept the previous
+  tool's bin (on-machine 2026-09-08: some tools right, some wrong over a run of
+  changes; 10 of 10 correct with the dwell). The umbrella example never hits
+  this because its carousel settles seconds before its macro ends. **`G10 P700
+  R[#4120]` after `M95 /8`:** hands the PLC the requested tool number for the VCP
+  `TOOL` readout; it must not run mid-M6 (section 10). The graph/search guard
+  and `N1000` pattern stay.
 - `mfunc18.mac`: new, as above.
 
 ### 9. Control-PC files (tracked in this repo)
@@ -373,6 +380,9 @@ previous `.plc`.
    the PLC's position report round-trips correctly.
 3. Whether a reported 0 upsets CNC12 (the umbrella never reports 0). If it does,
    report the last known good bin and leave 0 to the VCP readout only.
+   **Related, answered 2026-09-08:** CNC12 samples the reported position
+   asynchronously; the putback is only right if the new position has been
+   visible for a while before the M6 ends. Hence the `G4 P2` in `mfunc6.mac`.
 4. Whether the ATC error flag is actually left set when `OtherFault_M` cancels
    the job mid-M6.
 

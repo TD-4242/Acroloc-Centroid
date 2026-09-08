@@ -54,6 +54,9 @@ The full flow is in [atc-flow.md](./atc-flow.md). The macro's sequence is:
 5. `M107` — send the requested tool's **bin** to the PLC (`SV_TOOL_NUMBER`; at P160 = 1 CNC12 looks the bin up in the Tool Library)
 6. `M94 /8` — assert `M6_SV` (bit 8) to trigger `ATCStage` in the PLC
 7. `M100 /93016` — block until `ATCStage` (STG16) resets (carousel cycle complete)
+7a. `G4 P2` — **required dwell.** CNC12 records the new tool's putback from the carousel
+   position it last observed on its own schedule; ending the M6 within ~100 ms of the match
+   left the putback on the previous tool's bin intermittently (2026-09-08). Do not remove.
 8. `M95 /8` — deassert `M6_SV` to close out the tool-change handshake
 8a. `G10 P700 R[#4120]` — hand the PLC the requested **tool number** (P700, the macro-to-PLC parameter) for the VCP `TOOL` readout. **Must stay after `M95 /8`:** a G10 mid-M6 makes CNC12 commit the tool library early and record the new tool's putback from the pre-move carousel position (on-machine 2026-09-08)
 9. `M108 /1/2` — re-enables the overrides disabled in step 2. Placed before the `N1000`

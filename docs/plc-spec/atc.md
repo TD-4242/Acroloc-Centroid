@@ -139,7 +139,10 @@ the requested tool there with `G10 P700 R[#4120]` after `M95 /8`; `ToolSelected_
 match rung and reset at the kickoff, by the hand-move rung and by M18), is set from
 `SV_ATC_TOOL_IN_SPINDLE` in the M18 rung, and to 0 by the hand-move rung. The retro VCP shows
 it as `TOOL XX` beside `BIN XX` (plc_words 80 and 8). The G10 must not run mid-M6: it made
-CNC12 record the new tool's putback from the pre-move position.
+CNC12 record the new tool's putback from the pre-move position. `mfunc6.mac` also dwells
+`G4 P2` between `M100 /93016` and `M95 /8`: CNC12 records the putback from the position it
+last observed on its own monitoring schedule, and ending the M6 within ~100 ms of the match
+left it intermittently on the previous tool's bin (10 of 10 correct with the dwell).
 
 **Manual carousel unlock** (`src:2913-2922`, tagged `; Acroloc manual tool changes`):
 ```plc
