@@ -24,7 +24,11 @@ G4 p1           ; wait 1 second (can I shorten this wait?)
 ; Acroloc -- the chosen carousel bin is shown live on the retro VCP (BIN readout),
 ; from TargetToolBinDisp_W (W8). No macro message here: M225 is a modal box that
 ; would pause the change until dismissed.
-M100 /93016     ; ATCStage RST
+M100 /93016     ; ATCStage RST (carousel matched, motor off, PLC now reports the new bin)
+G4 P2           ; Let CNC12's carousel-position monitor SEE the new bin before the M6 ends:
+                ; CNC12 records the new tool's putback from the position it last saw, and
+                ; without this dwell the M6 ended within ~100 ms of the match, so the
+                ; putback intermittently kept the previous tool's bin (on-machine 2026-09-08).
 M95 /8          ; reset M6_SV to stop tool change stage when done
 G10 P700 R[#4120] ; Hand the PLC the requested TOOL number for the VCP TOOL readout. MUST stay after M95 /8:
                 ; a G10 issued mid-M6 made CNC12 commit the tool library early and record the new
