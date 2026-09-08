@@ -117,9 +117,13 @@ a different tool before the spindle will run.
 
 **VCP `TOOL XX  BIN XX` readout.** `BIN` is `TargetToolBinDisp_W` (W8). `TOOL` is
 `ToolInSpindleDisp_W` (W80), the verified tool: `mfunc6.mac` writes the requested
-tool number with `G10 P700 R[#4120]` next to its M107, the match rung latches
-`SV_MACHINE_PARAMETER_700` when the change completes, the M18 rung takes
+tool number with `G10 P700 R[#4120]` **after `M95 /8`**, a `MainStage` rung tracks
+`SV_MACHINE_PARAMETER_700` while `ToolSelected_M` (a change completed since the
+last kickoff / hand move / ATC Reset) is set, the M18 rung takes
 `SV_ATC_TOOL_IN_SPINDLE` after an ATC Reset, and the hand-move rung forces 0.
+**Never move the G10 earlier:** issued mid-M6 it made CNC12 commit the tool
+library early and record the new tool's putback from the pre-move carousel
+position (2026-09-08: tool 15 ended up in the previous tool's bin).
 `TOOL 0` therefore means the spindle will refuse to start. Margins live in
 `BIN_ELEMENTS` in `tools/vcpgen.py`.
 

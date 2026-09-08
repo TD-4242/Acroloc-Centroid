@@ -262,9 +262,10 @@ tool before the spindle will run.
 
 ### 8. Macros
 
-- `mfunc6.mac`: unchanged flow plus one line after `M107`: `G10 P700 R[#4120]`
-  hands the PLC the requested tool number for the VCP `TOOL` readout. The
-  graph/search guard and `N1000` pattern stay.
+- `mfunc6.mac`: unchanged flow plus one line after `M95 /8`: `G10 P700 R[#4120]`
+  hands the PLC the requested tool number for the VCP `TOOL` readout. It must
+  stay after `M95 /8` (see section 10). The graph/search guard and `N1000`
+  pattern stay.
 - `mfunc18.mac`: new, as above.
 
 ### 9. Control-PC files (tracked in this repo)
@@ -282,10 +283,14 @@ The row-2 bezel now packs two readouts like the spindle bezel does. `BIN` is
 `TargetToolBinDisp_W` (plc_word 8), the bin CNC12 asked for. `TOOL` is a new
 word `ToolInSpindleDisp_W` (W80, plc_word 80): the **verified** tool under the
 spindle. The PLC gets the tool number the only way CNC12 offers at P160 = 1:
-`mfunc6.mac` writes `G10 P700 R[#4120]` beside its M107 (P700 is the parameter
-Centroid reserves for macro-to-PLC use; labelled in `language.msg`), and the
-`ATCStage` match rung latches `SV_MACHINE_PARAMETER_700` into W80 when the
-change completes. The M18 rung sets W80 from `SV_ATC_TOOL_IN_SPINDLE` after an
+`mfunc6.mac` writes `G10 P700 R[#4120]` **after `M95 /8`** (P700 is the
+parameter Centroid reserves for macro-to-PLC use; labelled in `language.msg`),
+and a `MainStage` rung tracks `SV_MACHINE_PARAMETER_700` into W80 while
+`ToolSelected_M` says a change has completed since the last kickoff, hand move
+or ATC Reset. **The G10 must not run mid-M6:** placed right after M107 it made
+CNC12 commit the tool library early and record the new tool's putback from the
+carousel position before the move (on-machine 2026-09-08, tool 15 ended up in
+the previous tool's bin). The M18 rung sets W80 from `SV_ATC_TOOL_IN_SPINDLE` after an
 ATC Reset, and the hand-move interlock forces it to 0 whenever nothing is
 verified, so `TOOL 0` always means "the spindle will refuse to start".
 Margins in `BIN_ELEMENTS` (`tools/vcpgen.py`) are a first guess; tune on-machine.

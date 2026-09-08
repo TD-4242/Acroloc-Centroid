@@ -133,10 +133,13 @@ skips an M6 for it, so `CarouselMovedByHand_M` (MEM454) holds spindle enable off
 a program/MDI spindle start with message 68 (`ATC_HAND_MOVED_MSG_C`, 17410) until the
 `ATCStage` match rung or the M18 rung clears it. `InitialStage` also sets it at power-up.
 
-**VCP `TOOL` readout.** `ToolInSpindleDisp_W` (W80) is set from `SV_MACHINE_PARAMETER_700`
-in the match rung (mfunc6 writes the requested tool there with `G10 P700 R[#4120]`), from
-`SV_ATC_TOOL_IN_SPINDLE` in the M18 rung, and to 0 by the hand-move detection rung. The
-retro VCP shows it as `TOOL XX` beside `BIN XX` (plc_words 80 and 8).
+**VCP `TOOL` readout.** `ToolInSpindleDisp_W` (W80) tracks `SV_MACHINE_PARAMETER_700` in a
+`MainStage` rung gated on `ToolSelected_M && !M6_SV && !CarouselMovedByHand_M` (mfunc6 writes
+the requested tool there with `G10 P700 R[#4120]` after `M95 /8`; `ToolSelected_M` is set by the
+match rung and reset at the kickoff, by the hand-move rung and by M18), is set from
+`SV_ATC_TOOL_IN_SPINDLE` in the M18 rung, and to 0 by the hand-move rung. The retro VCP shows
+it as `TOOL XX` beside `BIN XX` (plc_words 80 and 8). The G10 must not run mid-M6: it made
+CNC12 record the new tool's putback from the pre-move position.
 
 **Manual carousel unlock** (`src:2913-2922`, tagged `; Acroloc manual tool changes`):
 ```plc
