@@ -108,10 +108,13 @@ deploying is a branch checkout, not a file copy.
       of ATC Reset: the change runs, the latch clears, the spindle runs. Check the
       Bin column: the previously loaded tool must be back in its own bin.
 
-## 5. Readout appearance
+## 5. Readout appearance (`TOOL XX  BIN XX`)
 
-- [ ] `TOOL BIN` still renders as before next to the spindle readout (this change
-      did not touch the VCP).
+- [ ] After a completed change the row-2 bezel reads `TOOL <tool>  BIN <bin>`
+      (e.g. `TOOL 15  BIN 2`). After a hand move or a boot both read 0 until an
+      M6 or ATC Reset; after ATC Reset `TOOL` shows the declared tool.
+- [ ] Spacing: the four elements should not overlap; report what it looks like
+      so the margins in `BIN_ELEMENTS` (`tools/vcpgen.py`) can be tuned.
 
 ## 6. Rollback (if any phase fails and the machine is needed)
 

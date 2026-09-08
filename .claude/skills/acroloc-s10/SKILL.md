@@ -98,6 +98,7 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 | `TargetToolBinDisp_W` | W8 | Chosen bin held for the retro VCP live `BIN` readout (`plc_word` 8); latched from `SV_TOOL_NUMBER` each M6; 0 after a manual unlock |
 | `ReportedToolBin_W` | W78 | Settled carousel bin reported to CNC12 every scan via `SV_PLC_CAROUSEL_POSITION`; latched from `CurrentToolBin_W` only while `ATCStage` is idle; 0 = unknown |
 | `MaxToolBins_W` | W79 | P161 (ATC Maximum Tool Bins) cached every scan; upper bound of the M6 bin guard |
+| `ToolInSpindleDisp_W` | W80 | Verified tool under the spindle for the retro VCP `TOOL` readout (`plc_word` 80): P700 from mfunc6's `G10` latched at the `ATCStage` match, the ATC Reset declaration on M18, 0 when unverified |
 
 ---
 

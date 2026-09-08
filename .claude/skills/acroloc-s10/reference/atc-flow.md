@@ -115,6 +115,14 @@ RESET OR TOOL CHANGE` (`ErrorFlag_M`: job cancel, no E-stop needed). It clears
 only on an `ATCStage` match or M18. After every boot: one ATC Reset or one M6 to
 a different tool before the spindle will run.
 
+**VCP `TOOL XX  BIN XX` readout.** `BIN` is `TargetToolBinDisp_W` (W8). `TOOL` is
+`ToolInSpindleDisp_W` (W80), the verified tool: `mfunc6.mac` writes the requested
+tool number with `G10 P700 R[#4120]` next to its M107, the match rung latches
+`SV_MACHINE_PARAMETER_700` when the change completes, the M18 rung takes
+`SV_ATC_TOOL_IN_SPINDLE` after an ATC Reset, and the hand-move rung forces 0.
+`TOOL 0` therefore means the spindle will refuse to start. Margins live in
+`BIN_ELEMENTS` in `tools/vcpgen.py`.
+
 **Spindle-in-changer feed-hold interlock — `ChangerStopTimer_T` and `ZeroSpeed_I`:**
 
 Search for `; Acroloc -- Spindle-in-changer feed-hold interlock` in `MainStage`. It is

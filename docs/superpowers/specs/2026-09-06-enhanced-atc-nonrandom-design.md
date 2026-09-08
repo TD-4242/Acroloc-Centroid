@@ -48,7 +48,8 @@ longer used.
 - Intercon integration (P162 / M17 spindle orient). Not used on this machine.
 - A dual-mode PLC that reads P160 and keeps the P701 map as a fallback. Rollback
   is P160 = 0 with the same build (see "Rollback").
-- Any VCP change. The `TOOL BIN` readout keeps showing the target bin.
+- Random-mode pre-fetch and Intercon remain out; the VCP change below is the
+  only panel change.
 
 ## Vendor behaviour this design relies on
 
@@ -261,24 +262,33 @@ tool before the spindle will run.
 
 ### 8. Macros
 
-- `mfunc6.mac`: unchanged flow. The `M107 ; Send tool number` comment becomes
-  "Send the requested tool's BIN (enhanced ATC, P160=1)". The graph/search guard
-  and `N1000` pattern stay.
+- `mfunc6.mac`: unchanged flow plus one line after `M107`: `G10 P700 R[#4120]`
+  hands the PLC the requested tool number for the VCP `TOOL` readout. The
+  graph/search guard and `N1000` pattern stay.
 - `mfunc18.mac`: new, as above.
 
 ### 9. Control-PC files (tracked in this repo)
 
 - `plcmsg.txt`: add `67  9067 ATC BIN OUT OF RANGE` after the slot-66 line.
 - `language.msg`: P701-P712 `@P70n_LABEL` / `_L` lines return to the stock
-  "Reserved for Enduser/Integrator custom PLC and Macro use" text.
+  "Reserved for Enduser/Integrator custom PLC and Macro use" text; P700 gets the
+  label "ATC: tool number of the last M6 (mfunc6 G10)".
 - `docs/control-pc-customizations.md`: drop the P701-P712 label set; add the
   P6/P160/P161/P164 settings and the Tool Library Bin column as the map's home.
 
-### 10. VCP
+### 10. VCP: `TOOL XX  BIN XX` readout (added 2026-09-08)
 
-No change. `TargetToolBinDisp_W` (plc_word 8, the `TOOL BIN` readout) now shows
-the bin CNC12 asked for, which is what it showed before. 0 = unknown after a
-manual unlock, unchanged.
+The row-2 bezel now packs two readouts like the spindle bezel does. `BIN` is
+`TargetToolBinDisp_W` (plc_word 8), the bin CNC12 asked for. `TOOL` is a new
+word `ToolInSpindleDisp_W` (W80, plc_word 80): the **verified** tool under the
+spindle. The PLC gets the tool number the only way CNC12 offers at P160 = 1:
+`mfunc6.mac` writes `G10 P700 R[#4120]` beside its M107 (P700 is the parameter
+Centroid reserves for macro-to-PLC use; labelled in `language.msg`), and the
+`ATCStage` match rung latches `SV_MACHINE_PARAMETER_700` into W80 when the
+change completes. The M18 rung sets W80 from `SV_ATC_TOOL_IN_SPINDLE` after an
+ATC Reset, and the hand-move interlock forces it to 0 whenever nothing is
+verified, so `TOOL 0` always means "the spindle will refuse to start".
+Margins in `BIN_ELEMENTS` (`tools/vcpgen.py`) are a first guess; tune on-machine.
 
 ## Operator workflow
 

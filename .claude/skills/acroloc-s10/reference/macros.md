@@ -51,7 +51,7 @@ The full flow is in [atc-flow.md](./atc-flow.md). The macro's sequence is:
    during G74/G84 tapping cycles — a tap fed at a reduced override will break.
 3. `S0` / `M5` / `M9` — zero spindle speed, stop spindle, turn off coolant
 4. `G53 Z0` — retract Z to machine home (tool-change position)
-5. `M107` — send the requested tool's **bin** to the PLC (`SV_TOOL_NUMBER`; at P160 = 1 CNC12 looks the bin up in the Tool Library)
+5. `M107` — send the requested tool's **bin** to the PLC (`SV_TOOL_NUMBER`; at P160 = 1 CNC12 looks the bin up in the Tool Library), then `G10 P700 R[#4120]` — hand the PLC the requested **tool number** (P700, the macro-to-PLC parameter) for the VCP `TOOL` readout
 6. `M94 /8` — assert `M6_SV` (bit 8) to trigger `ATCStage` in the PLC
 7. `M100 /93016` — block until `ATCStage` (STG16) resets (carousel cycle complete)
 8. `M95 /8` — deassert `M6_SV` to close out the tool-change handshake

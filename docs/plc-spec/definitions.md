@@ -271,6 +271,7 @@ the ATC tool-select flag should be aware both features write/read the same bit.
 | `EngagedRange_W` | W74 | 1081 | Acroloc | Gear currently engaged (open-loop, tracks clutch outputs; 0 = unknown/forced-neutral, see src:2397-2402). [gear-shift.md](gear-shift.md) |
 | `ReportedToolBin_W` | W78 | — | Acroloc | Settled carousel bin reported to CNC12 via `SV_PLC_CAROUSEL_POSITION` (latched while `ATCStage` idle; 0 = unknown). [atc.md](atc.md) |
 | `MaxToolBins_W` | W79 | — | Acroloc | P161 cached every scan; upper bound of the M6 bin guard. [atc.md](atc.md), [parameters.md](parameters.md) |
+| `ToolInSpindleDisp_W` | W80 | — | Acroloc | Verified tool under the spindle for the VCP `TOOL` readout (plc_word 80): P700 (mfunc6 `G10`) latched at the `ATCStage` match, `SV_ATC_TOOL_IN_SPINDLE` after ATC Reset, 0 when unverified. [atc.md](atc.md) |
 | `PrevFeedOverride_W` | W65 | 1086 | | Previous feed override value. [jog-and-mpg.md](jog-and-mpg.md) |
 | `P148Value_W` | W66 | 1087 | | Cached `SV_MACHINE_PARAMETER_148`. [parameters.md](parameters.md) |
 | `P146Value_W` | W67 | 1088 | | Cached `SV_MACHINE_PARAMETER_146`. [parameters.md](parameters.md) |
