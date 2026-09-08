@@ -96,6 +96,25 @@ position CNC12 persisted in `cncm.job`. `M18` (`mfunc18.mac`) is run by the Tool
 Library's F6 ATC Reset (`P164 = 1`) after the operator enters the true position;
 the rung re-seeds from the value CNC12 sent.
 
+**Hand-moved carousel interlock — nothing in the spindle until proven:**
+```plc
+IF (ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I) && !ATCMotor_O THEN
+  SET CarouselMovedByHand_M, CurrentToolBin_W = 0, TargetToolBinDisp_W = 0
+IF CarouselMovedByHand_M THEN RST SpindleEnableOut_O
+IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
+   (SpinStart_M || M3_SV || M4_SV) && !ErrorFlag_M THEN
+  FaultMsg_W = ATC_HAND_MOVED_MSG_C, SET ShowFaultStage, SET ErrorFlag_M
+```
+Owner's rule: CNC12 only knows a bin after it has put the tool there. The
+carousel parks in the all-switches-off gap, so a hand spin at Z0 cannot be
+decoded at rest, but any move trips a switch with the motor off. CNC12 keeps
+believing its old tool is in the spindle and will skip an M6 for it, so
+`CarouselMovedByHand_M` (MEM454; also set at power-up) holds spindle enable off
+and cancels a program/MDI spindle start with `9068 CAROUSEL MOVED BY HAND - ATC
+RESET OR TOOL CHANGE` (`ErrorFlag_M`: job cancel, no E-stop needed). It clears
+only on an `ATCStage` match or M18. After every boot: one ATC Reset or one M6 to
+a different tool before the spindle will run.
+
 **Spindle-in-changer feed-hold interlock — `ChangerStopTimer_T` and `ZeroSpeed_I`:**
 
 Search for `; Acroloc -- Spindle-in-changer feed-hold interlock` in `MainStage`. It is
@@ -143,9 +162,10 @@ INP27) and `ATCStage` is not running. Because this is a **Z-motion changer**
 (the spindle is empty at Z0 — see [atc.md](atc.md)), a hand-spin is a full tool
 swap: the known bin is now stale, so both `CurrentToolBin_W` and the VCP readout
 `TargetToolBinDisp_W` are forced to **0 = unknown**. CNC12 sees the 0 through the position
-report; the operator declares the new state with the Tool Library's F6 ATC Reset
-(position, tool in spindle, its bin), and the next `M6` re-derives the bin by
-absolute-switch search regardless.
+report and the hand-moved interlock (below) refuses the spindle; the operator
+declares the new state with the Tool Library's F6 ATC Reset (position, tool in
+spindle, its bin) or runs an `M6` to a different tool, which re-derives the bin
+by absolute-switch search and clears the latch.
 
 ### 3. `ATCStage` (STG16) — carousel indexing and match
 

@@ -119,6 +119,10 @@ all hold simultaneously.
 
 ## Fault bits
 
+`ErrorFlag_M` (MEM46, "error but not a fault") is also set by the hand-moved carousel interlock
+(`ATC_HAND_MOVED_MSG_C`, 9068, unpinned): it drives the cycle-cancel coil and clears itself after
+`ErrorFlag_T`, so recovery is an ATC Reset or an M6, not an E-stop. See atc.md.
+
 Summary table of the fault-class memory bits that feed `MainStage`'s `SV_STOP` OR-gate
 (main-stage.md, src:2840-2882). "Producer" cites where each bit is set; "Recovery"
 cites the dedicated clear rung if one exists, otherwise "aggregate" (cleared only by

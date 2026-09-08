@@ -231,6 +231,13 @@ hand-off rungs inside `MainStage` that arm `ATCStage`.
   **after** `MainStage` (STG4) in file order, per `scan-model.md` the `SET` takes effect
   **in this same scan** — `ATCStage`'s body runs immediately. Full detail in
   [atc.md](atc.md).
+- **Hand-moved carousel interlock** (tagged "Acroloc -- hand-moved carousel interlock",
+  after the spindle-in-changer interlock; no pinned lines): any position switch true while
+  `ATCMotor_O` is off sets `CarouselMovedByHand_M` (MEM454, also set at power-up) and zeroes
+  the known bin; while set, `RST SpindleEnableOut_O` every scan, and a program/MDI spindle
+  start (`SpinStart_M || M3_SV || M4_SV`) posts `ATC_HAND_MOVED_MSG_C` (9068) and sets
+  `ErrorFlag_M` (job cancel, self-clearing). Cleared only by the `ATCStage` match rung or
+  M18. See [atc.md](atc.md).
 - **Manual carousel unlock** (src:2913-2922, tagged "Acroloc manual tool changes"):
   `ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage` drives `SET ATCUnlocked_O`
   (src:2914); the mirror, `!ATCManualUnlock_I && !ATCStage`, drives

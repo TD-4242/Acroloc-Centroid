@@ -42,8 +42,9 @@ upgrade): `Centroid-Acroloc-ALLIN1DC.src` + `mfunc*.mac`, the retro VCP under
 - Small (~94 lines). Format: `<msgNumber> <value> <text>` where the `.src` references each as
   a constant `value = number + 256*file` (e.g. `ATC_Lock_Released_C IS 45546 ;(2+256*174)`).
 - Machine-relevant custom messages include:
-  - **60-67:** LOW AIR, ATC WHILE MANUAL INDEX, MANUAL INDEX WHILE ATC, **CAROUSEL MOVE TIME
-    OUT** (63), tool clamp/orient faults, **ATC BIN OUT OF RANGE** (67).
+  - **60-68:** LOW AIR, ATC WHILE MANUAL INDEX, MANUAL INDEX WHILE ATC, **CAROUSEL MOVE TIME
+    OUT** (63), tool clamp/orient faults, **ATC BIN OUT OF RANGE** (67), **CAROUSEL MOVED BY
+    HAND** (68).
   - **70-73:** spindle chiller, pot up/down, arm motor, POT NOT UP FOR CAROUSEL.
   - **101-110:** tool-change / turret / collet / spindle-lock faults.
   - **171-174:** Tool Carousel manual unlock, **Spindle not parked. Z Axis not at zero.**,
@@ -79,7 +80,7 @@ Export it (F5 Export Lib) after changes so it can be restored.
 ## After-upgrade checklist
 
 - [ ] `language.msg`: re-apply the P860-P863 label edits onto the upgraded file.
-- [ ] `plcmsg.txt`: re-merge the custom ATC/spindle messages (60-67, 70-73, 101-110, 171-174).
+- [ ] `plcmsg.txt`: re-merge the custom ATC/spindle messages (60-68, 70-73, 101-110, 171-174).
 - [ ] `cncm.hom`: copy verbatim from the repo.
 - [ ] Restart CNC12.
 - [ ] Parameters screen: P860-P863 show the gear-shift labels; P6 = 1, P160 = 1, P161 = 12, P164 = 1.

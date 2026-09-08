@@ -117,6 +117,22 @@ manual unlock. `InitialStage` seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POS
 (CNC12's persisted last position) and `M18` (`mfunc18.mac`, run by the Tool Library's F6 ATC
 Reset at `P164 = 1`) re-seeds it after the operator declares the true position.
 
+**Hand-moved carousel interlock** (tagged `; Acroloc -- hand-moved carousel interlock`,
+placed after the spindle-in-changer interlock; no pinned line):
+```plc
+IF (ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I) && !ATCMotor_O THEN
+  SET CarouselMovedByHand_M, CurrentToolBin_W = 0, TargetToolBinDisp_W = 0
+IF CarouselMovedByHand_M THEN RST SpindleEnableOut_O
+IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
+   (SpinStart_M || M3_SV || M4_SV) && !ErrorFlag_M THEN
+  FaultMsg_W = ATC_HAND_MOVED_MSG_C, SET ShowFaultStage, SET ErrorFlag_M
+```
+The carousel parks in the all-switches-off gap, so a hand move at Z0 cannot be decoded at
+rest but is always detectable. CNC12 keeps believing its old tool is in the spindle and
+skips an M6 for it, so `CarouselMovedByHand_M` (MEM454) holds spindle enable off and cancels
+a program/MDI spindle start with message 68 (`ATC_HAND_MOVED_MSG_C`, 17410) until the
+`ATCStage` match rung or the M18 rung clears it. `InitialStage` also sets it at power-up.
+
 **Manual carousel unlock** (`src:2913-2922`, tagged `; Acroloc manual tool changes`):
 ```plc
 IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O

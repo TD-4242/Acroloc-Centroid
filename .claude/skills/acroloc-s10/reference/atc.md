@@ -28,9 +28,12 @@ Two consequences the PLC must respect:
   swap:** the spindle is empty at Z0, so hand-spinning the carousel changes which tool gets
   picked up on the next Z descent. After a manual spin **both the bin and the active tool are
   unknown.** The PLC forces the bin to 0 = UNKNOWN on manual unlock (`CurrentToolBin_W` /
-  `TargetToolBinDisp_W`) and reports 0 to CNC12; the operator then declares the true
-  position, the tool now under the spindle and its bin with the Tool Library's **F6 ATC
-  Reset** (which runs `mfunc18.mac` so the PLC re-seeds its bin).
+  `TargetToolBinDisp_W`), reports 0 to CNC12 and **refuses the spindle** until the
+  position is proven again (`CarouselMovedByHand_M`; also set at power-up): the operator
+  declares the true position, the tool now under the spindle and its bin with the Tool
+  Library's **F6 ATC Reset** (which runs `mfunc18.mac`), or runs an M6 to a different
+  tool. A program that tries to start the spindle first is cancelled with
+  `9068 CAROUSEL MOVED BY HAND - ATC RESET OR TOOL CHANGE`.
 
 ## Bin numbering and tool→bin map
 

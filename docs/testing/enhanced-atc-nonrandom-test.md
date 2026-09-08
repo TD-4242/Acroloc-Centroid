@@ -81,12 +81,20 @@ deploying is a branch checkout, not a file copy.
         number in 1..12 for an unassigned tool and the guard needs a follow-up).
 - [ ] Restore: tool 31 -> dashes, tool 2 -> Bin 2, F10 Save.
 
-## 4. Phase C - manual unlock and F6 ATC Reset
+## 4. Phase C - hand-moved carousel interlock and F6 ATC Reset
 
+- [ ] **Boot latch:** after the reboot in section 1 (or any power cycle), MDI
+      `M3 S500` before any tool change or ATC Reset -> the spindle must NOT
+      start; message `9068 CAROUSEL MOVED BY HAND - ATC RESET OR TOOL CHANGE`
+      and the MDI is cancelled (no E-stop needed). Then an M6 to a different
+      tool, or ATC Reset, and `M3 S500` runs.
 - [ ] Z at the tool-change position (clear). Press the **manual unlock** button
-      (`ATCManualUnlock_I`, INP24). `TOOL BIN` drops to **0**; ALT+K reads 0.
-- [ ] Hand-spin the carousel **two bins forward**, release the button (relock).
-      Note the bin now under the spindle (n) and the tool in it.
+      (`ATCManualUnlock_I`, INP24) and hand-spin the carousel **two bins
+      forward**, release the button (relock). `TOOL BIN` drops to **0**; ALT+K
+      reads 0. Note the bin now under the spindle (n) and the tool in it.
+- [ ] MDI `M3 S500` -> refused with 9068 and cancelled. MDI `M6T<the tool CNC12
+      still shows as loaded>` -> CNC12 skips it; `M3 S500` is still refused.
+      This is the hole the interlock closes: record that both were refused.
 - [ ] Tool Library > **F6 ATC Reset**: carousel position = n (the default offered
       will be 0; type n), tool in spindle = the tool in bin n, putback = n. Confirm
       with Y. Expect the message `ATC INITIALIZED` or similar; if CNC12 refuses,
@@ -95,7 +103,10 @@ deploying is a branch checkout, not a file copy.
 - [ ] ALT+K now reads n. The Bin column shows that tool at 0 and the previously
       "in spindle" tool back in its own bin.
 - [ ] MDI `M6T<m>` for a tool in another bin -> lands on the right bin, readout
-      correct.
+      correct, and `M3 S500` now runs (latch cleared by the match).
+- [ ] Repeat the hand-spin, then recover with an M6 to a different tool instead
+      of ATC Reset: the change runs, the latch clears, the spindle runs. Check the
+      Bin column: the previously loaded tool must be back in its own bin.
 
 ## 5. Readout appearance
 

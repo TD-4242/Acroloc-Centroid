@@ -108,10 +108,20 @@ recorded putback, the next change would restore that tool's bin from an unset
 field. (Found on-machine 2026-09-07 at Phase A; the earlier draft of the test
 procedure wrongly said to type 0.)
 
-The one mismatch is the manual unlock: a hand-spin at Z clear swaps which tool is
-under the spindle without an M6. CNC12 cannot see that; ATC Reset is the
-vendor-supported way for the operator to declare the new state (see "Operator
-workflow").
+**The hand-moved carousel is the one real mismatch, and it is enforced, not
+documented.** At Z0 the carousel is free to be turned by hand to add, swap or
+remove tools. CNC12 cannot see that, still believes its old tool is in the
+spindle, and will even skip an M6 for that tool, so a program could drop Z onto
+whatever bin was left under the spindle with the wrong length offset. Owner's rule
+(2026-09-08): CNC12 only knows a bin after it has put the tool there; after a hand
+move, or a boot, assume the tool was put away and nothing is in the spindle. The
+carousel parks in the all-switches-off gap, so the parked bin cannot be read at
+rest, but any move is detectable (a switch asserting while the motor is off). The
+PLC therefore latches `CarouselMovedByHand_M` (MEM454) on that, and at power-up,
+reports position 0, holds spindle enable off, and cancels any program or MDI that
+tries to start the spindle with `9068 CAROUSEL MOVED BY HAND - ATC RESET OR TOOL
+CHANGE` (via `ErrorFlag_M`, so no E-stop is needed). Only an `ATCStage` match
+(motor-driven absolute search) or M18 (ATC Reset) clears it. See Design section 7a.
 
 ## Design
 
@@ -229,6 +239,26 @@ New `mfunc18.mac`, modelled on the umbrella example: graph/search guard,
 because its F6 Init assumes tool 1 in bin 1; this machine re-derives position by
 absolute switches, so the seed from CNC12 is enough.
 
+### 7a. Hand-moved carousel interlock (`MainStage`, after the changer interlock)
+
+```plc
+IF (ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I) && !ATCMotor_O THEN
+  SET CarouselMovedByHand_M, CurrentToolBin_W = 0, TargetToolBinDisp_W = 0
+IF CarouselMovedByHand_M THEN RST SpindleEnableOut_O
+IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
+   (SpinStart_M || M3_SV || M4_SV) && !ErrorFlag_M THEN
+  FaultMsg_W = ATC_HAND_MOVED_MSG_C, SET ShowFaultStage, SET ErrorFlag_M
+```
+
+Plus `SET CarouselMovedByHand_M` in `InitialStage`, `RST CarouselMovedByHand_M` in
+the `ATCStage` match rung and in the M18 rung, and `plcmsg.txt` slot 68. Design
+choices: detection is on the switches, not the unlock button, so it catches a
+carousel moved by any means; the stop is a job cancel, not a feed hold, because
+resuming after a skipped M6 would cut with the wrong tool; `ErrorFlag_M` is used
+rather than `OtherFault_M` so recovery is ATC Reset or an M6, not an E-stop
+cycle. Operating cost: after every boot, one ATC Reset or one M6 to a different
+tool before the spindle will run.
+
 ### 8. Macros
 
 - `mfunc6.mac`: unchanged flow. The `M107 ; Send tool number` comment becomes
@@ -267,10 +297,12 @@ manual unlock, unchanged.
 
 ## Behaviour changes to accept
 
-- **No same-tool safety spin.** Today the carousel re-indexes even when the
-  requested tool is already under the spindle, guarding against an undeclared
-  hand swap. CNC12 now skips that M6. The guard moves to the operator: declare
-  hand swaps with ATC Reset.
+- **No same-tool safety spin.** The July design re-indexed even for the same
+  tool, guarding against an undeclared hand swap. CNC12 now skips that M6. The
+  guard moves into the PLC: the hand-moved carousel interlock (7a) refuses the
+  spindle until the position is re-established, so the skipped M6 fails safe.
+- **One re-index or ATC Reset after every boot** before the spindle will start
+  (the boot latch).
 - **Unassigned tool faults immediately** ("ATC BIN OUT OF RANGE") instead of
   spinning for 20 s to `CAROUSEL MOVE TIME OUT`. The 20 s watchdog stays for a
   bin that exists but is never matched.
