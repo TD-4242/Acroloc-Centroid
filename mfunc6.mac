@@ -9,6 +9,11 @@
 
 ;Skip if graphing or searching
 IF #4202 || #4201 THEN GOTO 1000
+; Acroloc -- T0 = declare the spindle EMPTY (no motion, no changer). CNC12 still does
+; its end-of-M6 bookkeeping: the tool that was in the spindle goes back to its
+; putback bin and the spindle becomes 'no tool', so the next M6 to that tool is
+; not skipped. Used after a hand-moved carousel / at boot (see plcmacro5.mac).
+IF #4120 == 0 THEN GOTO 900
 IF #50001       ; Prevent lookahead
 M109 /1/2       ; Disable overrides
 
@@ -37,5 +42,10 @@ G10 P700 R[#4120] ; Hand the PLC the requested TOOL number for the VCP TOOL read
 M108 /1/2       ; Re-enable overrides (pairs the M109 /1/2 above -- an unpaired
                 ; M109 leaves override control off for the rest of the program,
                 ; which also disables CNC12's G74/G84 feed-override lockout)
+
+GOTO 1000
+
+N900            ; T0 path: nothing in the spindle -> VCP TOOL readout 0
+G10 P700 R0
 
 N1000           ; end of program
