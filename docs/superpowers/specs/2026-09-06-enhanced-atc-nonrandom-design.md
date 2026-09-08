@@ -95,6 +95,19 @@ therefore means "the tool in the bin under the spindle", and non-random putback
 (each tool returns to its own bin) is exactly this machine's mechanics. No
 put-back move logic is needed, unlike the umbrella example's two-move dance.
 
+**Bin 0 is a state, not a place.** CNC12 marks the in-spindle tool as bin 0 and
+remembers its origin in the putback field. On this machine the in-spindle tool is
+the one in the bin parked under the spindle, so its putback is always the parked
+bin, which is what the PLC reports. The Bin column will not accept 0 by hand:
+the in-spindle state is set only by a completed M6 or by F6 ATC Reset. That makes
+the first-time bootstrap a required step: assign every tool its own bin (the
+parked tool included), then declare the parked tool as in-spindle via ATC Reset
+(position, tool, putback all = the parked bin) or, failing that, by running one
+M6 to it so CNC12 records the putback from the position report. Without a
+recorded putback, the next change would restore that tool's bin from an unset
+field. (Found on-machine 2026-09-07 at Phase A; the earlier draft of the test
+procedure wrongly said to type 0.)
+
 The one mismatch is the manual unlock: a hand-spin at Z clear swaps which tool is
 under the spindle without an M6. CNC12 cannot see that; ATC Reset is the
 vendor-supported way for the operator to declare the new state (see "Operator

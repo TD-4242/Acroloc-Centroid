@@ -29,11 +29,24 @@ Spec: `docs/superpowers/specs/2026-09-06-enhanced-atc-nonrandom-design.md`.
 
 - [ ] Home the machine.
 - [ ] Tool Library: the Bin column is now editable and F1 Clear Bin / F2 Clear All
-      appear. Set tools 1-12 to bins 1-12 (if CNC12 has not already initialised
-      them that way). Set the tool that is physically under the spindle to bin
-      **0**. F10 Save.
-- [ ] **ALT+K** shows `ATC BIN n` where n is the bin under the spindle (the PLC's
-      boot seed from CNC12; may read 0 the first time - that is allowed).
+      appear. Set tools 1-12 to bins 1-12, **including the tool that is parked
+      under the spindle** (its own bin number, e.g. tool 7 = bin 7). F10 Save.
+      Do not try to type 0: CNC12 owns the in-spindle (bin 0) state and only a
+      tool change or ATC Reset can set it.
+- [ ] Declare the in-spindle tool so CNC12 records its putback. On this
+      Z-motion changer "tool 7 in the spindle" and "carousel parked at bin 7"
+      are the same physical state, so putback = the parked bin. Try
+      **F6 ATC Reset** first: carousel position = the parked bin (type it if the
+      default reads 0), tool in spindle = the tool in that bin, putback = that
+      bin, confirm Y. Expect the Tool Library to show that tool at bin 0 and
+      ALT+K to read the parked bin. (Open question 2 in the spec.)
+- [ ] If ATC Reset refuses, record its exact text, then bootstrap with a change:
+      if the status window already shows the parked tool (e.g. T7), MDI
+      `M6T1` first, restore tool 7's Bin to 7 by hand if CNC12 scrambled it,
+      then MDI `M6T7`; the carousel makes one full revolution back to bin 7 and
+      CNC12 records tool 7 as in-spindle with putback 7. If the status window
+      shows no tool, `M6T7` alone does it.
+- [ ] **ALT+K** shows `ATC BIN n` where n is the bin under the spindle.
 - [ ] MDI `M6T5` -> carousel indexes to **bin 5**, tool changes normally.
       `TOOL BIN` reads **5**; ALT+K reads 5; the status window shows **T5** after
       the change.
