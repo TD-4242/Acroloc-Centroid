@@ -78,7 +78,7 @@ the ATC3 Umbrella Operating Instructions
   startup and on an enhanced-ATC reset CNC12 sends `SV_ATC_CAROUSEL_POSITION` and
   `SV_ATC_TOOL_IN_SPINDLE` to the PLC. "It is critical that the carousel not be
   allowed to turn unless CNC software is running."
-- **ATC Reset (F6, P164 = 1):** prompts for carousel position (default = the PLC's
+- **ATC Reset (F2, P164 = 1):** prompts for carousel position (default = the PLC's
   reported value), tool in spindle, and that tool's putback bin; then runs M18
   ("used by the ATC Reset feature in CNC software to set the carousel position and
   putback bin"). The manual says the feature "only works with ATC3 PLC programs",
@@ -230,7 +230,7 @@ recovery path and is verified on-machine (Phase A step 5).
 ### 7. ATC Reset (`MainStage`)
 
 ```
-; Acroloc -- enhanced ATC reset (F6 in the tool library, P164=1) runs M18 after
+; Acroloc -- enhanced ATC reset (F2 in the tool library, P164=1) runs M18 after
 ; CNC12 has sent the operator-entered carousel position. Re-seed from it.
 IF M18_SV && !ATCStage THEN CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION
 ```
