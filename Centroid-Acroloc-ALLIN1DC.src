@@ -210,6 +210,7 @@ ATC_Lock_Not_Released_C         IS 44290; (2+256*173) Tool Carousel not locked.
 ATC_Lock_Released_C             IS 44546; (2+256*174) Tool Carousel locked.
 CAROUSEL_TIMEOUT_MSG_C          IS 16130 ; (2+256*63) CAROUSEL MOVE TIME OUT
 ATC_BIN_RANGE_MSG_C             IS 17154 ; (2+256*67) ATC BIN OUT OF RANGE -- Acroloc: CNC12 sent a bin outside 1..P161 at M6 kickoff
+ATC_HAND_MOVED_MSG_C            IS 17410 ; (2+256*68) CAROUSEL MOVED BY HAND - ATC RESET OR TOOL CHANGE -- Acroloc: spindle refused until the position is re-established
 ATC_SPIN_TIMEOUT_MS_C           IS 20000 ; Acroloc carousel search timeout (ms)
 
 ;------------------------------------------------------------------------------
@@ -734,6 +735,7 @@ InBinDecode_M                   IS MEM443 ; Acroloc 0=false, 1=true
 ToolSelected_M                  IS MEM452 ; Acroloc 0=false, 1=true (moved off MEM444; it collided with KbAux13Key_M)
 ChangerHoldActive_M             IS MEM448 ; Acroloc feed-hold active while spindle stops in changer zone
 ChangerHoldDone_M               IS MEM449 ; Acroloc once-per-entry latch, cleared when Z clears changer
+CarouselMovedByHand_M           IS MEM454 ; Acroloc carousel moved without the motor (or just booted): tool under the spindle unverified, spindle refused until an ATCStage match or ATC Reset (M18). MEM453 is reserved for the changer-resume work.
 ;------------------------------------------------------------------------------
 ;                     ---------SYSTEM VARIABLES--------
 ;
@@ -1310,6 +1312,7 @@ IF 1==1 THEN SET True_M,
              DesiredRange_W = 0,       ; Acroloc boot placeholder (decision overwrites next scan)
              SpindleRange_W = 1,       ; Acroloc safe default ratio until first engage
              CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION, ; Acroloc enhanced ATC: seed the last known bin CNC12 persisted (cncm.job)
+             SET CarouselMovedByHand_M, ; Acroloc boot: the carousel may have been moved with the control off -> nothing in the spindle until an M6 re-index or ATC Reset
              RST InitialStage
 
 ;=============================================================================
@@ -2971,7 +2974,7 @@ IF True_M THEN SV_PLC_CAROUSEL_POSITION = ReportedToolBin_W
 ; Acroloc -- enhanced ATC reset: CNC12's F6 ATC Reset (P164=1) sends the operator-
 ; entered carousel position in SV_ATC_CAROUSEL_POSITION and then runs mfunc18.mac,
 ; which pulses M18_SV. Re-seed the known bin from it.
-IF M18_SV && !ATCStage THEN CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION
+IF M18_SV && !ATCStage THEN CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION, RST CarouselMovedByHand_M
 
 ; Acroloc manual tool changes
 ; Manual unlock lets the operator hand-spin the carousel to ANY bin, forward or
@@ -3040,6 +3043,31 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
   SET ChangerHoldDone_M,
   RST ChangerHoldActive_M,
   RST ChangerStopTimer_T
+
+;=============================================================================
+; Acroloc -- hand-moved carousel interlock (enhanced ATC)
+;=============================================================================
+; Rule (owner, 2026-09-08): CNC12 only knows a bin after it has put the tool
+; there. If the carousel moves without the motor -- a hand spin at Z0 to add,
+; swap or remove tools -- or the control has just booted, assume the tool was
+; put away and NOTHING is in the spindle until proven otherwise.
+; The carousel parks in the all-switches-off gap, so at rest the switches read
+; nothing and a hand move cannot be decoded; but it can always be detected: any
+; position switch asserting while ATCMotor_O is off. CNC12 still believes its old
+; tool is in the spindle and will even SKIP an M6 for that tool, so the PLC must
+; refuse the spindle until a motor-driven search (ATCStage match) or an ATC Reset
+; (M18) re-establishes the position. Recovery needs no E-stop: ErrorFlag_M cancels
+; the job and clears itself; the operator then runs ATC Reset or an M6.
+IF (ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I) && !ATCMotor_O THEN
+  SET CarouselMovedByHand_M,
+  CurrentToolBin_W = 0,
+  TargetToolBinDisp_W = 0
+IF CarouselMovedByHand_M THEN RST SpindleEnableOut_O
+IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
+   (SpinStart_M || M3_SV || M4_SV) && !ErrorFlag_M THEN
+  FaultMsg_W = ATC_HAND_MOVED_MSG_C,
+  SET ShowFaultStage,
+  SET ErrorFlag_M
 
 
 ;=============================================================================
@@ -3115,6 +3143,7 @@ IF ATCMotor_O && ( !ATC_Pos1_I && !ATC_Pos2_I && !ATC_Pos3_I && !ATC_Pos4_I && !
 IF !InBinDecode_M && CurrentToolBin_W == TargetToolBin_W THEN
   TargetToolBin_W = 0,
   SET ToolSelected_M,
+  RST CarouselMovedByHand_M,   ; Acroloc motor-driven absolute search just proved the position
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
