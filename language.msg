@@ -38532,7 +38532,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P700_LABEL = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P700_LABEL = "ATC: tool number of the last M6 (mfunc6 G10)"
  spa: ""
  frc: ""
  roc: "未能使用"
@@ -38545,7 +38545,7 @@
  ell: "Δεν χρησιμοποιείται"
 
 [cncxmprm.cpp ]
- eng: @P700_LABEL_L = "Reserved for Enduser/Integrator custom PLC and Macro use"
+ eng: @P700_LABEL_L = "Acroloc enhanced ATC: mfunc6.mac writes the requested tool number here (G10 P700) so the PLC can show it on the retro VCP TOOL readout once the change completes. Set by the macro; no need to edit."
  spa: ""
  frc: ""
  roc: "未能使用"

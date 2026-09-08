@@ -1119,6 +1119,7 @@ TargetToolBin_W                 IS W72 ; Acroloc
 TargetToolBinDisp_W             IS W8  ; Acroloc last chosen carousel bin, held for the retro VCP live BIN readout (plc_word 8)
 ReportedToolBin_W               IS W78 ; Acroloc settled carousel bin reported to CNC12 via SV_PLC_CAROUSEL_POSITION (enhanced ATC handshake); 0 = unknown
 MaxToolBins_W                   IS W79 ; Acroloc P161 (ATC Maximum Tool Bins) cached every scan; upper bound of the M6 bin guard
+ToolInSpindleDisp_W             IS W80 ; Acroloc verified tool under the spindle for the retro VCP TOOL readout (plc_word 80): P700 (written by mfunc6 via G10) latched at the ATCStage match, SV_ATC_TOOL_IN_SPINDLE after ATC Reset, 0 when unverified
 InstBinID_W                     IS W75 ; Acroloc instantaneous position-switch sum; per-group peak latched into CurrentToolBin_W
 SpinOverride_W                  IS W76 ; Acroloc spindle override % (mirror of SV_PLC_SPINDLE_KNOB) for the VCP readout
 SpinRPM_W                       IS W77 ; Acroloc TRUE spindle RPM for the VCP readout (SpinSpeedCommand_FW / 2; see rung below)
@@ -2974,7 +2975,10 @@ IF True_M THEN SV_PLC_CAROUSEL_POSITION = ReportedToolBin_W
 ; Acroloc -- enhanced ATC reset: CNC12's F6 ATC Reset (P164=1) sends the operator-
 ; entered carousel position in SV_ATC_CAROUSEL_POSITION and then runs mfunc18.mac,
 ; which pulses M18_SV. Re-seed the known bin from it.
-IF M18_SV && !ATCStage THEN CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION, RST CarouselMovedByHand_M
+IF M18_SV && !ATCStage THEN
+  CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION,
+  RST CarouselMovedByHand_M,
+  ToolInSpindleDisp_W = SV_ATC_TOOL_IN_SPINDLE   ; Acroloc the tool the operator declared in the reset
 
 ; Acroloc manual tool changes
 ; Manual unlock lets the operator hand-spin the carousel to ANY bin, forward or
@@ -3061,7 +3065,8 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
 IF (ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I) && !ATCMotor_O THEN
   SET CarouselMovedByHand_M,
   CurrentToolBin_W = 0,
-  TargetToolBinDisp_W = 0
+  TargetToolBinDisp_W = 0,
+  ToolInSpindleDisp_W = 0   ; Acroloc nothing verified in the spindle -> TOOL readout 0
 IF CarouselMovedByHand_M THEN RST SpindleEnableOut_O
 IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
    (SpinStart_M || M3_SV || M4_SV) && !ErrorFlag_M THEN
@@ -3144,6 +3149,7 @@ IF !InBinDecode_M && CurrentToolBin_W == TargetToolBin_W THEN
   TargetToolBin_W = 0,
   SET ToolSelected_M,
   RST CarouselMovedByHand_M,   ; Acroloc motor-driven absolute search just proved the position
+  ToolInSpindleDisp_W = SV_MACHINE_PARAMETER_700,   ; Acroloc requested tool number, handed over by mfunc6's G10 P700 (VCP TOOL readout)
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,

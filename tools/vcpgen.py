@@ -872,14 +872,18 @@ SPIN_ELEMENTS = (
     _seg_word(77, 18, 48),                 # SpinRPM_W       -> "XXXX"
     _seg_label('RPM', 12, 18))
 
-# carousel tool-bin readout: TargetToolBinDisp_W (W8) is latched to the mapped
-# bin on every M6 and held. Non-modal, always visible -- this replaces the
-# modal M225 popup so the operator can see which bin the tool->bin map picked.
-# Reads "TOOL BIN #": label on the left, number on the right (both right-
-# aligned, ordered by marginright, like the spindle readout).
+# tool / bin readout, packed like the spindle readout: [ TOOL XX  BIN XX ].
+# ToolInSpindleDisp_W (W80) = the verified tool under the spindle: latched from
+# P700 (mfunc6's G10) when a change completes, from the ATC Reset declaration,
+# and forced to 0 whenever nothing is verified (hand-moved carousel, boot).
+# TargetToolBinDisp_W (W8) = the bin the last M6 asked for, 0 after a hand move.
+# Non-modal, always visible. Every element is right-aligned; margins are
+# right-edge offsets ordered like SPIN_ELEMENTS (first guess, tune on-machine).
 BIN_ELEMENTS = (
-    _seg_label('TOOL BIN', 12, 55),        # "TOOL BIN" label on the left
-    _seg_word(8, 22, 18))                  # TargetToolBinDisp_W -> bin number
+    _seg_label('TOOL', 12, 158),           # "TOOL" label
+    _seg_word(80, 18, 118),                # ToolInSpindleDisp_W -> "XX"
+    _seg_label('BIN', 12, 56),             # "BIN" label
+    _seg_word(8, 18, 18))                  # TargetToolBinDisp_W -> "XX"
 
 
 # machine-coordinate readout: X/Y/Z stacked in a 3x2-cell bezel. plc_word
@@ -988,8 +992,8 @@ def render_skin():
              '\t</image>\n')
     for el in SPIN_ELEMENTS:
         p.append(_border(4, 3, 2, 1, outline='Transparent', extra=el))
-    # carousel BIN readout on row 2 cols 1-3 (mirrors the spindle readout at
-    # cols 4-6); TargetToolBinDisp_W (W8) = the bin the last M6 mapped to
+    # TOOL / BIN readout on row 2 cols 1-3 (mirrors the spindle readout at
+    # cols 4-6); ToolInSpindleDisp_W (W80) + TargetToolBinDisp_W (W8)
     p.append('\t<image>\n'
              '\t\t<column_span>3</column_span>\n'
              '\t\t<column_start>1</column_start>\n'
