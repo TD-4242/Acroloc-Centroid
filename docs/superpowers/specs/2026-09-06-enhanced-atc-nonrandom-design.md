@@ -320,6 +320,10 @@ previous `.plc`.
    the carousel parked at bin 7, entering position 7, tool 7, putback 7 was
    accepted; the Tool Library then showed tool 7 at bin 0 and the changer ran.
    The M6 bootstrap in the test procedure stays only as a fallback.
+   Also verified the same day: tool 15 assigned to bin 2 in the Tool Library,
+   `M6T15` indexed the carousel to bin 2 and the library showed tool 15 at bin 0;
+   after the next change tool 15's Bin returned to 2, so the putback recorded from
+   the PLC's position report round-trips correctly.
 3. Whether a reported 0 upsets CNC12 (the umbrella never reports 0). If it does,
    report the last known good bin and leave 0 to the VCP readout only.
 4. Whether the ATC error flag is actually left set when `OtherFault_M` cancels
