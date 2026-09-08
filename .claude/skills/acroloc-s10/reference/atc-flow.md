@@ -93,7 +93,7 @@ the match rung leaves `CurrentToolBin_W` at the matched bin, and every abort run
 and the manual unlock zero it, so 0 (unknown) is reported honestly.
 `InitialStage` seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION`, the
 position CNC12 persisted in `cncm.job`. `M18` (`mfunc18.mac`) is run by the Tool
-Library's F6 ATC Reset (`P164 = 1`) after the operator enters the true position;
+Library's F2 ATC Reset (`P164 = 1`) after the operator enters the true position;
 the rung re-seeds from the value CNC12 sent.
 
 **Hand-moved carousel interlock — nothing in the spindle until proven:**
@@ -178,7 +178,7 @@ INP27) and `ATCStage` is not running. Because this is a **Z-motion changer**
 swap: the known bin is now stale, so both `CurrentToolBin_W` and the VCP readout
 `TargetToolBinDisp_W` are forced to **0 = unknown**. CNC12 sees the 0 through the position
 report and the hand-moved interlock (below) refuses the spindle; the operator
-declares the new state with the Tool Library's F6 ATC Reset (position, tool in
+declares the new state with the Tool Library's F2 ATC Reset (position, tool in
 spindle, its bin) or runs an `M6` to a different tool, which re-derives the bin
 by absolute-switch search and clears the latch.
 
@@ -327,7 +327,7 @@ must account for this timing sensitivity.
 ## Tool-to-bin map — how M6T## reaches a bin
 
 This machine runs CNC12's **non-random enhanced ATC**: `P160 = 1`, `P161 = 12`
-(bins), `P6 = 1` (ATC installed), `P164 = 1` (F6 ATC Reset). The map is CNC12's:
+(bins), `P6 = 1` (ATC installed), `P164 = 1` (F2 ATC Reset). The map is CNC12's:
 
 - **Tool Library Bin column** (F1 Setup > F2 Tool > F2 Tool Lib): any of the 200
   tools can be given any bin 1-12; several tools may share a bin; dashes (F1
@@ -342,7 +342,7 @@ This machine runs CNC12's **non-random enhanced ATC**: `P160 = 1`, `P161 = 12`
   when `ATCStage` clears. The M6 start sets an ATC error flag in the job file and
   a normal end clears it; an interrupted or faulted change leaves it set, and the
   next job or MDI start prompts the operator to clear it with Y.
-- **After a manual unlock / hand-spin** the operator uses **F6 ATC Reset** to
+- **After a manual unlock / hand-spin** the operator uses **F2 ATC Reset** to
   declare the position, the tool under the spindle and its bin; that runs
   `mfunc18.mac`.
 

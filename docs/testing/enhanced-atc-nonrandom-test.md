@@ -1,7 +1,7 @@
 # Enhanced ATC (non-random, P160 = 1) - On-Machine Test Procedure
 
 Covers the Tool Library bin map, the PLC position report, the bin range guard,
-the VCP `TOOL BIN` readout, and F6 ATC Reset. Phases are gated: stop at the first
+the VCP `TOOL BIN` readout, and F2 ATC Reset. Phases are gated: stop at the first
 failing step and record what happened. Rollback is at the end.
 
 Spec: `docs/superpowers/specs/2026-09-06-enhanced-atc-nonrandom-design.md`.
@@ -40,7 +40,7 @@ deploying is a branch checkout, not a file copy.
 - [ ] Declare the in-spindle tool so CNC12 records its putback. On this
       Z-motion changer "tool 7 in the spindle" and "carousel parked at bin 7"
       are the same physical state, so putback = the parked bin. Try
-      **F6 ATC Reset** first: carousel position = the parked bin (type it if the
+      **F2 ATC Reset** first: carousel position = the parked bin (type it if the
       default reads 0), tool in spindle = the tool in that bin, putback = that
       bin, confirm Y. Expect the Tool Library to show that tool at bin 0 and
       ALT+K to read the parked bin. (Open question 2 in the spec.)
@@ -81,7 +81,7 @@ deploying is a branch checkout, not a file copy.
         number in 1..12 for an unassigned tool and the guard needs a follow-up).
 - [ ] Restore: tool 31 -> dashes, tool 2 -> Bin 2, F10 Save.
 
-## 4. Phase C - hand-moved carousel interlock and F6 ATC Reset
+## 4. Phase C - hand-moved carousel interlock and F2 ATC Reset
 
 - [ ] **Boot latch:** after the reboot in section 1 (or any power cycle), MDI
       `M3 S500` before any tool change or ATC Reset -> the spindle must NOT
@@ -95,7 +95,7 @@ deploying is a branch checkout, not a file copy.
 - [ ] MDI `M3 S500` -> refused with 9068 and cancelled. MDI `M6T<the tool CNC12
       still shows as loaded>` -> CNC12 skips it; `M3 S500` is still refused.
       This is the hole the interlock closes: record that both were refused.
-- [ ] Tool Library > **F6 ATC Reset**: carousel position = n (the default offered
+- [ ] Tool Library > **F2 ATC Reset**: carousel position = n (the default offered
       will be 0; type n), tool in spindle = the tool in bin n, putback = n. Confirm
       with Y. Expect the message `ATC INITIALIZED` or similar; if CNC12 refuses,
       record the text (open question 2 in the spec) and instead edit the Bin
@@ -128,5 +128,5 @@ deploying is a branch checkout, not a file copy.
 ## Report back
 
 Record, for the spec's open questions: (1) what the unassigned-tool M6 did,
-(2) whether F6 ATC Reset worked, (3) any CNC12 complaint about a reported bin
+(2) whether F2 ATC Reset worked, (3) any CNC12 complaint about a reported bin
 of 0, (4) whether the incomplete-change prompt appeared after the 9067 fault.

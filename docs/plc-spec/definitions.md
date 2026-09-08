@@ -342,7 +342,7 @@ significance beyond "one-shot edge of the same-named key/event".
 | `M10_SV` | `SV_M94_M95_4` | 1038 | | Clamp M-function trigger. [main-stage.md](main-stage.md) |
 | `M7_SV` | `SV_M94_M95_5` | 1039 | | Mist M-function trigger. [main-stage.md](main-stage.md) |
 | `HomeSync_SV` | `SV_M94_M95_6` | 1064 | Acroloc | Pulsed by `cncm.hom` (`M94 /6` .. `M95 /6`) with every axis at machine zero; latches home encoder counts for the VCP machine-coordinate readout. [main-stage.md](main-stage.md) |
-| `M18_SV` | `SV_M94_M95_18` | — | Acroloc | ATC Reset pulse from `mfunc18.mac` (CNC12 F6 ATC Reset); re-seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION`. [atc.md](atc.md) |
+| `M18_SV` | `SV_M94_M95_18` | — | Acroloc | ATC Reset pulse from `mfunc18.mac` (CNC12 F2 ATC Reset); re-seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION`. [atc.md](atc.md) |
 
 `SV_M94_M95_6` and `SV_M94_M95_7` (src:1040-1041) are commented placeholders with no
 identifier bound — no name to cite.

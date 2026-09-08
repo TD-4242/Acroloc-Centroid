@@ -74,7 +74,7 @@ parameter-file restore from an old backup reverts them:
 | P6 | 1 | ATC installed; on-screen tool updates after M6 |
 | P160 | 1 | non-random enhanced ATC: M107 sends the bin, Tool Library Bin column editable |
 | P161 | 12 | number of carousel bins; the PLC's M6 bin guard limit. **Reboot after changing** |
-| P164 | 1 | F6 ATC Reset key in the Tool Library |
+| P164 | 1 | F2 ATC Reset key in the Tool Library |
 
 The tool->bin map itself lives in the **Tool Library Bin column** (F1 Setup > F2 Tool >
 F2 Tool Lib), saved by CNC12 in its tool library file, and is not tracked in this repo.

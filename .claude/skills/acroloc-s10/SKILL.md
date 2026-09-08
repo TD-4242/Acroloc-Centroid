@@ -87,7 +87,7 @@ All entries below are `; Acroloc`-tagged definitions in `Centroid-Acroloc-ALLIN1
 | Symbol | Resource | Role |
 |--------|----------|------|
 | `M6_SV` | SV_M94_M95_8 | Tool-change request — asserted by `M94 /8` in `mfunc6.mac`, cleared on ATC completion |
-| `M18_SV` | SV_M94_M95_18 | ATC Reset pulse from `mfunc18.mac` (CNC12 Tool Library F6 ATC Reset); re-seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION` |
+| `M18_SV` | SV_M94_M95_18 | ATC Reset pulse from `mfunc18.mac` (CNC12 Tool Library F2 ATC Reset); re-seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION` |
 
 ### Words
 

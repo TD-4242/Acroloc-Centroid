@@ -1065,7 +1065,7 @@ M8_SV                           IS SV_M94_M95_3 ; (Flood mode: coolant pump + fl
 M10_SV                          IS SV_M94_M95_4 ; Clamp
 M7_SV                           IS SV_M94_M95_5 ; (Mist/wash mode: coolant pump only)
 HomeSync_SV                     IS SV_M94_M95_6 ; Acroloc pulsed by cncm.hom (M94/6 .. M95/6) at machine zero to latch home encoder counts
-M18_SV                          IS SV_M94_M95_18 ; Acroloc ATC Reset (mfunc18.mac, run by CNC12's F6 ATC Reset): re-seed the carousel bin from SV_ATC_CAROUSEL_POSITION
+M18_SV                          IS SV_M94_M95_18 ; Acroloc ATC Reset (mfunc18.mac, run by CNC12's F2 ATC Reset): re-seed the carousel bin from SV_ATC_CAROUSEL_POSITION
 ;                                IS SV_M94_M95_7 ;
 
 ;------------------------------------------------------------------------------
@@ -2980,7 +2980,7 @@ IF True_M THEN SV_PLC_CAROUSEL_POSITION = ReportedToolBin_W
 ; kickoff / hand move / ATC Reset, so this tracks P700 only then.
 IF ToolSelected_M && !M6_SV && !CarouselMovedByHand_M THEN ToolInSpindleDisp_W = SV_MACHINE_PARAMETER_700
 
-; Acroloc -- enhanced ATC reset: CNC12's F6 ATC Reset (P164=1) sends the operator-
+; Acroloc -- enhanced ATC reset: CNC12's F2 ATC Reset (P164=1) sends the operator-
 ; entered carousel position in SV_ATC_CAROUSEL_POSITION and then runs mfunc18.mac,
 ; which pulses M18_SV. Re-seed the known bin from it.
 IF M18_SV && !ATCStage THEN

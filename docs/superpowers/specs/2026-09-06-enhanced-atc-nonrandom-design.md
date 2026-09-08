@@ -62,7 +62,7 @@ the ATC3 Umbrella Operating Instructions
 - **P160 = 1** = non-random (carousel) enhanced ATC. **P161** = number of bins,
   "sent to the PLC subsystem on power up" (reboot after changing it). **P6 = 1**
   = ATC installed; with P6 and P160 both non-zero the on-screen tool (#4203)
-  updates when M6 finishes. **P164 = 1** adds F6 ATC Reset to the tool library
+  updates when M6 finishes. **P164 = 1** adds F2 ATC Reset to the tool library
   menu.
 - **M107 sends the bin** of the requested tool into `SV_TOOL_NUMBER`. "In the case
   of enhanced ATC operation this is actually a request for a carousel bin location."
@@ -100,7 +100,7 @@ put-back move logic is needed, unlike the umbrella example's two-move dance.
 remembers its origin in the putback field. On this machine the in-spindle tool is
 the one in the bin parked under the spindle, so its putback is always the parked
 bin, which is what the PLC reports. The Bin column will not accept 0 by hand:
-the in-spindle state is set only by a completed M6 or by F6 ATC Reset. That makes
+the in-spindle state is set only by a completed M6 or by F2 ATC Reset. That makes
 the first-time bootstrap a required step: assign every tool its own bin (the
 parked tool included), then declare the parked tool as in-spindle via ATC Reset
 (position, tool, putback all = the parked bin) or, failing that, by running one
@@ -133,7 +133,7 @@ CHANGE` (via `ErrorFlag_M`, so no E-stop is needed). Only an `ATCStage` match
 | P6 | 1 | ATC installed; on-screen tool updates after M6 (ATC3 doc, operator manual FAQ 16) |
 | P160 | 1 | non-random enhanced ATC |
 | P161 | 12 | bins; also the PLC's range guard limit; reboot after setting |
-| P164 | 1 | F6 ATC Reset in the tool library |
+| P164 | 1 | F2 ATC Reset in the tool library |
 | P162 | 0 (unchanged) | no Intercon M17 |
 | P701-P712 | unused | labels revert to stock (see 6) |
 
@@ -309,7 +309,7 @@ Margins in `BIN_ELEMENTS` (`tools/vcpgen.py`) are a first guess; tune on-machine
   may share a bin when the physical tool is swapped by hand between jobs.
 - **Tool change:** `M6T##` as before. CNC12 skips it if that tool is already in
   the spindle.
-- **After a hand-spin at Z clear (manual unlock):** Tool Library > F6 ATC Reset.
+- **After a hand-spin at Z clear (manual unlock):** Tool Library > F2 ATC Reset.
   Enter the carousel position now under the spindle, the tool number that is in
   that bin, and that same bin as its putback. This replaces today's "re-set the
   current tool in CNC12" note.
@@ -350,7 +350,7 @@ some other bin. A tool with dashes: record what M107 sends and that the PLC
 faults "ATC BIN OUT OF RANGE" (or that CNC12 refuses the M6 itself).
 
 **Phase C - reset.** Manual unlock, hand-spin two bins, relock: `TOOL BIN`
-reads 0, ALT+K reads 0. F6 ATC Reset with the true position: ALT+K matches, the
+reads 0, ALT+K reads 0. F2 ATC Reset with the true position: ALT+K matches, the
 Bin column matches the carousel, and the next `M6T<n>` lands correctly.
 
 The "ATC BIN OUT OF RANGE" fault in Phase B doubles as the check that a PLC
@@ -370,7 +370,7 @@ previous `.plc`.
 1. What M107 sends for a tool whose Bin is dashes: -1, 0, the tool number, or a
    CNC12-side error. The guard covers -1, 0 and >12; a tool number <= 12 would
    slip through as a bin. Phase B decides whether extra handling is needed.
-2. **Answered on-machine 2026-09-08: F6 ATC Reset works with this PLC.** With
+2. **Answered on-machine 2026-09-08: F2 ATC Reset works with this PLC.** With
    the carousel parked at bin 7, entering position 7, tool 7, putback 7 was
    accepted; the Tool Library then showed tool 7 at bin 0 and the changer ran.
    The M6 bootstrap in the test procedure stays only as a fallback.
