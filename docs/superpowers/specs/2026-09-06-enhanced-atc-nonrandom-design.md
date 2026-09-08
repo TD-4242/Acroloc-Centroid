@@ -1,7 +1,7 @@
 # Enhanced ATC, non-random mode (P160 = 1): tool->bin map in the Tool Library - Design
 
 Date: 2026-09-06
-Status: approved design; implementation pending; on-machine verification pending
+Status: implemented on branch; on-machine verification in progress (Phase A passed the bootstrap and first changes, 2026-09-08)
 Branch: `feature/enhanced-atc-nonrandom` (worktree `.worktrees/enhanced-atc-nonrandom`, from `main`)
 Supersedes: `2026-07-22-tool-bin-mapping-design.md` (the P701-P712 PLC map) once verified on-machine
 
@@ -316,9 +316,10 @@ previous `.plc`.
 1. What M107 sends for a tool whose Bin is dashes: -1, 0, the tool number, or a
    CNC12-side error. The guard covers -1, 0 and >12; a tool number <= 12 would
    slip through as a bin. Phase B decides whether extra handling is needed.
-2. Whether F6 ATC Reset works with this PLC (the manual says ATC3 programs only).
-   Fallback: hand-edit the Bin column, which the manual allows, except for the
-   in-spindle tool.
+2. **Answered on-machine 2026-09-08: F6 ATC Reset works with this PLC.** With
+   the carousel parked at bin 7, entering position 7, tool 7, putback 7 was
+   accepted; the Tool Library then showed tool 7 at bin 0 and the changer ran.
+   The M6 bootstrap in the test procedure stays only as a fallback.
 3. Whether a reported 0 upsets CNC12 (the umbrella never reports 0). If it does,
    report the last known good bin and leave 0 to the VCP readout only.
 4. Whether the ATC error flag is actually left set when `OtherFault_M` cancels
