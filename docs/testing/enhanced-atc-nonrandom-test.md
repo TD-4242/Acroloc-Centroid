@@ -16,10 +16,14 @@ Spec: `docs/superpowers/specs/2026-09-06-enhanced-atc-nonrandom-design.md`.
 
 ## 1. Deploy (control PC)
 
-- [ ] Copy `Centroid-Acroloc-ALLIN1DC.src`; compile/reload the `.plc` in CNC12
-      (expect: compiles, no errors).
-- [ ] Copy `mfunc6.mac` and `mfunc18.mac` into the CNC12 macro directory.
-- [ ] Copy `plcmsg.txt` and `language.msg` over the control-PC copies.
+The CNC12 `cncm` directory on the control PC is a git checkout of this repo, so
+deploying is a branch checkout, not a file copy.
+
+- [ ] On the control PC, in the CNC12 `cncm` directory: `git fetch`, then
+      `git checkout feature/enhanced-atc-nonrandom` (`git pull` if it was already
+      checked out). That brings the `.src`, `mfunc6.mac`, `mfunc18.mac`,
+      `plcmsg.txt` and `language.msg` in one step. Note the commit.
+- [ ] Compile/reload the `.plc` in CNC12 (expect: compiles, no errors).
 - [ ] Set **P6 = 1, P160 = 1, P161 = 12, P164 = 1**. CNC12 warns that enhanced ATC
       needs a matching PLC program: accept.
 - [ ] **Reboot CNC12** (P161 is sent to the PLC at power-up; macros and messages
@@ -104,8 +108,8 @@ Spec: `docs/superpowers/specs/2026-09-06-enhanced-atc-nonrandom-design.md`.
       `.plc` stays loaded: `SV_TOOL_NUMBER` is then the tool number, which equals
       the bin for tools 1-12, so `M6T1..T12` keep working. Tools above 12 are
       unavailable until the branch is fixed or reverted.
-- [ ] Full rollback: reload the previous `.plc`, `mfunc6.mac`, `plcmsg.txt`,
-      `language.msg` from `main`, set P701-P712, P160 = 0.
+- [ ] Full rollback: on the control PC `git checkout main`, reload the `.plc`,
+      set P701-P712, P160 = 0.
 
 ## Report back
 
