@@ -2943,7 +2943,7 @@ IF True_M THEN RST OnAtPowerUp_M
 ; first scan): arm the carousel search watchdog, AND clear CurrentToolBin_W so a stale
 ; value from the previous change cannot cause an immediate match -- the carousel always
 ; re-indexes to the requested bin.
-IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CurrentToolBin_W = 0
+IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CurrentToolBin_W = 0, RST ToolSelected_M
 ; Acroloc -- enhanced ATC (P160=1): CNC12 looks the requested tool up in its Tool
 ; Library and M107 sends that tool's BIN in SV_TOOL_NUMBER. Guard it: anything
 ; outside 1..P161 (an unassigned tool, a bad library, P161 unset) faults here and
@@ -2972,12 +2972,21 @@ IF M6_SV && !ATCStage THEN
 IF !ATCStage THEN ReportedToolBin_W = CurrentToolBin_W
 IF True_M THEN SV_PLC_CAROUSEL_POSITION = ReportedToolBin_W
 
+; Acroloc -- VCP TOOL readout. mfunc6 writes the requested tool number to P700
+; with G10 only AFTER M95 /8 (change complete): a G10 issued mid-M6 made CNC12
+; commit the tool library early and record the new tool's putback from the
+; carousel position BEFORE the move (on-machine 2026-09-08: T15 went to the
+; previous tool's bin). ToolSelected_M = a change completed since the last
+; kickoff / hand move / ATC Reset, so this tracks P700 only then.
+IF ToolSelected_M && !M6_SV && !CarouselMovedByHand_M THEN ToolInSpindleDisp_W = SV_MACHINE_PARAMETER_700
+
 ; Acroloc -- enhanced ATC reset: CNC12's F6 ATC Reset (P164=1) sends the operator-
 ; entered carousel position in SV_ATC_CAROUSEL_POSITION and then runs mfunc18.mac,
 ; which pulses M18_SV. Re-seed the known bin from it.
 IF M18_SV && !ATCStage THEN
   CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION,
   RST CarouselMovedByHand_M,
+  RST ToolSelected_M,
   ToolInSpindleDisp_W = SV_ATC_TOOL_IN_SPINDLE   ; Acroloc the tool the operator declared in the reset
 
 ; Acroloc manual tool changes
@@ -3064,6 +3073,7 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
 ; the job and clears itself; the operator then runs ATC Reset or an M6.
 IF (ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I) && !ATCMotor_O THEN
   SET CarouselMovedByHand_M,
+  RST ToolSelected_M,
   CurrentToolBin_W = 0,
   TargetToolBinDisp_W = 0,
   ToolInSpindleDisp_W = 0   ; Acroloc nothing verified in the spindle -> TOOL readout 0
@@ -3149,7 +3159,6 @@ IF !InBinDecode_M && CurrentToolBin_W == TargetToolBin_W THEN
   TargetToolBin_W = 0,
   SET ToolSelected_M,
   RST CarouselMovedByHand_M,   ; Acroloc motor-driven absolute search just proved the position
-  ToolInSpindleDisp_W = SV_MACHINE_PARAMETER_700,   ; Acroloc requested tool number, handed over by mfunc6's G10 P700 (VCP TOOL readout)
   RST ATCMotor_O,
   RST ATCUnlocked_O,
   RST M6_SV,
