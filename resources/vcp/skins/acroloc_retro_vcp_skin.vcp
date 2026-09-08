@@ -20,6 +20,13 @@
 		</text>
 	</border>
 	<image>
+		<column_span>2</column_span>
+		<column_start>4</column_start>
+		<row_span>2</row_span>
+		<row_start>13</row_start>
+		<path>resources\vcp\images\feedrate_dial.svg</path>
+	</image>
+	<image>
 		<column_span>3</column_span>
 		<column_start>4</column_start>
 		<row_span>1</row_span>
@@ -367,10 +374,10 @@
 	<button row="11" column="2">retro_cycle_cancel</button>
 	<button row="11" column="3">retro_feed_hold</button>
 	<button row="12" column="1" column_span="3" row_span="3">retro_reset</button>
-	<button row="13" column="4">retro_feedrate_negative</button>
-	<button row="13" column="5">retro_feedrate_100</button>
+	<button row="13" column="4">retro_feedrate_50</button>
+	<button row="13" column="5">retro_feedrate_75</button>
 	<button row="13" column="6">retro_feedrate_positive</button>
 	<button row="14" column="4">retro_feedrate_25</button>
-	<button row="14" column="5">retro_feedrate_50</button>
-	<button row="14" column="6">retro_feedrate_75</button>
+	<button row="14" column="5">retro_feedrate_100</button>
+	<button row="14" column="6">retro_feedrate_negative</button>
 </vcp_skin>
