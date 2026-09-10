@@ -136,7 +136,12 @@ a program/MDI spindle start with message 68 (`ATC_HAND_MOVED_MSG_C`, 17410) unti
 Two async status messages ride the same latch (tagged `; Acroloc -- tell the operator`,
 unpinned): `ATC_NEEDS_RESET_MSG_C` (175) is posted into `InfoMsg_W` once when
 `CarouselMovedByHand_M` sets, and `ATC_RESET_DONE_MSG_C` (176) once when it clears;
-`HandMoveMsgShown_M` (MEM455) is the one-shot latch between them. Recovery is the
+`HandMoveMsgShown_M` (MEM455) is the one-shot latch between them. Both post on
+**`FaultMsg_W`**, not `InfoMsg_W`: the carousel lock echo owns `FaultMsg_W` every scan, so the
+info and error channels never display (see
+[faults-and-messages.md](faults-and-messages.md)); these rungs sit after the echo and hold it
+off for 3 s via `HandMoveMsgHold_M`/`HandMoveMsgHold_T`. The **persistent** indicator is the
+VCP ATC RESET button, which swaps graphics on MEM454 and lights red while a reset is owed. Recovery is the
 **ATC RESET** button or wireless MPG macro button 4, both running `T200 M6` against a
 dummy tool 200 that CNC12 never believes is loaded, so the M6 cannot be skipped.
 

@@ -290,6 +290,16 @@ again. Both are async (type 2) so neither halts a job, and the alternating
 numbers satisfy CNC12's refusal to re-send the same number twice in a row.
 `HandMoveMsgShown_M` (MEM455) latches which of the two is owed.
 
+They post on **`FaultMsg_W`**, not `InfoMsg_W`. Found on-machine 2026-09-09: the
+carousel lock echo (`IF ATCManualUnlock_I THEN FaultMsg_W = ...` /
+`IF !ATCManualUnlock_I THEN FaultMsg_W = ...`) has one rung true on every scan,
+so `FaultMsg_W` is never 0 and `MessageStage` never routes to the info or error
+channels at all. These rungs therefore sit after the echo, and hold it off for
+3 s (`HandMoveMsgHold_M` MEM456, `HandMoveMsgHold_T` T27) so the message can be
+read. The **persistent** cue is the ATC RESET button itself, which swaps
+graphics on MEM454 (`<plc_memory>`) and lights red while a reset is owed; the
+message is only the transient announcement.
+
 ### 8. Macros
 
 - `mfunc6.mac`: two additions, both order-critical. **`G4 P2` between

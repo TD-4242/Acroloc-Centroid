@@ -235,6 +235,15 @@ suppresses error/info display entirely until it clears.
   timer, and `RST ShowErrorStage` — unlike `ShowFaultStage`, this is a timed auto-clear, not
   gated on any operator action.
 
+> ⚠️ **`InfoMsg_W` and `ErrorMsg_W` never display on this machine.** Routing is
+> `IF FaultMsg_W == 0 && ErrorMsg_W == 0 && InfoMsg_W != 0 THEN SET ShowInfoStage`, but the
+> carousel lock echo in `MainStage` (`IF ATCManualUnlock_I THEN FaultMsg_W = ...` /
+> `IF !ATCManualUnlock_I THEN FaultMsg_W = ...`) has one rung true on **every** scan, so
+> `FaultMsg_W` is never 0. Anything that must be seen has to post on `FaultMsg_W`. The
+> hand-move status pair does exactly that, and gates the echo off for 3 s
+> (`HandMoveMsgHold_M`/`HandMoveMsgHold_T`) so its message can be read. Found on-machine
+> 2026-09-09, when messages 175/176 posted to `InfoMsg_W` never appeared.
+
 ### `ShowInfoStage` (STG93, src:1220, banner src:3059-3061)
 
 - (src:3062-3067): structurally identical to `ShowErrorStage` — same
