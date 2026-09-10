@@ -1,0 +1,5 @@
+<vcp_button>
+	<run>
+		<line>T200 M6</line>
+	</run>
+</vcp_button>

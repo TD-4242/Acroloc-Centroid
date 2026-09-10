@@ -1,0 +1,25 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; File: system/plcmacro4.mac
+; Desc: ATC Reset -- wireless MPG macro button 4
+;
+; The PLC maps MpgMacro4_M -> SV_SYS_MACRO = 4, which makes CNC12 load and run
+; this file from \cncm\system\ while it is at the main menu. Same action as the
+; VCP ATC RESET button.
+;
+; Why a dummy tool: CNC12 skips an M6 for the tool its status window says is
+; loaded, so after a hand-moved carousel a change back to that tool is silently
+; ignored -- no error, no motion -- and the PLC's hand-move interlock keeps
+; refusing the spindle. Tool 200 is never the loaded tool, so this M6 always
+; runs: the carousel search proves the position, the interlock clears, and
+; CNC12 puts the previously loaded tool back in its bin. Follow with a real T##.
+;
+; Setup: tool 200 must be assigned a bin in the Tool Library, with its H and D
+; offsets set to 0.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;Skip if graphing or searching
+IF #4201 || #4202 THEN GOTO 1000
+
+T200 M6         ; forces a real change: clears the skip and re-proves the bin
+
+N1000           ; end of program

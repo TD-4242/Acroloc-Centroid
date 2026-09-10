@@ -94,3 +94,5 @@
 172 5172 Spindle not parked.  Z Axis not at zero.
 173 5173 Tool Carousel not locked.
 174 5174 Tool Carousel locked.
+175 5175 CAROUSEL MOVED - PRESS ATC RESET
+176 2176 ATC POSITION RE-ESTABLISHED

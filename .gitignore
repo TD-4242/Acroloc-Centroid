@@ -20,6 +20,9 @@
 !/tools/
 /tools/__pycache__/
 !/mfunc*.mac
+!/system/
+/system/*
+!/system/plcmacro*.mac
 !/cncm.hom
 !/mpucomp.exe
 !/plcmsg.txt

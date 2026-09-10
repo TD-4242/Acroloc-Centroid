@@ -211,6 +211,8 @@ ATC_Lock_Released_C             IS 44546; (2+256*174) Tool Carousel locked.
 CAROUSEL_TIMEOUT_MSG_C          IS 16130 ; (2+256*63) CAROUSEL MOVE TIME OUT
 ATC_BIN_RANGE_MSG_C             IS 17154 ; (2+256*67) ATC BIN OUT OF RANGE -- Acroloc: CNC12 sent a bin outside 1..P161 at M6 kickoff
 ATC_HAND_MOVED_MSG_C            IS 17410 ; (2+256*68) CAROUSEL MOVED BY HAND - ATC RESET OR TOOL CHANGE -- Acroloc: spindle refused until the position is re-established
+ATC_NEEDS_RESET_MSG_C           IS 44802 ; (2+256*175) CAROUSEL MOVED - PRESS ATC RESET -- Acroloc: async status, posted once when the position becomes unverified
+ATC_RESET_DONE_MSG_C            IS 45058 ; (2+256*176) ATC POSITION RE-ESTABLISHED -- Acroloc: async status, posted once when a search or ATC Reset proves it again
 ATC_SPIN_TIMEOUT_MS_C           IS 20000 ; Acroloc carousel search timeout (ms)
 
 ;------------------------------------------------------------------------------
@@ -735,6 +737,7 @@ InBinDecode_M                   IS MEM443 ; Acroloc 0=false, 1=true
 ToolSelected_M                  IS MEM452 ; Acroloc 0=false, 1=true (moved off MEM444; it collided with KbAux13Key_M)
 ChangerHoldActive_M             IS MEM448 ; Acroloc feed-hold active while spindle stops in changer zone
 ChangerHoldDone_M               IS MEM449 ; Acroloc once-per-entry latch, cleared when Z clears changer
+HandMoveMsgShown_M              IS MEM455 ; Acroloc the "press ATC RESET" status has been posted for this hand move; drives the one-shot "re-established" message when the position is proven again
 CarouselMovedByHand_M           IS MEM454 ; Acroloc carousel moved without the motor (or just booted): tool under the spindle unverified, spindle refused until an ATCStage match or ATC Reset (M18). MEM453 is reserved for the changer-resume work.
 ;------------------------------------------------------------------------------
 ;                     ---------SYSTEM VARIABLES--------
@@ -3084,6 +3087,19 @@ IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
   FaultMsg_W = ATC_HAND_MOVED_MSG_C,
   SET ShowFaultStage,
   SET ErrorFlag_M
+
+; Acroloc -- tell the operator without waiting for a refused spindle start:
+; post "PRESS ATC RESET" once when the position becomes unverified (a hand
+; move, or power-up) and "POSITION RE-ESTABLISHED" once when a carousel
+; search or an ATC Reset proves it again. Both are async (type 2) so neither
+; halts a job, and the two numbers alternate, which satisfies CNC12's refusal
+; to re-send the same message number twice in a row.
+IF CarouselMovedByHand_M && !HandMoveMsgShown_M THEN
+  InfoMsg_W = ATC_NEEDS_RESET_MSG_C,
+  SET HandMoveMsgShown_M
+IF !CarouselMovedByHand_M && HandMoveMsgShown_M THEN
+  InfoMsg_W = ATC_RESET_DONE_MSG_C,
+  RST HandMoveMsgShown_M
 
 
 ;=============================================================================
