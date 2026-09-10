@@ -127,10 +127,13 @@ bound in two places, both running that one line:
 - **wireless MPG macro button 4**, via `system/plcmacro4.mac`
   (`MpgMacro4_M` -> `SV_SYS_MACRO = 4` was already in the stock PLC).
 
-Because the carousel moves, both only fire from the main CNC12 menu, and both
-park Z with `G53 Z0` first like any tool change. While CNC12 believes tool 200
-is loaded, whatever sits in that bin is physically under the spindle; the next
-real tool change corrects it, which is why the offsets are zero.
+Because the carousel moves, both only fire from the main CNC12 menu. The
+`G53 Z0` park at the head of `mfunc6.mac` costs nothing here: the PLC only
+grants the manual unlock at Z zero (`ATCManualUnlock_I && ATC_Z_Zero_Release_I`),
+so after a hand move Z is already there, and machine zero is the safe direction
+for Z in any case. While CNC12 believes tool 200 is loaded, whatever sits in
+that bin is physically under the spindle; the next real tool change corrects it,
+which is why the offsets are zero.
 The PLC also posts `175 CAROUSEL MOVED - PRESS ATC RESET` the moment the position
 becomes unverified, and `176 ATC POSITION RE-ESTABLISHED` when it is proven again,
 so the operator is not left to discover it through a refused spindle start.
