@@ -130,7 +130,10 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
       keep working (tool number = bin at the identity loadout); tools above 12
       are unavailable.
 - [ ] Full: control PC `git checkout main`, reload the `.plc`, set P701-P712,
-      P160 = 0.
+      P160 = 0. **Only while this branch is unmerged** — `main` still carries the
+      P701-P712 map today. Once this merges, the equivalent is checking out the
+      last commit before the merge (or reverting it); the P701 map is not coming
+      back to `main`.
 
 ## Report back
 

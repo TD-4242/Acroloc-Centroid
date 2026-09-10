@@ -415,7 +415,9 @@ makes CNC12 re-initialise the tool library.
 build loaded. `SV_TOOL_NUMBER` is then the tool number, which equals the bin for
 tools 1-12 at the identity loadout, so the machine keeps working while the
 question is investigated. Full rollback is `git revert` and a reload of the
-previous `.plc`.
+previous `.plc`. Note that the P701-P712 map only exists on `main` until this
+branch merges; after that, "the previous build" means the commit before the
+merge, not `main`.
 
 ## Open questions (settled on-machine, then recorded in the test plan and docs)
 
