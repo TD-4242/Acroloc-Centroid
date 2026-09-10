@@ -115,6 +115,26 @@ RESET OR TOOL CHANGE` (`ErrorFlag_M`: job cancel, no E-stop needed). It clears
 only on an `ATCStage` match or M18. After every boot: one ATC Reset or one M6 to
 a different tool before the spindle will run.
 
+**Recovery: the ATC RESET button.** The recovery is one button. CNC12 decides whether to skip an M6 from the tool
+its status window names, which is read-only to the PLC and to macros, so after a
+hand move a change back to that tool is silently ignored. **Tool 200** is a dummy
+the operator maps to a bin in the Tool Library (H and D offsets 0). CNC12 never
+believes it is loaded, so `T200 M6` always runs: the carousel search proves the
+position, the interlock clears, and CNC12's own end-of-M6 bookkeeping puts the
+previously loaded tool back in its bin. Follow it with a real `T## M6`. It is
+bound in two places, both running that one line:
+- the **ATC RESET** button on the retro VCP (row 11, column 6, under TOOL CHECK);
+- **wireless MPG macro button 4**, via `system/plcmacro4.mac`
+  (`MpgMacro4_M` -> `SV_SYS_MACRO = 4` was already in the stock PLC).
+
+Because the carousel moves, both only fire from the main CNC12 menu, and both
+park Z with `G53 Z0` first like any tool change. While CNC12 believes tool 200
+is loaded, whatever sits in that bin is physically under the spindle; the next
+real tool change corrects it, which is why the offsets are zero.
+The PLC also posts `175 CAROUSEL MOVED - PRESS ATC RESET` the moment the position
+becomes unverified, and `176 ATC POSITION RE-ESTABLISHED` when it is proven again,
+so the operator is not left to discover it through a refused spindle start.
+
 **VCP `TOOL XX  BIN XX` readout.** `BIN` is `TargetToolBinDisp_W` (W8). `TOOL` is
 `ToolInSpindleDisp_W` (W80), the verified tool: `mfunc6.mac` writes the requested
 tool number with `G10 P700 R[#4120]` **after `M95 /8`**, a `MainStage` rung tracks

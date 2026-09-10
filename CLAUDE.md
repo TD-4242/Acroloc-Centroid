@@ -22,7 +22,10 @@ to find every custom addition (definitions and logic alike).
   Do not hand-edit.
 - `mfunc*.mac` — M-code macros (G-code-like) executed by the CNC when an M-function fires.
   - `mfunc3/4` = spindle CW/CCW, `mfunc6` = **tool change (M6)**, `mfunc7/8` = mist/flood
-    coolant, `mfunc10/11` = clamp on/off.
+    coolant, `mfunc10/11` = clamp on/off, `mfunc18` = ATC Reset (M18).
+- `system/plcmacro4.mac` — run by CNC12 when the PLC sets `SV_SYS_MACRO = 4` (wireless MPG
+  macro button 4). Contains `T200 M6`, the ATC-reset dummy tool change. The repo root is the
+  live `cncm` directory, so `.gitignore` un-ignores only `/system/plcmacro*.mac`.
 - `resources/vcp/` — **generated** operator panel (retro VCP). Emitted by `tools/vcpgen.py`;
   do not hand-edit. `resources/colors/` holds the color themes.
 - **Customized CNC12 control-PC files** — `language.msg` (parameter/UI labels: P860-863 gear

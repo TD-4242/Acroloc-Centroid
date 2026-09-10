@@ -231,6 +231,7 @@ writes the same formula with reversed field names, `msgNumber + 256*msgFile`, wh
 | `ChangerHoldActive_M` | MEM448 | 729 | Acroloc | Latched while feed is held and the interlock waits for `ZeroSpeed_I`. [main-stage.md](main-stage.md) |
 | `ChangerHoldDone_M` | MEM449 | 730 | Acroloc | Once-per-entry latch (set on resume *and* on fault); blocks re-arming until Z clears the changer. [main-stage.md](main-stage.md) |
 | `CarouselMovedByHand_M` | MEM454 | — | Acroloc | Carousel moved without the motor, or just booted: tool under the spindle unverified; spindle refused until an `ATCStage` match or M18. [atc.md](atc.md) |
+| `HandMoveMsgShown_M` | MEM455 | — | Acroloc | One-shot latch for the hand-move status pair: set when `CAROUSEL MOVED - PRESS ATC RESET` (175) is posted, cleared when `ATC POSITION RE-ESTABLISHED` (176) is. [atc.md](atc.md) |
 
 Note: `MEM444` is bound to two different names in source — `KbAux13Key_M` (src:704, "ctrl"+"1")
 and `ToolSelected_M` (src:711, Acroloc ATC tool-matched flag). This is a real address
@@ -390,6 +391,8 @@ identifier bound — no name to cite.
 | `CAROUSEL_TIMEOUT_MSG_C` | 16130 (2+256*63) | 211 | Acroloc | "CAROUSEL MOVE TIME OUT" — carousel search-timeout fault (reuses stock message 63). [atc.md](atc.md) |
 | `ATC_BIN_RANGE_MSG_C` | 17154 (2+256*67) | — | Acroloc | "ATC BIN OUT OF RANGE" — M6 kickoff fault when CNC12 sends a bin outside 1..P161 (message 67, added to `plcmsg.txt`). [atc.md](atc.md) |
 | `ATC_HAND_MOVED_MSG_C` | 17410 (2+256*68) | — | Acroloc | "CAROUSEL MOVED BY HAND - ATC RESET OR TOOL CHANGE" — posted when a program/MDI tries to start the spindle while `CarouselMovedByHand_M` is set (message 68). [atc.md](atc.md) |
+| `ATC_NEEDS_RESET_MSG_C` | 44802 (2+256*175) | — | Acroloc | "CAROUSEL MOVED - PRESS ATC RESET" — async status posted once when the carousel position becomes unverified. [atc.md](atc.md) |
+| `ATC_RESET_DONE_MSG_C` | 45058 (2+256*176) | — | Acroloc | "ATC POSITION RE-ESTABLISHED" — async status posted once when a search or ATC Reset proves the position. [atc.md](atc.md) |
 | `ATC_SPIN_TIMEOUT_MS_C` | 20000 | 212 | Acroloc | Carousel search timeout, ms (armed into `ATCSpin_T`). [atc.md](atc.md) |
 
 ## Stages

@@ -63,6 +63,15 @@ Fully custom, 14 lines. Home order **Z+ (clear the head), X-, Y+**, then it puls
 zero -- the VCP machine-coordinate readout measures from that latch. Copy verbatim from the
 repo after an upgrade.
 
+### Tool Library: the dummy reset tool (not a file, but lost with the library)
+
+**Tool 200** must be assigned a bin in the Tool Library, with its H and D offsets
+set to **0**. It is never cut with: the VCP **ATC RESET** button and wireless MPG
+macro button 4 both run `T200 M6`, which is the only reliable way to clear a
+hand-moved carousel (CNC12 skips an M6 for the tool it believes is loaded).
+Re-create it after any tool-library restore, and export the library (F5 Export
+Lib) so it can be restored.
+
 ### Machine parameters for the ATC (not a file, but reset by a re-install)
 
 The tool changer runs CNC12's **non-random enhanced ATC**. These must be set on the
@@ -87,7 +96,7 @@ Export it (F5 Export Lib) after changes so it can be restored.
 - [ ] `cncm.hom`: copy verbatim from the repo.
 - [ ] Restart CNC12.
 - [ ] Parameters screen: P860-P863 show the gear-shift labels, P700 the ATC tool label; P6 = 1, P160 = 1, P161 = 12, P164 = 1.
-- [ ] Tool Library: Bin column editable and matches the carousel (re-import the exported library if not).
+- [ ] Tool Library: Bin column editable and matches the carousel (re-import the exported library if not); tool 200 has a bin and zero H/D offsets.
 - [ ] Trigger/confirm a custom ATC message displays (e.g. a carousel timeout).
 - [ ] Home the machine; confirm the machine-coordinate DRO latch works.
 - [ ] Re-copy `resources/vcp/` if the VCP theme reverted.

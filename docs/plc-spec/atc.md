@@ -133,6 +133,13 @@ skips an M6 for it, so `CarouselMovedByHand_M` (MEM454) holds spindle enable off
 a program/MDI spindle start with message 68 (`ATC_HAND_MOVED_MSG_C`, 17410) until the
 `ATCStage` match rung or the M18 rung clears it. `InitialStage` also sets it at power-up.
 
+Two async status messages ride the same latch (tagged `; Acroloc -- tell the operator`,
+unpinned): `ATC_NEEDS_RESET_MSG_C` (175) is posted into `InfoMsg_W` once when
+`CarouselMovedByHand_M` sets, and `ATC_RESET_DONE_MSG_C` (176) once when it clears;
+`HandMoveMsgShown_M` (MEM455) is the one-shot latch between them. Recovery is the
+**ATC RESET** button or wireless MPG macro button 4, both running `T200 M6` against a
+dummy tool 200 that CNC12 never believes is loaded, so the M6 cannot be skipped.
+
 **VCP `TOOL` readout.** `ToolInSpindleDisp_W` (W80) tracks `SV_MACHINE_PARAMETER_700` in a
 `MainStage` rung gated on `ToolSelected_M && !M6_SV && !CarouselMovedByHand_M` (mfunc6 writes
 the requested tool there with `G10 P700 R[#4120]` after `M95 /8`; `ToolSelected_M` is set by the

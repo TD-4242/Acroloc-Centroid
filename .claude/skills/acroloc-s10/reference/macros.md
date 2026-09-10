@@ -18,6 +18,7 @@ assert/deassert PLC bits (`M94 /bit`, `M95 /bit`), see the general skill's
 > On this machine OUT4 (`CoolantPump_O`) is the coolant pump and OUT3 (`FloodValve_O`) is the flood valve. The macros just select the mode; the PLC derives the outputs — `M8` = flood (pump + valve), `M7` = wash/hose (pump only). See [main-stage.md](../../../docs/plc-spec/main-stage.md).
 | `mfunc10`  | M10      | Sets clamp on (`M94 /4`) |
 | `mfunc11`  | M11      | Clears clamp (`M95 /4`) |
+| `plcmacro4`| MPG macro button 4 | ATC Reset: runs `T200 M6` (the dummy-tool change that clears a hand-moved carousel). Lives in `system/`, run by CNC12 when the PLC sets `SV_SYS_MACRO = 4`; only fires from the main menu |
 | `mfunc18`  | M18      | ATC Reset (enhanced ATC): pulses `M94 /18` / `M95 /18` so the PLC re-seeds the carousel bin from `SV_ATC_CAROUSEL_POSITION`. Run by CNC12's F2 ATC Reset in the Tool Library (P164 = 1); never from MDI |
 
 ## Shared guard — preserve when editing

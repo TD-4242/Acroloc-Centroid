@@ -16,7 +16,9 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
   in-spindle tool is the one parked under the spindle, so putback = parked bin.
 - CNC12 has no "empty spindle": `M6T0` and a reset with tool 0 are refused.
 - CNC12 skips an M6 for the tool the status window says is loaded; the skip is
-  decided by that status tool, not by the library.
+  decided by that status tool, not by the library. Recovery after a hand move is
+  therefore the **ATC RESET** button (or MPG macro 4), which runs `T200 M6`
+  against a dummy tool CNC12 never believes is loaded.
 - `mfunc6.mac` must dwell `G4 P2` after the match and write `G10 P700` only
   after `M95 /8`; both were found the hard way (wrong putback bins).
 - ATC Reset is **F2** in the Tool Library (cursor in the Bin column).
@@ -26,7 +28,7 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
 - [ ] Parameters (F1 Setup > F3 Config > F3 Parms): record **P6, P160, P161,
       P164**. Expected on this machine now: 1, 1, 12, 1.
 - [ ] Control PC, cncm directory: `git pull` on `feature/enhanced-atc-nonrandom`;
-      record the commit (must be 5bd4b89 or later).
+      record the commit (must be 467b640 or later, for the ATC RESET button).
 - [ ] Compile/reload the `.plc` (expect: no errors). Restart CNC12 (macros, the
       skin and the P700 label reload).
 - [ ] After the restart, before anything else: the VCP row-2 bezel reads
@@ -79,8 +81,16 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
 - [ ] MDI `M6T<L>`: CNC12 skips it (status still L). MDI `M3 S500`: **still
       refused**. Record that both were refused (this is the hole the interlock
       closes).
-- [ ] Recovery by reset: cursor in the Bin column, **F2 ATC Reset**: position n,
-      tool in spindle = tool n, putback n, **Y**.
+- [ ] Status message: `175 CAROUSEL MOVED - PRESS ATC RESET` appeared on the
+      message line the moment the carousel was moved (not only after a refused
+      spindle start).
+- [ ] **Recovery by the ATC RESET button** (needs tool 200 mapped to a bin with
+      zero H/D offsets): press it on the VCP. Z parks, the carousel searches to
+      tool 200's bin, the interlock clears, `176 ATC POSITION RE-ESTABLISHED`
+      appears, and `M3 S500` runs. Status shows T200; VCP `TOOL 200  BIN 1`.
+- [ ] Same again from **wireless MPG macro button 4**.
+- [ ] Recovery by reset instead: cursor in the Bin column, **F2 ATC Reset**:
+      position n, tool in spindle = tool n, putback n, **Y**.
 - [ ] Status shows tool n; VCP `TOOL n  BIN n`; ALT+K n. MDI `M3 S500` runs. `M5`.
 - [ ] **Tool Library, tool L's Bin: its own bin, or 0?** Record it. (Open item
       from 2026-09-08: does the reset restore the previous tool or leave a
@@ -95,7 +105,7 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
 ## 4. Phase D - readout
 
 - [ ] After a change: `TOOL <tool>  BIN <bin>`. After a hand move or boot: both 0.
-      After ATC Reset: the declared tool **and** bin (build 5bd4b89+).
+      After ATC Reset: the declared tool **and** bin.
 - [ ] Spacing: nothing overlaps or runs off the bezel. Describe it so the margins
       in `BIN_ELEMENTS` (`tools/vcpgen.py`) can be tuned.
 

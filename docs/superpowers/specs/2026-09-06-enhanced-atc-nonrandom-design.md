@@ -48,8 +48,8 @@ longer used.
 - Intercon integration (P162 / M17 spindle orient). Not used on this machine.
 - A dual-mode PLC that reads P160 and keeps the P701 map as a fallback. Rollback
   is P160 = 0 with the same build (see "Rollback").
-- Random-mode pre-fetch and Intercon remain out; the VCP change below is the
-  only panel change.
+- Any VCP change beyond the `TOOL XX  BIN XX` readout (section 10) and the
+  ATC RESET button (section 7b).
 
 ## Vendor behaviour this design relies on
 
@@ -260,6 +260,33 @@ rather than `OtherFault_M` so recovery is ATC Reset or an M6, not an E-stop
 cycle. Operating cost: after every boot, one ATC Reset or one M6 to a different
 tool before the spindle will run.
 
+### 7b. Hand-move recovery: the ATC RESET button (added 2026-09-09)
+
+The recovery is one button. CNC12 decides whether to skip an M6 from the tool
+its status window names, which is read-only to the PLC and to macros, so after a
+hand move a change back to that tool is silently ignored. **Tool 200** is a dummy
+the operator maps to a bin in the Tool Library (H and D offsets 0). CNC12 never
+believes it is loaded, so `T200 M6` always runs: the carousel search proves the
+position, the interlock clears, and CNC12's own end-of-M6 bookkeeping puts the
+previously loaded tool back in its bin. Follow it with a real `T## M6`. It is
+bound in two places, both running that one line:
+- the **ATC RESET** button on the retro VCP (row 11, column 6, under TOOL CHECK);
+- **wireless MPG macro button 4**, via `system/plcmacro4.mac`
+  (`MpgMacro4_M` -> `SV_SYS_MACRO = 4` was already in the stock PLC).
+
+Because the carousel moves, both only fire from the main CNC12 menu, and both
+park Z with `G53 Z0` first like any tool change. While CNC12 believes tool 200
+is loaded, whatever sits in that bin is physically under the spindle; the next
+real tool change corrects it, which is why the offsets are zero.
+
+**Status messages**, so the operator is told when it happens rather than when a
+spindle start is refused: `175 CAROUSEL MOVED - PRESS ATC RESET` is posted once
+when the position becomes unverified (a hand move, or power-up) and
+`176 ATC POSITION RE-ESTABLISHED` once when a search or an ATC Reset proves it
+again. Both are async (type 2) so neither halts a job, and the alternating
+numbers satisfy CNC12's refusal to re-send the same number twice in a row.
+`HandMoveMsgShown_M` (MEM455) latches which of the two is owed.
+
 ### 8. Macros
 
 - `mfunc6.mac`: two additions, both order-critical. **`G4 P2` between
@@ -274,6 +301,9 @@ tool before the spindle will run.
   `TOOL` readout; it must not run mid-M6 (section 10). The graph/search guard
   and `N1000` pattern stay.
 - `mfunc18.mac`: new, as above.
+- `system/plcmacro4.mac`: new. Wireless MPG macro button 4 -> `T200 M6` (7b).
+  The repo root is the live `cncm` directory, so `.gitignore` un-ignores
+  `/system/plcmacro*.mac` specifically.
 
 ### 9. Control-PC files (tracked in this repo)
 
