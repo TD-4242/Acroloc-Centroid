@@ -106,8 +106,17 @@ the PLC; CNC12 owns the tool->bin map. **CNC12 handshake:** the PLC reports the 
 every scan in `SV_PLC_CAROUSEL_POSITION` (`ReportedToolBin_W`, 0 = unknown) — CNC12 will not
 run a change without it and records it as the new tool's putback bin at the end of M6 — and
 seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION` at boot and on `M18` (`mfunc18.mac`,
-run by the Tool Library's F6 ATC Reset). Random mode (`P160 = 2`) is wrong for this
+run by the Tool Library's **F2** ATC Reset). Random mode (`P160 = 2`) is wrong for this
 fixed-pocket carousel: it reshuffles bins after every change.
+
+**Hand-moved carousel (safety interlock, never remove).** At Z0 the carousel can be turned by
+hand. The PLC detects it (a position switch asserting while `ATCMotor_O` is off), latches
+`CarouselMovedByHand_M` (MEM454, also set at power-up), reports position 0, holds spindle
+enable off, and cancels a program/MDI spindle start with `9068`. Only an `ATCStage` match or
+`M18` clears it. Recovery is `T200 M6` against a dummy tool CNC12 never believes is loaded —
+bound to the VCP **ATC RESET** button and wireless MPG macro button 4
+(`system/plcmacro4.mac`) — because CNC12 *skips* an M6 for the tool its status window names,
+which is read-only to us. The PLC posts `175` when a reset is owed and `176` once proven.
 
 Custom ATC I/O (all marked `; Acroloc`): inputs `INP24`,`INP26`,`INP27`,`INP28..32`;
 outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71` (`CurrentToolBin_W`),
