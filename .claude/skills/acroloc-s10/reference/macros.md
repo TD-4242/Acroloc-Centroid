@@ -18,9 +18,21 @@ assert/deassert PLC bits (`M94 /bit`, `M95 /bit`), see the general skill's
 > On this machine OUT4 (`CoolantPump_O`) is the coolant pump and OUT3 (`FloodValve_O`) is the flood valve. The macros just select the mode; the PLC derives the outputs — `M8` = flood (pump + valve), `M7` = wash/hose (pump only). See [main-stage.md](../../../docs/plc-spec/main-stage.md).
 | `mfunc10`  | M10      | Sets clamp on (`M94 /4`) |
 | `mfunc11`  | M11      | Clears clamp (`M95 /4`) |
-| `mfunc20`  | M20      | **ATC Reset** -- the reset action itself. Changes to whichever of the dummy tools 199/200 `#4203` says is *not* loaded, so it can never be skipped. Called by the VCP ATC RESET button and by `plcmacro4` |
-| `plcmacro4`| MPG macro button 4 | One line: `M20`. Lives in `system/`, run by CNC12 when the PLC sets `SV_SYS_MACRO = 4`; only fires from the main menu |
+| `mfunc20`  | M20      | **ATC Reset** -- the reset action itself. Changes to whichever of the dummy tools 199/200 `#4203` says is *not* loaded, so it can never be skipped. Called by the VCP ATC RESET button and by `MPGmacro4` |
+| `MPGmacro4`| MPG macro button 4 | One line: `M20`. Lives in `system/`, run by CNC12 for wireless MPG Aux Key 4 (the PLC also requests it via `SV_SYS_MACRO = 4`); only fires from the main menu |
 | `mfunc18`  | M18      | ATC Reset (enhanced ATC): pulses `M94 /18` / `M95 /18` so the PLC re-seeds the carousel bin from `SV_ATC_CAROUSEL_POSITION`. Run by CNC12's F2 ATC Reset in the Tool Library (P164 = 1); never from MDI |
+
+## Wireless MPG macros are `system/MPGmacro1..4.mac`
+
+**Not** `plcmacroN.mac` — that name appears in the PLC programming manual for the generic
+`SV_SYS_MACRO` mechanism, but on this control the four wireless-MPG Aux Keys read
+`cncm\system\MPGmacro1.mac` .. `MPGmacro4.mac` (operator manual: "Wireless MPG Macros are
+found in the C:\cncm\system directory"; the `.src` comment at the `SV_SYS_MACRO` block says
+the same). Two rules the manual is explicit about, both learned the hard way on 2026-09-09:
+
+- the code must sit **between `N100` and `N1000`**, and
+- the stock `M225` example message line must be **removed** — an unedited file pops
+  "This is an example macro run from the Macro1 button..." and does nothing else.
 
 ## Shared guard — preserve when editing
 

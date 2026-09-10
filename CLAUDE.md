@@ -24,9 +24,9 @@ to find every custom addition (definitions and logic alike).
   - `mfunc3/4` = spindle CW/CCW, `mfunc6` = **tool change (M6)**, `mfunc7/8` = mist/flood
     coolant, `mfunc10/11` = clamp on/off, `mfunc18` = ATC Reset handshake (M18),
     `mfunc20` = **the ATC reset action** (M20).
-- `system/plcmacro4.mac` — run by CNC12 when the PLC sets `SV_SYS_MACRO = 4` (wireless MPG
+- `system/MPGmacro4.mac` — run by CNC12 when the PLC sets `SV_SYS_MACRO = 4` (wireless MPG
   macro button 4). One line: `M20`. The repo root is the live `cncm` directory, so
-  `.gitignore` un-ignores only `/system/plcmacro*.mac`.
+  `.gitignore` un-ignores only `/system/MPGmacro*.mac`.
 - `resources/vcp/` — **generated** operator panel (retro VCP). Emitted by `tools/vcpgen.py`;
   do not hand-edit. `resources/colors/` holds the color themes.
 - **Customized CNC12 control-PC files** — `language.msg` (parameter/UI labels: P860-863 gear
@@ -115,7 +115,7 @@ hand. The PLC detects it (a position switch asserting while `ATCMotor_O` is off)
 `CarouselMovedByHand_M` (MEM454, also set at power-up), reports position 0, holds spindle
 enable off, and cancels a program/MDI spindle start with `9068`. Only an `ATCStage` match or
 `M18` clears it. Recovery is **`M20`** (`mfunc20.mac`), bound to the VCP **ATC RESET** button
-and wireless MPG macro button 4 (`system/plcmacro4.mac`): it changes to whichever of the dummy
+and wireless MPG macro button 4 (`system/MPGmacro4.mac`): it changes to whichever of the dummy
 tools **199/200** CNC12 does *not* believe is loaded, because CNC12 *skips* an M6 for the tool
 its status window names and that tool is read-only to us. Two dummies, because after one reset
 the loaded tool is the dummy. The button lights red while a reset is owed; the PLC posts `175`

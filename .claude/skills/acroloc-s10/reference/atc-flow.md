@@ -131,7 +131,7 @@ it would be skipped and a second reset would silently do nothing (found
 on-machine 2026-09-09). Alternating makes every reset work. `M20` is bound in
 two places, each a one-liner so the logic has a single home:
 - the **ATC RESET** button on the retro VCP (row 11, column 6, under TOOL CHECK);
-- **wireless MPG macro button 4**, via `system/plcmacro4.mac`
+- **wireless MPG macro button 4**, via `system/MPGmacro4.mac`
   (`MpgMacro4_M` -> `SV_SYS_MACRO = 4` was already in the stock PLC).
 
 Because the carousel moves, both only fire from the main CNC12 menu. The

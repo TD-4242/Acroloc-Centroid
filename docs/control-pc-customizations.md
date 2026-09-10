@@ -15,6 +15,7 @@ content -- see each file's "Restore" note.
 |------|-------------------|---------|-------------------------|---------|
 | `language.msg` | Parameter-screen labels: **P860-P863** (gear shift) and **P700** (ATC tool number handed to the PLC by mfunc6). Everything else is the stock baseline. | `dfab98c` (P860-863 + baseline), this branch (P700) | P860-P863 read "Not Used"; P700 reads "Reserved for Enduser/Integrator...". | **Re-apply both label sets onto the upgraded file** (don't overwrite it wholesale). See "language.msg" below. |
 | `plcmsg.txt` | This machine's **PLC operator messages** (ATC / spindle / turret / carousel). | `e1ab3c5` (add), `4c329ee` (feed-hold interlock msgs), `96ccf68` (ATC timeout), this branch (ATC BIN OUT OF RANGE) | Custom ATC/spindle faults show blank or a stock string. | Re-merge the custom messages into the upgraded `plcmsg.txt` (diff against stock). |
+| `system/MPGmacro4.mac` | Wireless MPG Aux Key 4 = **ATC Reset** (one line: `M20`). CNC12 ships a demo file here that only pops an example `M225` message. | this branch | Pressing MPG macro 4 shows "This is an example macro run from the Macro4 button..." instead of resetting the ATC. | Copy from the repo. Code must stay between `N100` and `N1000`, with no `M225` line. |
 | `cncm.hom` | Full custom homing program (home order + HomeSync latch). | `b90529c` | Homing order wrong / machine-coord DRO latch gone. | Fully custom -- copy `cncm.hom` from the repo verbatim. |
 
 Also machine-specific and tracked (part of a full re-deploy, less likely clobbered by a CNC12
@@ -97,6 +98,7 @@ Export it (F5 Export Lib) after changes so it can be restored.
 - [ ] `language.msg`: re-apply the P860-P863 and P700 label edits onto the upgraded file.
 - [ ] `plcmsg.txt`: re-merge the custom ATC/spindle messages (60-68, 70-73, 101-110, 171-174).
 - [ ] `cncm.hom`: copy verbatim from the repo.
+- [ ] `system/MPGmacro4.mac`: copy from the repo (a CNC12 upgrade restores the demo macro).
 - [ ] Restart CNC12.
 - [ ] Parameters screen: P860-P863 show the gear-shift labels, P700 the ATC tool label; P6 = 1, P160 = 1, P161 = 12, P164 = 1.
 - [ ] Tool Library: Bin column editable and matches the carousel (re-import the exported library if not); tools 199 and 200 share a bin and have zero H/D offsets.

@@ -22,7 +22,7 @@
 !/mfunc*.mac
 !/system/
 /system/*
-!/system/plcmacro*.mac
+!/system/MPGmacro*.mac
 !/cncm.hom
 !/mpucomp.exe
 !/plcmsg.txt

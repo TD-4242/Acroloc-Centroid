@@ -52,7 +52,7 @@ Includes ATC carousel position tracking and all M94/M95 trigger bits.
 | SV_ATC_TOOL_IN_SPINDLE | I32. Sent by CNC software on startup (from job file) or enhanced ATC reset; the tool currently in the spindle. | manual |
 | SV_PLC_CAROUSEL_POSITION | I32. Set by PLC to report the current carousel bin position back to CNC software. Critical — the carousel must not turn unless software is running. **This program:** written every scan from `ReportedToolBin_W` (settled bin, 0 = unknown). | manual |
 | SV_TOOL_AT_PUTBACK | M. Defined in ATC PLC programs (e.g. umbrella ATC) as a message constant (IS 21250) to signal that the tool has returned to its pocket. Used via message display stage. | from code usage |
-| SV_SYS_MACRO | I32. Setting to a non-zero value while CNC is at main menu causes CNC software to load and run `plcmacroN.mac` (e.g. `\cncm\system\plcmacro3.mac`). Can be set negative. | manual |
+| SV_SYS_MACRO | I32. Setting to a non-zero value while CNC is at main menu causes CNC software to load and run `plcmacroN.mac` (e.g. `\cncm\system\plcmacro3.mac`). Can be set negative. **Note:** that is the manual's name; on ALLIN1DC/CNC12 the four wireless-MPG Aux Keys read `cncm\system\MPGmacroN.mac` instead (operator manual, "Wireless MPG Macros") — verified on an Acroloc 2026-09-09. | manual |
 | SV_M94_M95_1 | M. M94/M95 bit 1. Conventionally mapped to M3 (Spindle CW). Set by M94 /1, reset by M95 /1 from G-code. | manual |
 | SV_M94_M95_2 | M. M94/M95 bit 2. Conventionally mapped to M4 (Spindle CCW). | manual |
 | SV_M94_M95_3 | M. M94/M95 bit 3. Mapped to M8 (Flood Coolant On) — `M8_SV IS SV_M94_M95_3` (src line 1037). | manual |
