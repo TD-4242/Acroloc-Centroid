@@ -142,8 +142,9 @@ info and error channels never display (see
 [faults-and-messages.md](faults-and-messages.md)); these rungs sit after the echo and hold it
 off for 3 s via `HandMoveMsgHold_M`/`HandMoveMsgHold_T`. The **persistent** indicator is the
 VCP ATC RESET button, which swaps graphics on MEM454 and lights red while a reset is owed. Recovery is the
-**ATC RESET** button or wireless MPG macro button 4, both running `T200 M6` against a
-dummy tool 200 that CNC12 never believes is loaded, so the M6 cannot be skipped.
+**ATC RESET** button or wireless MPG macro button 4, both running `M20` (`mfunc20.mac`),
+which changes to whichever of the dummy tools 199/200 CNC12 does *not* believe is loaded, so
+the M6 can never be skipped -- including on a second reset in a row.
 
 **VCP `TOOL` readout.** `ToolInSpindleDisp_W` (W80) tracks `SV_MACHINE_PARAMETER_700` in a
 `MainStage` rung gated on `ToolSelected_M && !M6_SV && !CarouselMovedByHand_M` (mfunc6 writes

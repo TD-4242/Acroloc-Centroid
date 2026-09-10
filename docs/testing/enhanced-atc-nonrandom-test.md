@@ -17,8 +17,8 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
 - CNC12 has no "empty spindle": `M6T0` and a reset with tool 0 are refused.
 - CNC12 skips an M6 for the tool the status window says is loaded; the skip is
   decided by that status tool, not by the library. Recovery after a hand move is
-  therefore the **ATC RESET** button (or MPG macro 4), which runs `T200 M6`
-  against a dummy tool CNC12 never believes is loaded.
+  therefore the **ATC RESET** button (or MPG macro 4), which runs `M20`: a change
+  to whichever of the dummy tools 199/200 is not currently loaded.
 - `mfunc6.mac` must dwell `G4 P2` after the match and write `G10 P700` only
   after `M95 /8`; both were found the hard way (wrong putback bins).
 - ATC Reset is **F2** in the Tool Library (cursor in the Bin column).
@@ -84,10 +84,14 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
 - [ ] Status message: `175 CAROUSEL MOVED - PRESS ATC RESET` appeared on the
       message line the moment the carousel was moved (not only after a refused
       spindle start).
-- [ ] **Recovery by the ATC RESET button** (needs tool 200 mapped to a bin with
-      zero H/D offsets): press it on the VCP. Z parks, the carousel searches to
-      tool 200's bin, the interlock clears, `176 ATC POSITION RE-ESTABLISHED`
-      appears, and `M3 S500` runs. Status shows T200; VCP `TOOL 200  BIN 1`.
+- [ ] The **ATC RESET button is lit red** while the reset is owed.
+- [ ] **Recovery by the ATC RESET button** (needs tools 199+200 sharing a bin,
+      zero H/D offsets): press it. Z parks, the carousel searches to the dummy
+      bin, the button goes dark, `176 ATC POSITION RE-ESTABLISHED` appears, and
+      `M3 S500` runs. Status shows T200.
+- [ ] **Second reset in a row** (the 2026-09-09 bug): hand-spin again and press
+      ATC RESET again. It must work, changing to **T199** this time, not be
+      silently skipped.
 - [ ] Same again from **wireless MPG macro button 4**.
 - [ ] Recovery by reset instead: cursor in the Bin column, **F2 ATC Reset**:
       position n, tool in spindle = tool n, putback n, **Y**.

@@ -1,6 +1,6 @@
 <vcp_button>
 	<run>
-		<line>T200 M6</line>
+		<line>M20</line>
 	</run>
 	<plc_memory>
 		<number>454</number>

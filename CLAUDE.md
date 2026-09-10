@@ -22,10 +22,11 @@ to find every custom addition (definitions and logic alike).
   Do not hand-edit.
 - `mfunc*.mac` — M-code macros (G-code-like) executed by the CNC when an M-function fires.
   - `mfunc3/4` = spindle CW/CCW, `mfunc6` = **tool change (M6)**, `mfunc7/8` = mist/flood
-    coolant, `mfunc10/11` = clamp on/off, `mfunc18` = ATC Reset (M18).
+    coolant, `mfunc10/11` = clamp on/off, `mfunc18` = ATC Reset handshake (M18),
+    `mfunc20` = **the ATC reset action** (M20).
 - `system/plcmacro4.mac` — run by CNC12 when the PLC sets `SV_SYS_MACRO = 4` (wireless MPG
-  macro button 4). Contains `T200 M6`, the ATC-reset dummy tool change. The repo root is the
-  live `cncm` directory, so `.gitignore` un-ignores only `/system/plcmacro*.mac`.
+  macro button 4). One line: `M20`. The repo root is the live `cncm` directory, so
+  `.gitignore` un-ignores only `/system/plcmacro*.mac`.
 - `resources/vcp/` — **generated** operator panel (retro VCP). Emitted by `tools/vcpgen.py`;
   do not hand-edit. `resources/colors/` holds the color themes.
 - **Customized CNC12 control-PC files** — `language.msg` (parameter/UI labels: P860-863 gear
@@ -113,10 +114,12 @@ fixed-pocket carousel: it reshuffles bins after every change.
 hand. The PLC detects it (a position switch asserting while `ATCMotor_O` is off), latches
 `CarouselMovedByHand_M` (MEM454, also set at power-up), reports position 0, holds spindle
 enable off, and cancels a program/MDI spindle start with `9068`. Only an `ATCStage` match or
-`M18` clears it. Recovery is `T200 M6` against a dummy tool CNC12 never believes is loaded —
-bound to the VCP **ATC RESET** button and wireless MPG macro button 4
-(`system/plcmacro4.mac`) — because CNC12 *skips* an M6 for the tool its status window names,
-which is read-only to us. The PLC posts `175` when a reset is owed and `176` once proven.
+`M18` clears it. Recovery is **`M20`** (`mfunc20.mac`), bound to the VCP **ATC RESET** button
+and wireless MPG macro button 4 (`system/plcmacro4.mac`): it changes to whichever of the dummy
+tools **199/200** CNC12 does *not* believe is loaded, because CNC12 *skips* an M6 for the tool
+its status window names and that tool is read-only to us. Two dummies, because after one reset
+the loaded tool is the dummy. The button lights red while a reset is owed; the PLC posts `175`
+then and `176` once proven.
 
 Custom ATC I/O (all marked `; Acroloc`): inputs `INP24`,`INP26`,`INP27`,`INP28..32`;
 outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71` (`CurrentToolBin_W`),

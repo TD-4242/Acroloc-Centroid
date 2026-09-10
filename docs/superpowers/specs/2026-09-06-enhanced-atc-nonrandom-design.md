@@ -264,12 +264,19 @@ tool before the spindle will run.
 
 The recovery is one button. CNC12 decides whether to skip an M6 from the tool
 its status window names, which is read-only to the PLC and to macros, so after a
-hand move a change back to that tool is silently ignored. **Tool 200** is a dummy
-the operator maps to a bin in the Tool Library (H and D offsets 0). CNC12 never
-believes it is loaded, so `T200 M6` always runs: the carousel search proves the
-position, the interlock clears, and CNC12's own end-of-M6 bookkeeping puts the
-previously loaded tool back in its bin. Follow it with a real `T## M6`. It is
-bound in two places, both running that one line:
+hand move a change back to that tool is silently ignored. **Tools 199 and 200**
+are dummies the operator maps to the **same** bin in the Tool Library (H and D
+offsets 0; sharing a bin is explicitly allowed by CNC12 and keeps the carousel
+parking in one place). `M20` (`mfunc20.mac`) reads `#4203`, the tool CNC12
+believes is loaded, and changes to whichever dummy is *not* it. That change
+always runs: the carousel search proves the position, the interlock clears, and
+CNC12's own end-of-M6 bookkeeping puts the previously loaded tool back in its
+bin. Follow it with a real `T## M6`.
+
+Two dummies, not one: after a reset the loaded tool **is** the dummy, so reusing
+it would be skipped and a second reset would silently do nothing (found
+on-machine 2026-09-09). Alternating makes every reset work. `M20` is bound in
+two places, each a one-liner so the logic has a single home:
 - the **ATC RESET** button on the retro VCP (row 11, column 6, under TOOL CHECK);
 - **wireless MPG macro button 4**, via `system/plcmacro4.mac`
   (`MpgMacro4_M` -> `SV_SYS_MACRO = 4` was already in the stock PLC).
@@ -278,8 +285,8 @@ Because the carousel moves, both only fire from the main CNC12 menu. The
 `G53 Z0` park at the head of `mfunc6.mac` costs nothing here: the PLC only
 grants the manual unlock at Z zero (`ATCManualUnlock_I && ATC_Z_Zero_Release_I`),
 so after a hand move Z is already there, and machine zero is the safe direction
-for Z in any case. While CNC12 believes tool 200 is loaded, whatever sits in
-that bin is physically under the spindle; the next real tool change corrects it,
+for Z in any case. While CNC12 believes a dummy is loaded, whatever sits in that
+bin is physically under the spindle; the next real tool change corrects it,
 which is why the offsets are zero.
 
 **Status messages**, so the operator is told when it happens rather than when a
@@ -314,7 +321,9 @@ message is only the transient announcement.
   `TOOL` readout; it must not run mid-M6 (section 10). The graph/search guard
   and `N1000` pattern stay.
 - `mfunc18.mac`: new, as above.
-- `system/plcmacro4.mac`: new. Wireless MPG macro button 4 -> `T200 M6` (7b).
+- `mfunc20.mac`: new. `M20` = the ATC reset action (7b); the one source of truth,
+  called by both the VCP button and the MPG macro.
+- `system/plcmacro4.mac`: new. Wireless MPG macro button 4 -> `M20`.
   The repo root is the live `cncm` directory, so `.gitignore` un-ignores
   `/system/plcmacro*.mac` specifically.
 

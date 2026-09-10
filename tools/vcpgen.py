@@ -686,12 +686,12 @@ BUTTONS = [
     # tool its status window says is loaded, so a change back to that tool is
     # silently ignored and the PLC's hand-move interlock keeps refusing the
     # spindle. Tool 200 is a dummy the operator maps to a bin in the Tool
-    # Library: CNC12 never thinks it is loaded, so this M6 always runs, the
+    # Library: CNC12 never thinks it is loaded, so the M6 always runs, the
     # carousel search proves the position, the interlock clears, and CNC12 puts
     # the previously loaded tool back in its bin. Follow it with a real T## M6.
     # Runs a line directly (CNC12 v5.08+), so it only fires from the main menu.
     dict(name='atc_reset', row=11, col=6, lines=['ATC', 'RESET'], fs=13,
-         run_line='T200 M6', led_mem=454, style_on='lit'),
+         run_line='M20', led_mem=454, style_on='lit'),
     dict(name='feed_hold', row=11, col=3, lines=['FEED', 'HOLD']),
     # FEEDRATE preset dial: four 1x1 buttons tiled 2x2 whose sectors join into
     # one knob. Each keeps its stock skin event and LED bit, so the PLC is

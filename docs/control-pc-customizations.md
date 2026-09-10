@@ -65,10 +65,13 @@ repo after an upgrade.
 
 ### Tool Library: the dummy reset tool (not a file, but lost with the library)
 
-**Tool 200** must be assigned a bin in the Tool Library, with its H and D offsets
-set to **0**. It is never cut with: the VCP **ATC RESET** button and wireless MPG
-macro button 4 both run `T200 M6`, which is the only reliable way to clear a
-hand-moved carousel (CNC12 skips an M6 for the tool it believes is loaded).
+**Tools 199 and 200** must both be assigned the **same** bin in the Tool Library,
+with H and D offsets set to **0**. They are never cut with: the VCP **ATC RESET**
+button and wireless MPG macro button 4 both run `M20`, which changes to whichever
+of the two CNC12 does not believe is loaded. That is the only reliable way to
+clear a hand-moved carousel (CNC12 skips an M6 for the tool it believes is
+loaded), and two dummies are needed because after one reset the loaded tool is
+the dummy itself.
 Re-create it after any tool-library restore, and export the library (F5 Export
 Lib) so it can be restored.
 
@@ -96,7 +99,7 @@ Export it (F5 Export Lib) after changes so it can be restored.
 - [ ] `cncm.hom`: copy verbatim from the repo.
 - [ ] Restart CNC12.
 - [ ] Parameters screen: P860-P863 show the gear-shift labels, P700 the ATC tool label; P6 = 1, P160 = 1, P161 = 12, P164 = 1.
-- [ ] Tool Library: Bin column editable and matches the carousel (re-import the exported library if not); tool 200 has a bin and zero H/D offsets.
+- [ ] Tool Library: Bin column editable and matches the carousel (re-import the exported library if not); tools 199 and 200 share a bin and have zero H/D offsets.
 - [ ] Trigger/confirm a custom ATC message displays (e.g. a carousel timeout).
 - [ ] Home the machine; confirm the machine-coordinate DRO latch works.
 - [ ] Re-copy `resources/vcp/` if the VCP theme reverted.

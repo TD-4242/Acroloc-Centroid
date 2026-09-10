@@ -117,12 +117,19 @@ a different tool before the spindle will run.
 
 **Recovery: the ATC RESET button.** The recovery is one button. CNC12 decides whether to skip an M6 from the tool
 its status window names, which is read-only to the PLC and to macros, so after a
-hand move a change back to that tool is silently ignored. **Tool 200** is a dummy
-the operator maps to a bin in the Tool Library (H and D offsets 0). CNC12 never
-believes it is loaded, so `T200 M6` always runs: the carousel search proves the
-position, the interlock clears, and CNC12's own end-of-M6 bookkeeping puts the
-previously loaded tool back in its bin. Follow it with a real `T## M6`. It is
-bound in two places, both running that one line:
+hand move a change back to that tool is silently ignored. **Tools 199 and 200**
+are dummies the operator maps to the **same** bin in the Tool Library (H and D
+offsets 0; sharing a bin is explicitly allowed by CNC12 and keeps the carousel
+parking in one place). `M20` (`mfunc20.mac`) reads `#4203`, the tool CNC12
+believes is loaded, and changes to whichever dummy is *not* it. That change
+always runs: the carousel search proves the position, the interlock clears, and
+CNC12's own end-of-M6 bookkeeping puts the previously loaded tool back in its
+bin. Follow it with a real `T## M6`.
+
+Two dummies, not one: after a reset the loaded tool **is** the dummy, so reusing
+it would be skipped and a second reset would silently do nothing (found
+on-machine 2026-09-09). Alternating makes every reset work. `M20` is bound in
+two places, each a one-liner so the logic has a single home:
 - the **ATC RESET** button on the retro VCP (row 11, column 6, under TOOL CHECK);
 - **wireless MPG macro button 4**, via `system/plcmacro4.mac`
   (`MpgMacro4_M` -> `SV_SYS_MACRO = 4` was already in the stock PLC).
@@ -131,9 +138,10 @@ Because the carousel moves, both only fire from the main CNC12 menu. The
 `G53 Z0` park at the head of `mfunc6.mac` costs nothing here: the PLC only
 grants the manual unlock at Z zero (`ATCManualUnlock_I && ATC_Z_Zero_Release_I`),
 so after a hand move Z is already there, and machine zero is the safe direction
-for Z in any case. While CNC12 believes tool 200 is loaded, whatever sits in
-that bin is physically under the spindle; the next real tool change corrects it,
+for Z in any case. While CNC12 believes a dummy is loaded, whatever sits in that
+bin is physically under the spindle; the next real tool change corrects it,
 which is why the offsets are zero.
+
 The **ATC RESET button lights red** (it swaps graphics on MEM454) the whole time a
 reset is owed -- that is the persistent cue. The PLC also posts
 `175 CAROUSEL MOVED - PRESS ATC RESET` the moment the position becomes unverified
