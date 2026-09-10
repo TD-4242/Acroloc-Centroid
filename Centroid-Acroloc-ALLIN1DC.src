@@ -737,6 +737,7 @@ InBinDecode_M                   IS MEM443 ; Acroloc 0=false, 1=true
 ToolSelected_M                  IS MEM452 ; Acroloc 0=false, 1=true (moved off MEM444; it collided with KbAux13Key_M)
 ChangerHoldActive_M             IS MEM448 ; Acroloc feed-hold active while spindle stops in changer zone
 ChangerHoldDone_M               IS MEM449 ; Acroloc once-per-entry latch, cleared when Z clears changer
+HandMoveMsgHold_M               IS MEM456 ; Acroloc holds the message channel for the hand-move status long enough to read it (the carousel lock echo below would otherwise overwrite it on the very next scan)
 HandMoveMsgShown_M              IS MEM455 ; Acroloc the "press ATC RESET" status has been posted for this hand move; drives the one-shot "re-established" message when the position is proven again
 CarouselMovedByHand_M           IS MEM454 ; Acroloc carousel moved without the motor (or just booted): tool under the spindle unverified, spindle refused until an ATCStage match or ATC Reset (M18). MEM453 is reserved for the changer-resume work.
 ;------------------------------------------------------------------------------
@@ -1226,6 +1227,7 @@ NoMacroKeyPressedTimer_T        IS T18
 
 ChangerStopTimer_T              IS T23    ; Acroloc spindle-stop timeout backstop for changer-entry hold
 ATCSpin_T                       IS T24 ; used to detect fault if unable to find position
+HandMoveMsgHold_T               IS T27 ; Acroloc how long the hand-move status message keeps the message channel (T26 is reserved for the changer-resume work)
 GearCoast_T                     IS T25 ; Acroloc gear-shift coast dwell (neutral) before engage
 ;------------------------------------------------------------------------------
 ;                       Stage Definitions
@@ -3004,10 +3006,15 @@ IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O
   TargetToolBinDisp_W = 0
 IF !ATCManualUnlock_I && !ATCStage THEN RST ATCUnlocked_O
 
-IF ATCManualUnlock_I THEN
+; Acroloc: gated on !HandMoveMsgHold_M. One of these two rungs is true on EVERY
+; scan, so this echo owns FaultMsg_W permanently -- which is also why InfoMsg_W
+; and ErrorMsg_W never display on this machine (MessageStage only routes to them
+; when FaultMsg_W == 0). The hand-move status below therefore posts on FaultMsg_W
+; too, and holds this echo off for a few seconds so the operator can read it.
+IF ATCManualUnlock_I && !HandMoveMsgHold_M THEN
   FaultMsg_W = ATC_Lock_Not_Released_C,
   SET ShowFaultStage
-IF !ATCManualUnlock_I THEN
+IF !ATCManualUnlock_I && !HandMoveMsgHold_M THEN
   FaultMsg_W = ATC_Lock_Released_C,
   SET ShowFaultStage
 
@@ -3094,12 +3101,26 @@ IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
 ; search or an ATC Reset proves it again. Both are async (type 2) so neither
 ; halts a job, and the two numbers alternate, which satisfies CNC12's refusal
 ; to re-send the same message number twice in a row.
+; These MUST post on FaultMsg_W, not InfoMsg_W: the carousel lock echo above
+; assigns FaultMsg_W every scan, so MessageStage never routes to the info or
+; error channels. These rungs sit AFTER that echo, so they win the scan they
+; fire on, and HandMoveMsgHold_M gates the echo off for 3 s so it stays up.
+; The lit ATC RESET button (plc_memory 454) is the persistent indicator.
 IF CarouselMovedByHand_M && !HandMoveMsgShown_M THEN
-  InfoMsg_W = ATC_NEEDS_RESET_MSG_C,
-  SET HandMoveMsgShown_M
+  FaultMsg_W = ATC_NEEDS_RESET_MSG_C,
+  SET ShowFaultStage,
+  SET HandMoveMsgShown_M,
+  SET HandMoveMsgHold_M,
+  HandMoveMsgHold_T = 3000,
+  SET HandMoveMsgHold_T
 IF !CarouselMovedByHand_M && HandMoveMsgShown_M THEN
-  InfoMsg_W = ATC_RESET_DONE_MSG_C,
-  RST HandMoveMsgShown_M
+  FaultMsg_W = ATC_RESET_DONE_MSG_C,
+  SET ShowFaultStage,
+  RST HandMoveMsgShown_M,
+  SET HandMoveMsgHold_M,
+  HandMoveMsgHold_T = 3000,
+  SET HandMoveMsgHold_T
+IF HandMoveMsgHold_T THEN RST HandMoveMsgHold_T, RST HandMoveMsgHold_M
 
 
 ;=============================================================================

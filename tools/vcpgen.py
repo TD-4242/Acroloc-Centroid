@@ -691,7 +691,7 @@ BUTTONS = [
     # the previously loaded tool back in its bin. Follow it with a real T## M6.
     # Runs a line directly (CNC12 v5.08+), so it only fires from the main menu.
     dict(name='atc_reset', row=11, col=6, lines=['ATC', 'RESET'], fs=13,
-         run_line='T200 M6'),
+         run_line='T200 M6', led_mem=454, style_on='lit'),
     dict(name='feed_hold', row=11, col=3, lines=['FEED', 'HOLD']),
     # FEEDRATE preset dial: four 1x1 buttons tiled 2x2 whose sectors join into
     # one knob. Each keeps its stock skin event and LED bit, so the PLC is
@@ -774,8 +774,16 @@ def emit_buttons(out_dir):
         if b.get('run_line'):
             # from-scratch action button: no stock XML to derive from. Runs a
             # line of G-code directly (CNC12 v5.08+). Graphic is the folder SVG.
+            led = ''
+            if b.get('led_mem'):
+                # also an indicator: swap graphics on a PLC MEM bit, so the
+                # button lights while the action it runs is the one needed
+                led = ('\t<plc_memory>\n\t\t<number>%d</number>\n'
+                       '\t\t<image_on>%s_on.svg</image_on>\n'
+                       '\t\t<image_off>%s.svg</image_off>\n'
+                       '\t</plc_memory>\n' % (b['led_mem'], rn, rn))
             xml = ('<vcp_button>\n\t<run>\n\t\t<line>%s</line>\n'
-                   '\t</run>\n</vcp_button>\n' % b['run_line'])
+                   '\t</run>\n%s</vcp_button>\n' % (b['run_line'], led))
             _write(os.path.join(d, rn + '.xml'), xml)
         else:
             xml = stock_xml(name)
