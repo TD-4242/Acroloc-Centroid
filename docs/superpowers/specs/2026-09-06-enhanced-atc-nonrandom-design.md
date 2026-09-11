@@ -1,7 +1,7 @@
 # Enhanced ATC, non-random mode (P160 = 1): tool->bin map in the Tool Library - Design
 
 Date: 2026-09-06
-Status: implemented on branch; on-machine: Phases A and B pass (bootstrap, arbitrary tool->bin, putback round-trip over 10 changes, 2026-09-08); Phase C (hand-move interlock) and Q1/Q3/Q4 pending
+Status: implemented on branch; validated end to end on the machine 2026-09-11 (Phases 0 and A-E; putback soak 0 wrong of 10; real job clean twice) on build 345b197. Still to confirm: the boot-time 175 message fix (7613c96), which landed after that build.
 Branch: `feature/enhanced-atc-nonrandom` (worktree `.worktrees/enhanced-atc-nonrandom`, from `main`)
 Supersedes: `2026-07-22-tool-bin-mapping-design.md` (the P701-P712 PLC map) once verified on-machine
 
@@ -421,9 +421,9 @@ merge, not `main`.
 
 ## Open questions (settled on-machine, then recorded in the test plan and docs)
 
-1. What M107 sends for a tool whose Bin is dashes: -1, 0, the tool number, or a
-   CNC12-side error. The guard covers -1, 0 and >12; a tool number <= 12 would
-   slip through as a bin. Phase B decides whether extra handling is needed.
+1. **Answered on-machine 2026-09-11: CNC12 refuses the M6 itself** for a tool with
+   no bin ("Tool library invalid for T2"), before M107 reaches the PLC. The PLC's
+   1..P161 guard (9067) is therefore defense in depth only.
 2. **Answered on-machine 2026-09-08: F2 ATC Reset works with this PLC.** With
    the carousel parked at bin 7, entering position 7, tool 7, putback 7 was
    accepted; the Tool Library then showed tool 7 at bin 0 and the changer ran.
@@ -432,13 +432,18 @@ merge, not `main`.
    `M6T15` indexed the carousel to bin 2 and the library showed tool 15 at bin 0;
    after the next change tool 15's Bin returned to 2, so the putback recorded from
    the PLC's position report round-trips correctly.
-3. Whether a reported 0 upsets CNC12 (the umbrella never reports 0). If it does,
-   report the last known good bin and leave 0 to the VCP readout only.
+3. **Answered on-machine 2026-09-11: no.** Position 0 is reported at every boot and
+   after every hand move, and all of Phase C ran with it without complaint.
    **Related, answered 2026-09-08:** CNC12 samples the reported position
    asynchronously; the putback is only right if the new position has been
    visible for a while before the M6 ends. Hence the `G4 P2` in `mfunc6.mac`.
-4. Whether the ATC error flag is actually left set when `OtherFault_M` cancels
-   the job mid-M6.
+4. **Moot for its original case (2026-09-11):** an unassigned tool never reaches the
+   PLC (see 1), so the 9067 path this was meant to exercise does not occur in normal
+   use. Still untested: whether CNC12's ATC error flag survives a PLC fault cancel
+   mid-M6.
+5. **Answered on-machine 2026-09-11:** F2 ATC Reset restores the previously loaded
+   tool to its own bin (tool 12 back to bin 12), and so does the ATC RESET button.
+   No phantom is left at bin 0.
 
 ## Documentation to update (same change, current-state only)
 
