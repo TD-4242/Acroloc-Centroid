@@ -18,6 +18,9 @@ through the carousel ring:
   the carousel bin under the spindle.
 - **~Z -1.5"**: the tool automatically, mechanically **locks** into the spindle.
 - **~Z -1.75 to -2"**: fully engaged; the spindle may spin.
+- **Pick the tool up at full rapid.** The descent from Z0 through the lock engages best
+  at the machine's maximum rapid rate (owner, 2026-09-11), so a pickup is a plain `G53 Z-2.000`
+  with no `L` rate word. Slow only moves made after the tool is locked.
 
 Two consequences the PLC must respect:
 

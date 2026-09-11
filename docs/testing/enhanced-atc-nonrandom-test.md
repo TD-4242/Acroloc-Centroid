@@ -115,14 +115,17 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
 
 ## 5. Phase E - a real job, end to end
 
-- [ ] Write a short program: `T5 M6`, `M3 S500`, a small Z move in air, `M5`,
-      `T15 M6` (bin 2), `M3 S500`, `M5`, `T1 M6`, `M30`. Run it from the start.
-- [ ] Every change lands on the right bin; the status tool and the H offset
-      shown follow each change; the spindle starts after each change; the job
-      ends with tool 1 loaded and tools 5 and 15 back in their bins.
-- [ ] Run it again without touching anything: same result (the second run's
-      first change is to the tool already loaded, so it is skipped and the
-      spindle must still start, since the position is verified).
+- [ ] Load `docs/testing/atc-toolchange-test.cnc` (it is in the cncm checkout
+      after the pull). Its header lists the preconditions: homed, ATC RESET
+      dark, spindle in AUTO, tools 1-12 in bins 1-12, tool 15 given a bin.
+      Every Z move is G53 and never below Z-4.000; there is no XY motion.
+- [ ] Run it from the start. Every change lands on its own bin and the VCP
+      tracks it; the repeated `T5 M6` is skipped with no carousel motion and
+      the spindle still starts; the job ends with tool 1 loaded and every
+      other tool back in its own bin.
+- [ ] Run it again without touching anything: same result. Its first change
+      is to tool 1, already loaded, so it is skipped and the spindle must still
+      start, since the position is verified.
 
 ## 6. Rollback (if the machine is needed)
 
