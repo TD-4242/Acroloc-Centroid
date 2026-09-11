@@ -3106,7 +3106,14 @@ IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
 ; error channels. These rungs sit AFTER that echo, so they win the scan they
 ; fire on, and HandMoveMsgHold_M gates the echo off for 3 s so it stays up.
 ; The lit ATC RESET button (plc_memory 454) is the persistent indicator.
-IF CarouselMovedByHand_M && !HandMoveMsgShown_M THEN
+; Acroloc: post only when CNC12 can actually show it. At power-up the PLC runs
+; before the CNC12 software is ready (SoftwareNotReady_M), and E-stop is normally
+; still engaged -- ShowFaultStage zeroes FaultMsg_W every scan while !EStopOk_M.
+; Posting on the boot scan spent this one-shot with nobody able to see it
+; (on-machine 2026-09-10: button lit, no 175 message). Waiting keeps it owed
+; until it can be read; a hand move with E-stop down likewise posts on release.
+IF CarouselMovedByHand_M && !HandMoveMsgShown_M &&
+   !SoftwareNotReady_M && EStopOk_M THEN
   FaultMsg_W = ATC_NEEDS_RESET_MSG_C,
   SET ShowFaultStage,
   SET HandMoveMsgShown_M,

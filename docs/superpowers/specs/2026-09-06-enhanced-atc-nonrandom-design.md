@@ -305,7 +305,7 @@ channels at all. These rungs therefore sit after the echo, and hold it off for
 3 s (`HandMoveMsgHold_M` MEM456, `HandMoveMsgHold_T` T27) so the message can be
 read. The **persistent** cue is the ATC RESET button itself, which swaps
 graphics on MEM454 (`<plc_memory>`) and lights red while a reset is owed; the
-message is only the transient announcement.
+message is only the transient announcement. The 175 post waits for `!SoftwareNotReady_M && EStopOk_M`: at power-up the PLC runs before CNC12 is ready and E-stop clears `FaultMsg_W` every scan, so posting on the boot scan spent the one-shot unseen (found on-machine 2026-09-10). It now appears once CNC12 is up and E-stop is released.
 
 ### 8. Macros
 

@@ -148,7 +148,7 @@ reset is owed -- that is the persistent cue. The PLC also posts
 and `176 ATC POSITION RE-ESTABLISHED` when it is proven again. Both go on
 `FaultMsg_W`, because the carousel lock echo assigns that word every scan and so
 the info/error channels never display on this machine; the rungs sit after the
-echo and hold it off for 3 s so the message can be read.
+echo and hold it off for 3 s so the message can be read. The 175 post waits for `!SoftwareNotReady_M && EStopOk_M`: at power-up the PLC runs before CNC12 is ready and E-stop clears `FaultMsg_W` every scan, so posting on the boot scan spent the one-shot unseen (found on-machine 2026-09-10). It now appears once CNC12 is up and E-stop is released.
 
 **VCP `TOOL XX  BIN XX` readout.** `BIN` is `TargetToolBinDisp_W` (W8). `TOOL` is
 `ToolInSpindleDisp_W` (W80), the verified tool: `mfunc6.mac` writes the requested
