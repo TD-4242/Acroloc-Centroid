@@ -51,8 +51,10 @@ upgrade): `Centroid-Acroloc-ALLIN1DC.src` + `mfunc*.mac`, the retro VCP under
     HAND** (68).
   - **70-73:** spindle chiller, pot up/down, arm motor, POT NOT UP FOR CAROUSEL.
   - **101-110:** tool-change / turret / collet / spindle-lock faults.
-  - **171-174:** Tool Carousel manual unlock, **Spindle not parked. Z Axis not at zero.**,
-    Tool Carousel not locked, Tool Carousel locked. (Used by the ATC lock + spindle-park logic.)
+  - **171-176:** Tool Carousel manual unlock, **Spindle not parked. Z Axis not at zero.**,
+    Tool Carousel not locked, Tool Carousel locked (used by the ATC lock + spindle-park
+    logic), **CAROUSEL MOVED - PRESS ATC RESET** (175) and **ATC POSITION RE-ESTABLISHED**
+    (176) — the hand-moved-carousel interlock's status pair.
 - **Restore after upgrade:** diff the upgraded `plcmsg.txt` against this repo's copy and
   re-add the machine's messages (the numbers above). Any custom message referenced by a
   `.src` constant that goes missing will display blank.
@@ -96,7 +98,7 @@ Export it (F5 Export Lib) after changes so it can be restored.
 ## After-upgrade checklist
 
 - [ ] `language.msg`: re-apply the P860-P863 and P700 label edits onto the upgraded file.
-- [ ] `plcmsg.txt`: re-merge the custom ATC/spindle messages (60-68, 70-73, 101-110, 171-174).
+- [ ] `plcmsg.txt`: re-merge the custom ATC/spindle messages (60-68, 70-73, 101-110, 171-176).
 - [ ] `cncm.hom`: copy verbatim from the repo.
 - [ ] `system/MPGmacro4.mac`: copy from the repo (a CNC12 upgrade restores the demo macro).
 - [ ] Restart CNC12.

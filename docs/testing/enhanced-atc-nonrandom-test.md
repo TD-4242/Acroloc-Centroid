@@ -97,15 +97,25 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
 - [ ] Recovery by reset instead: cursor in the Bin column, **F2 ATC Reset**:
       position n, tool in spindle = tool n, putback n, **Y**.
 - [ ] Status shows tool n; VCP `TOOL n  BIN n`; ALT+K n. MDI `M3 S500` runs. `M5`.
-- [ ] **Tool Library, tool L's Bin: its own bin, or 0?** Record it. (Open item
-      from 2026-09-08: does the reset restore the previous tool or leave a
-      phantom at 0.) If 0, set it to its bin by hand.
+- [ ] **Tool Library, tool L's Bin: its own bin.** Answered on-machine 2026-09-11:
+      T12 came back as Bin 12, not a phantom 0. Confirm it still does — if it
+      reads 0, set it by hand and report it, that is a regression.
 - [ ] MDI `M6T<L>`: now searches (status named tool n), lands on L's bin.
 - [ ] Repeat the hand-spin (two bins). Recover this time with an M6 to a
       **different** tool: it searches, the latch clears, `M3 S500` runs, and the
       Bin column shows the previously loaded tool back in its own bin.
 - [ ] **Boot latch:** power-cycle CNC12. VCP `TOOL 0  BIN 0`. MDI `M3 S500`:
       refused with 9068. MDI `M6T<a different tool>`: searches. `M3 S500` runs.
+- [ ] **Boot reports unknown, not the persisted bin:** on that same power-up,
+      before any change, open the Tool Library. CNC12's carousel position must
+      read 0/unknown, matching the VCP — not the bin it was parked on before the
+      power-cycle. (Until 2026-09-12 the PLC seeded CNC12 with the persisted
+      position while the VCP showed 0, so the two disagreed at boot.)
+- [ ] **Aborted change latches the interlock:** start an `M6` and force an abort
+      (easiest: jog Z off the change position first, so the Z-parked guard
+      fires). The fault message is the abort's own, **not** 175. Then: VCP reads
+      `TOOL 0  BIN 0`, the ATC RESET button is lit, and `M3 S500` is refused
+      until an ATC Reset or a successful `M6`.
 
 ## 4. Phase D - readout
 

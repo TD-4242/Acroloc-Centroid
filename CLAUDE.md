@@ -106,8 +106,9 @@ Understand this before touching tool-change logic; it spans `mfunc6.mac`, `MainS
 the PLC; CNC12 owns the tool->bin map. **CNC12 handshake:** the PLC reports the settled bin
 every scan in `SV_PLC_CAROUSEL_POSITION` (`ReportedToolBin_W`, 0 = unknown) — CNC12 will not
 run a change without it and records it as the new tool's putback bin at the end of M6 — and
-seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION` at boot and on `M18` (`mfunc18.mac`,
-run by the Tool Library's **F2** ATC Reset). Random mode (`P160 = 2`) is wrong for this
+seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION` on `M18` (`mfunc18.mac`, run by the
+Tool Library's **F2** ATC Reset). At power-up it is **not** seeded: the carousel can be turned
+with the control off, so the bin starts unknown (0) with the interlock latched. Random mode (`P160 = 2`) is wrong for this
 fixed-pocket carousel: it reshuffles bins after every change.
 
 **Hand-moved carousel (safety interlock, never remove).** At Z0 the carousel can be turned by

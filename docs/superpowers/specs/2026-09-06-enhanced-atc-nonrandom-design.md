@@ -164,6 +164,14 @@ the last reported position in `cncm.job` and hands it back at startup. A stale
 seed (carousel hand-spun with power off) is corrected by the next M6's
 absolute-switch search, and by ATC Reset for CNC12's own bookkeeping.
 
+> **Superseded 2026-09-12 (PR #26 review).** The seed is gone; `InitialStage` now sets
+> `CurrentToolBin_W = 0`. The boot interlock (`SET CarouselMovedByHand_M`, added later in
+> this design) declares the position unverified — but the seed simultaneously reported the
+> persisted bin to CNC12 via `ReportedToolBin_W`, and because the carousel rests with every
+> position switch off, the hand-move detector never corrected it. The VCP read `BIN 0` while
+> CNC12 had been handed a real bin; the on-machine boot test passed because it only checked
+> the VCP. Boot now reports 0 (unknown), consistent with the interlock it sets.
+
 ### 4. M6 kickoff (`MainStage`)
 
 Replaces the P701 translation block. `SV_TOOL_NUMBER` is now the **bin**.

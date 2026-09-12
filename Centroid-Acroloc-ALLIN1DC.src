@@ -1317,7 +1317,7 @@ IF 1==1 THEN SET True_M,
              EngagedRange_W = 0,       ; Acroloc gear unknown -> first spin-up engages a gear
              DesiredRange_W = 0,       ; Acroloc boot placeholder (decision overwrites next scan)
              SpindleRange_W = 1,       ; Acroloc safe default ratio until first engage
-             CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION, ; Acroloc enhanced ATC: seed the last known bin CNC12 persisted (cncm.job)
+             CurrentToolBin_W = 0,     ; Acroloc enhanced ATC: bin UNKNOWN at power-up -- the carousel can be turned by hand with the control off, so CNC12's persisted position is not proof. Report 0 until an M6 search or an ATC Reset proves it.
              SET CarouselMovedByHand_M, ; Acroloc boot: the carousel may have been moved with the control off -> nothing in the spindle until an M6 re-index or ATC Reset
              RST InitialStage
 
@@ -2944,16 +2944,13 @@ IF TriggerPause_T THEN RST TriggerPause_T, RST ActivateFeedHold_M
 IF True_M THEN RST OnAtPowerUp_M
 
 ; Acroloc tool stage start
-; Acroloc: once per change (before SET ATCStage below, so !ATCStage is true only on the
-; first scan): arm the carousel search watchdog, AND clear CurrentToolBin_W so a stale
-; value from the previous change cannot cause an immediate match -- the carousel always
-; re-indexes to the requested bin.
-IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CurrentToolBin_W = 0, RST ToolSelected_M
 ; Acroloc -- enhanced ATC (P160=1): CNC12 looks the requested tool up in its Tool
 ; Library and M107 sends that tool's BIN in SV_TOOL_NUMBER. Guard it: anything
 ; outside 1..P161 (an unassigned tool, a bad library, P161 unset) faults here and
 ; never starts the carousel. The 9xxx fault cancels the job during mfunc6's G4 P1
 ; dwell, so CNC12 does not record the change as complete.
+; This guard runs BEFORE the arm rung below and RSTs M6_SV, so a rejected bin never
+; reaches it: nothing moved, so the known carousel position is kept, not zeroed.
 IF M6_SV && !ATCStage && (SV_TOOL_NUMBER < 1 || SV_TOOL_NUMBER > MaxToolBins_W) THEN
   FaultMsg_W = ATC_BIN_RANGE_MSG_C,
   SET ShowFaultStage,
@@ -2961,6 +2958,11 @@ IF M6_SV && !ATCStage && (SV_TOOL_NUMBER < 1 || SV_TOOL_NUMBER > MaxToolBins_W) 
   RST M6_SV,
   RST ATCSpin_T,
   TargetToolBinDisp_W = SV_TOOL_NUMBER
+; Acroloc: once per change (before SET ATCStage below, so !ATCStage is true only on the
+; first scan): arm the carousel search watchdog, AND clear CurrentToolBin_W so a stale
+; value from the previous change cannot cause an immediate match -- the carousel always
+; re-indexes to the requested bin.
+IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CurrentToolBin_W = 0, RST ToolSelected_M
 ; Bin in range: latch it as the search target and arm ATCStage (its search/decode/
 ; match logic is unchanged). TargetToolBinDisp_W feeds the retro VCP TOOL BIN readout.
 IF M6_SV && !ATCStage THEN
@@ -3112,8 +3114,12 @@ IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
 ; Posting on the boot scan spent this one-shot with nobody able to see it
 ; (on-machine 2026-09-10: button lit, no 175 message). Waiting keeps it owed
 ; until it can be read; a hand move with E-stop down likewise posts on release.
+; !OtherFault_M too: an aborted change (search timeout, spindle not stopped, Z not
+; parked) latches this same interlock, and that abort's own 9xxx fault must stay on
+; screen rather than be overwritten here. OtherFault_M clears on E-stop, so the 175
+; posts on release, as above.
 IF CarouselMovedByHand_M && !HandMoveMsgShown_M &&
-   !SoftwareNotReady_M && EStopOk_M THEN
+   !SoftwareNotReady_M && EStopOk_M && !OtherFault_M THEN
   FaultMsg_W = ATC_NEEDS_RESET_MSG_C,
   SET ShowFaultStage,
   SET HandMoveMsgShown_M,
@@ -3143,7 +3149,11 @@ IF ATCStage && !ZeroSpeed_I THEN
   RST ATCUnlocked_O,
   RST M6_SV,
   TargetToolBin_W = 0,
-  CurrentToolBin_W = 0,   ; Acroloc enhanced ATC: aborted mid-decode -> bin unknown, report 0 not a partial peak
+  CurrentToolBin_W = 0,      ; Acroloc enhanced ATC: aborted -> bin unknown, report 0 not a partial peak
+  TargetToolBinDisp_W = 0,   ; Acroloc VCP reads TOOL 0 BIN 0 = position unverified
+  ToolInSpindleDisp_W = 0,   ; Acroloc
+  SET CarouselMovedByHand_M, ; Acroloc: an unknown position must hold spindle enable off until an M6 search or an ATC Reset proves it -- same invariant as a hand move
+  RST ToolSelected_M,
   RST ATCSpin_T,
   RST ATCStage
 
@@ -3155,7 +3165,11 @@ IF !ATC_Z_Zero_Release_I THEN
   RST ATCUnlocked_O,
   RST M6_SV,
   TargetToolBin_W = 0,
-  CurrentToolBin_W = 0,   ; Acroloc enhanced ATC: aborted mid-decode -> bin unknown, report 0 not a partial peak
+  CurrentToolBin_W = 0,      ; Acroloc enhanced ATC: aborted -> bin unknown, report 0 not a partial peak
+  TargetToolBinDisp_W = 0,   ; Acroloc VCP reads TOOL 0 BIN 0 = position unverified
+  ToolInSpindleDisp_W = 0,   ; Acroloc
+  SET CarouselMovedByHand_M, ; Acroloc: an unknown position must hold spindle enable off until an M6 search or an ATC Reset proves it -- same invariant as a hand move
+  RST ToolSelected_M,
   RST ATCSpin_T,
   RST ATCStage
 
@@ -3221,7 +3235,11 @@ IF ATCStage && ATCSpin_T THEN
   RST ATCUnlocked_O,
   RST M6_SV,
   TargetToolBin_W = 0,
-  CurrentToolBin_W = 0,   ; Acroloc enhanced ATC: aborted mid-decode -> bin unknown, report 0 not a partial peak
+  CurrentToolBin_W = 0,      ; Acroloc enhanced ATC: aborted -> bin unknown, report 0 not a partial peak
+  TargetToolBinDisp_W = 0,   ; Acroloc VCP reads TOOL 0 BIN 0 = position unverified
+  ToolInSpindleDisp_W = 0,   ; Acroloc
+  SET CarouselMovedByHand_M, ; Acroloc: an unknown position must hold spindle enable off until an M6 search or an ATC Reset proves it -- same invariant as a hand move
+  RST ToolSelected_M,
   RST ATCSpin_T,
   RST ATCStage
 

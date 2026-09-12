@@ -90,11 +90,13 @@ at the end of every M6 it records the reported value as the new tool's putback b
 (its bin field is restored from that when the tool is next swapped out). So the
 report must be the **settled** bin: it is latched only while `ATCStage` is idle,
 the match rung leaves `CurrentToolBin_W` at the matched bin, and every abort rung
-and the manual unlock zero it, so 0 (unknown) is reported honestly.
-`InitialStage` seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION`, the
-position CNC12 persisted in `cncm.job`. `M18` (`mfunc18.mac`) is run by the Tool
+and the manual unlock zero it *and* latch `CarouselMovedByHand_M`, so 0 (unknown)
+is reported honestly and the spindle stays off until it is proven again.
+`InitialStage` does **not** seed the bin: the carousel can be turned with the
+control off, so CNC12's persisted `cncm.job` position is not proof and the PLC
+boots at 0 with the interlock latched. `M18` (`mfunc18.mac`) is run by the Tool
 Library's F2 ATC Reset (`P164 = 1`) after the operator enters the true position;
-the rung re-seeds from the value CNC12 sent.
+that rung seeds `CurrentToolBin_W` from the value CNC12 sent.
 
 **Hand-moved carousel interlock — nothing in the spindle until proven:**
 ```plc

@@ -682,13 +682,16 @@ BUTTONS = [
     dict(name='single_block', row=9, col=2, lines=['SINGLE', 'BLOCK'],
          fs=13),
     dict(name='tool_check', row=10, col=6, lines=['TOOL', 'CHECK']),
-    # ATC RESET: recovery after a hand-moved carousel. CNC12 skips an M6 for the
-    # tool its status window says is loaded, so a change back to that tool is
-    # silently ignored and the PLC's hand-move interlock keeps refusing the
-    # spindle. Tool 200 is a dummy the operator maps to a bin in the Tool
-    # Library: CNC12 never thinks it is loaded, so the M6 always runs, the
-    # carousel search proves the position, the interlock clears, and CNC12 puts
-    # the previously loaded tool back in its bin. Follow it with a real T## M6.
+    # ATC RESET: recovery after a hand-moved carousel, a boot, or an aborted
+    # change. CNC12 skips an M6 for the tool its status window says is loaded, so
+    # a change back to that tool is silently ignored and the PLC's interlock keeps
+    # refusing the spindle. M20 (mfunc20.mac) changes to whichever of the dummy
+    # tools 199/200 CNC12 does NOT believe is loaded -- they alternate, because
+    # after one reset the loaded tool IS the dummy and a second reset in a row
+    # would otherwise be skipped. Both are mapped to a bin in the Tool Library
+    # with zero offsets. The M6 always runs, the carousel search proves the
+    # position, the interlock clears, and CNC12 puts the previously loaded tool
+    # back in its bin. Follow it with a real T## M6.
     # Runs a line directly (CNC12 v5.08+), so it only fires from the main menu.
     dict(name='atc_reset', row=11, col=6, lines=['ATC', 'RESET'], fs=13,
          run_line='M20', led_mem=454, style_on='lit'),
