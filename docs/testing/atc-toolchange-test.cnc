@@ -5,14 +5,10 @@
 ; tool already loaded (CNC12 skips it; the spindle must still start), a tool
 ; numbered above 12, and a return to the starting tool.
 ;
-; Motion rules:
-;  - Every Z move is G53 (machine coordinates), never below Z-4.000.
-;    G53 is always a rapid in CNC12; the L word slows it (units/min).
-;  - Tool pickup is at FULL rapid (no L): it engages best that way on this
-;    machine. Only the in-air plunge with the spindle running is slowed.
-;  - No XY moves. No tool length offsets are used, so H values do not matter.
-;  - The spindle starts only at Z-2.000: above that the tool is not locked
-;    and the PLC holds spindle enable off while Z is in the changer.
+; Motion envelope (safety):
+;  - Every Z move is G53, never below Z-4.000. No XY moves, no length offsets.
+;  - Tool pickup is at FULL rapid (no L word) -- it engages best that way.
+;  - The spindle starts only at Z-2.000; above that the tool is not locked.
 ;
 ; Before running:
 ;  - Machine homed, and the ATC RESET button dark (press it if it is lit).
@@ -23,9 +19,8 @@
 ;  - Optional Stop ON pauses after each tool (M1) so the Tool Library Bin
 ;    column can be checked; OFF runs straight through.
 ;
-; Expect: every tool lands on its own bin, the VCP reads TOOL n BIN n after
-; each change, and the job ends with tool 1 loaded and every other tool back
-; in its own bin.
+; Expect: every tool lands on its own bin, the VCP reads TOOL n BIN n after each
+; change, and the job ends with tool 1 loaded.
 
 G90 G20 G17 G40 G49 G80
 M5

@@ -2,32 +2,19 @@
 ; File: mfunc20.mac
 ; Desc: M20 -- ATC Reset (the one source of truth for the reset action)
 ;
-; Run by the VCP ATC RESET button and by system/MPGmacro4.mac (wireless MPG
-; macro button 4). Both are one-liners that call M20, so the logic lives here.
+; Run by the VCP ATC RESET button and system/MPGmacro4.mac; both just call M20. It
+; changes to whichever dummy tool (199/200) CNC12 does not believe is loaded, because
+; CNC12 skips an M6 for the loaded tool -- docs/plc-spec/atc.md.
 ;
-; Why a dummy tool at all: CNC12 skips an M6 for the tool its status window
-; says is loaded, and that tool is read-only to us. After a hand-moved carousel
-; a change back to the loaded tool is silently ignored -- no error, no motion --
-; while the PLC's hand-move interlock keeps refusing the spindle. A change to a
-; tool CNC12 does NOT think is loaded always runs: the carousel search proves
-; the position, the interlock clears, and CNC12's end-of-M6 bookkeeping puts the
-; previously loaded tool back in its own bin.
-;
-; Why TWO dummies: after one reset the loaded tool IS the dummy, so reusing it
-; would be skipped and a second reset would do nothing (found on-machine
-; 2026-09-09). 199 and 200 alternate, so a reset always works, every time.
-;
-; Setup: tools 199 and 200 both assigned the SAME bin in the Tool Library, with
-; H and D offsets 0. Sharing a bin is explicitly allowed by CNC12 and keeps the
-; carousel parking in the same place whichever dummy is used. Follow a reset
-; with a real T## M6.
+; Setup: tools 199 and 200 share ONE bin in the Tool Library, H and D offsets 0.
+; Follow a reset with a real T## M6.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;Skip if graphing or searching
 IF #4201 || #4202 THEN GOTO 1000
 
-; #4203 = the tool CNC12 believes is in the spindle. Pick the dummy that is NOT
-; it, so the change can never be skipped.
+; #4203 = the tool CNC12 believes is loaded. Pick the dummy that is NOT it, so the
+; change can never be skipped.
 IF #4203 == 200 THEN GOTO 100
 
 T200 M6         ; normal case: 200 is not loaded, so this change runs

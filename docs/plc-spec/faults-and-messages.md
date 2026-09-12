@@ -244,6 +244,16 @@ suppresses error/info display entirely until it clears.
 > (`HandMoveMsgHold_M`/`HandMoveMsgHold_T`) so its message can be read. Found on-machine
 > 2026-09-09, when messages 175/176 posted to `InfoMsg_W` never appeared.
 
+**The 175/176 gates.** Both are async (type 2), so neither halts a job, and the two numbers
+**alternate**: CNC12 refuses to re-send the same message number twice in a row, so a single
+number would go silent on the second event. `175` posts only once
+`!SoftwareNotReady_M && EStopOk_M && !OtherFault_M` holds. At power-up the PLC runs before
+CNC12 is ready and E-stop is normally still engaged — which makes `ShowFaultStage` zero
+`FaultMsg_W` every scan — so an unguarded one-shot was spent unseen (on-machine 2026-09-10:
+button lit, no message). An aborted change latches the same interlock, and that abort's own
+9xxx fault must stay on screen; `OtherFault_M` clears on E-stop, so `175` posts on release.
+The lit **ATC RESET** button (`plc_memory` 454) is the persistent cue.
+
 ### `ShowInfoStage` (STG93, src:1220, banner src:3059-3061)
 
 - (src:3062-3067): structurally identical to `ShowErrorStage` — same

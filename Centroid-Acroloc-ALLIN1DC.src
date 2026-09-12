@@ -50,26 +50,21 @@
 ;                            Add 1 = MPG Ignore Encoder Error
 ;                            Add 2 = Lock Out Z Axis X100 with WMPG
 ;                            Add 4 = Enable Independent Z-Axis MPG Jogging
-; SV_MACHINE_PARAMETER_33  : (Acroloc) tried as the high ratio, but P33 is NOT writable from the
-;                            CNC12 param screen on this control (reads a fixed ~2.0), so it could
-;                            not be tuned.  High ratio moved to P863 (below).  P66/P67 could not
-;                            be used either -- CNC12 locks the medium-range gains on this machine.
-; SV_MACHINE_PARAMETER_863 : (Acroloc) high-range (range 4) gear ratio, tunable ~2.0; the writable
-;                            mirror of P65 (low, .52x).  In the 860-870 "Not Used" block -- these
-;                            general params stay editable regardless of spindle range config.
+; SV_MACHINE_PARAMETER_33  : (Acroloc) not writable on this control; high ratio moved to P863
+;                            -- docs/plc-spec/gear-shift.md
+; SV_MACHINE_PARAMETER_863 : (Acroloc) high-range (range 4) gear ratio, tunable ~2.0
+;                            -- docs/plc-spec/gear-shift.md
 ; SV_MACHINE_PARAMETER_39  : Feedrate Override Percentage Limit
 ; SV_MACHINE_PARAMETER_65  : Low Range Gear Ratio .5x
 ; SV_MACHINE_PARAMETER_66  : Medium-Low Range Gear Ratio
-; SV_MACHINE_PARAMETER_67  : Medium-High Range Gear Ratio (unused on this 2-speed machine; CNC12
-;                            locks it as a non-applicable range, so it cannot serve as the high ratio)
+; SV_MACHINE_PARAMETER_67  : Medium-High Range Gear Ratio (unused on this 2-speed machine)
 ; SV_MACHINE_PARAMETER_146 : FeedHold Threshold, Sets FeedHold Under Value
 ; SV_MACHINE_PARAMETER_148 : 0 = Keyboard Jogging Allowed, 2 = Prohibit Keyboard Jogging
 ; SV_MACHINE_PARAMETER_153 : 0 = Disable Probe Protection, 1 = Enable Probe Protection
 ; SV_MACHINE_PARAMETER_170 : Add 1 = Keyboard Jogging Enable,
 ;                                                        Add 2 = Feedrate Override Jog Panel Only,
 ;                                                        Add 4 = Feedrate Override Keyboard Only
-; SV_MACHINE_PARAMETER_179 : LubePump Settings (RETIRED - no longer read; the oil pump on
-;                            OUT2 is driven by the MainStage oil-pump coil)
+; SV_MACHINE_PARAMETER_179 : LubePump Settings (Acroloc: retired -- oil pump is a MainStage coil)
 ; SV_MACHINE_PARAMETER_218 : 0 = Wired MPG, > 0 = Wireless MPG
 ; SV_MACHINE_PARAMETER_219 : 0 = No VCP, 1 = Start VCP on boot
 ; SV_MACHINE_PARAMETER_348 : MPG 1 Encoder
@@ -219,16 +214,8 @@ ATC_SPIN_TIMEOUT_MS_C           IS 20000 ; Acroloc carousel search timeout (ms)
 ;                        INPUT DEFINITIONS
 ;               Closed = 1 (green)  Open = 0 (red)
 ;------------------------------------------------------------------------------
-; Acroloc: INP1-INP6 are the ALLIN1DC's hardware current-inhibit limit inputs, one
-; pair per axis in the board's NATIVE (internal) motor direction -- odd = native
-; minus, even = native plus. The board blocks drive current toward a tripped input
-; below the PLC scan, so a switch on the wrong-direction input gives Error 411 "full
-; power without motion" when backing off. The names below are the board's native
-; direction. Y (axis 2) and Z (axis 3) have Direction Reversal = Yes (Machine Config
-; -> Motor Parameters), so their LOGICAL + is the board's NATIVE -: the physical +/-
-; switch wired to each reversed pair is swapped vs. the name, and the Motor Parameter
-; limit-input numbers are swapped to match (X 1/2 natural; Y 4/3; Z 6/5).
-; See the acroloc-s10 skill, reference/axes-and-travel.md.
+; Acroloc: INP1-INP6 are the board's hardware current-inhibit limit inputs, named in its
+; NATIVE direction (Y/Z reversed) -- acroloc-s10 skill, reference/axes-and-travel.md.
 Ax1_MinusLimitOk_I              IS INP1  ; X not reversed: physical X- limit switch
 Ax1_PlusLimitOk_I               IS INP2  ; X not reversed: physical X+ limit switch
 Ax2_MinusLimitOk_I              IS INP3  ; Y REVERSED: wired to physical Y+ limit switch
@@ -1107,10 +1094,8 @@ SpindleMeter_W                  IS W59
 SpindleRange_W                  IS W64  ; 1 = low ... 4 = high
 DesiredRange_W                  IS W73  ; Acroloc gear wanted by RPM logic (0=none, 1=low, 4=high)
 EngagedRange_W                  IS W74  ; Acroloc commanded engaged gear (open-loop; 0=neutral/unknown, 1=low, 4=high)
-; Acroloc gear-shift params (free 860-870 block; 900-block reserved: P941 = limit-defeat button):
-;   P860 = gear crossover RPM (commanded speed at/above which high gear is used; 0 disables auto-shift)
-;   P861 = crossover hysteresis (RPM) -- deadband half-width to prevent hunting
-;   P862 = coast dwell (ms) spent in neutral before engaging the new gear (0 -> default 1500)
+; Acroloc gear-shift params: P860 crossover RPM, P861 hysteresis, P862 coast dwell ms
+; (free 860-870 block; do NOT use the 900 block) -- docs/plc-spec/parameters.md.
 PrevFeedOverride_W              IS W65
 P148Value_W                     IS W66
 P146Value_W                     IS W67
@@ -2072,10 +2057,8 @@ IF ((CoolFloodLED_O ^ (!CoolAutoModeLED_O && CoolantFloodPD_PD)) ||
    THEN (CoolFloodLED_O), (SelectCoolantFlood_SV)
 
 ;--Mist coolant (pump channel) on/off
-; Acroloc: the PUMP button toggles a manual request in EITHER mode (stock only
-; honored it in manual mode). The pump channel runs on the manual latch OR
-; (auto && M7): M9/M7-off stops an M7-started pump but never a manually
-; requested one; switching coolant mode clears the manual latch (stock rule).
+; Acroloc: the PUMP button toggles a manual request in either mode (stock honored it
+; only in manual) -- docs/plc-spec/main-stage.md.
 IF (CoolMistKey_I || KbMistOnOff_M || SkinCoolMist_M_SV) THEN (CoolantMistPD_PD)
 IF (PumpManual_M ^ CoolantMistPD_PD) &&
    !(SV_STOP || CoolantAutoManualPD_PD || ErrorFlag_M || DoToolCheck_SV)
@@ -2085,11 +2068,8 @@ IF (PumpManual_M || CoolAutoModeLED_O && M7_SV) &&
    THEN (CoolMistLED_O), (SelectCoolantMist_SV)
 
 
-; Acroloc: drive the coolant hardware. Flood and the coolant-motor (mist) buttons are
-; INDEPENDENT (not mutually exclusive): the pump (OUT4) runs whenever EITHER is on, and the
-; flood valve (OUT3) opens only for flood. So mist = coolant motor on/off, flood = motor +
-; work-area sprayers, and both can be on at once. The LEDs are already gated off by
-; SV_STOP/errors/tool-check above, so these outputs inherit that.
+; Acroloc: flood and mist are INDEPENDENT -- the pump (OUT4) runs whenever either is on,
+; the flood valve (OUT3) opens only for flood. docs/plc-spec/main-stage.md
 IF CoolFloodLED_O THEN (FloodValve_O)
 IF CoolFloodLED_O || CoolMistLED_O THEN (CoolantPump_O)
 
@@ -2234,18 +2214,8 @@ IF SV_PLC_SPINDLE_KNOB > 100 THEN (SpinOverPlusLED_O), (DoIncreaseSpindleOR_SV)
 ;    0          1         1         0   SV_SPINDLE_MID_RANGE M
 ;    0          0         1         1   SV_SPINDLE_LOW_RANGE
 
-; Stock CNC12 here would read an input switch / M function to pick the gear
-; range number (1-4) and default to high range as a fail-safe. That scheme does
-; NOT apply on this machine.
-; Acroloc: RPM-based automatic gear selection (replaces the old INP13 sense-switch
-; selection). The power-up default is NEUTRAL (both clutches on, gear unknown); see init.
-; DesiredRange_W is held in the hysteresis deadband. P860<=0 disables auto-shift and
-; defaults to LOW gear (engaged on spin-up) so the spindle still drives.
-;
-; Decide from the UN-overridden S value: SV_PC_COMMANDED_SPINDLE_SPEED includes
-; the spindle-override knob (SV_PLC_SPINDLE_KNOB, clamped 1-200 in the override
-; section above), so back the knob out -- otherwise sweeping the override across
-; the crossover mid-cut would trigger a gear shift (a neutral drop under load).
+; Acroloc: RPM-based gear selection (replaces the stock range switch), decided from the
+; UN-overridden S so the override knob cannot shift gears mid-cut. docs/plc-spec/gear-shift.md
 IF True_M THEN GearBaseSpeed_FW = SV_PC_COMMANDED_SPINDLE_SPEED * 100.0 / SV_PLC_SPINDLE_KNOB
 
 IF SV_MACHINE_PARAMETER_860 <= 0.0 THEN DesiredRange_W = EngagedRange_W
@@ -2297,10 +2267,8 @@ IF SpindleRange_W == 3 THEN RST SV_SPINDLE_LOW_RANGE,
 IF SpindleRange_W == 4 THEN RST SV_SPINDLE_LOW_RANGE,
                             RST SV_SPINDLE_MID_RANGE,
                             SpinRangeAdjust_FW = SV_MACHINE_PARAMETER_863 ; Acroloc high-gear ratio (~2.0 tuned); low uses P65 (0.52)
-; Acroloc: high (range 4) reads P863, a general param in the 860-870 "Not Used" block, because it
-; stays editable regardless of spindle range config.  P33 was tried first (reserved, not settable)
-; and P66/P67 next (CNC12 locks the medium-range gains on this machine).  If P863 is unset (<=0)
-; fall back to 2.0 (this machine's measured high ratio) -- NOT 1.0, which would overspeed ~2x.
+; Acroloc: high (range 4) reads P863; unset (<=0) falls back to 2.0, this machine's measured
+; ratio -- NOT 1.0, which would overspeed ~2x. docs/plc-spec/gear-shift.md
 IF (SpindleRange_W == 4) && (SV_MACHINE_PARAMETER_863 <= 0.0) THEN SpinRangeAdjust_FW = 2.0
 
 ; If the speed ratio parameter is negative, reverse the motor.
@@ -2350,28 +2318,13 @@ IF (SpinSpeedCommand_FW > 0.0) &&
 IF SpinSpeedCommand_FW > (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
    THEN SpinSpeedCommand_FW = (CfgMaxSpeed_FW * SpinRangeAdjust_FW)
 
-; Acroloc: mirror the TRUE spindle RPM into a word so the VCP's seven-segment
-; spindle readout (plc_word 77) can display it. SpinSpeedCommand_FW carries 2x the
-; actual spindle RPM: CfgMax is pinned at the safe spindle max (3500), not the ~1750
-; motor-base reference, so the command runs 2x high and the DAC divides it back out
-; via P65/P863 (the spindle is physically correct -- owner-confirmed by tach). The /2
-; here is DISPLAY-ONLY and applies ONLY to this cosmetic VCP word. Do NOT divide
-; SpinSpeedCommand_FW (drives the DAC, src:2420/2423) or SV_PLC_SPINDLE_SPEED (the
-; PC-screen readout, src below): halving SV_PLC_SPINDLE_SPEED dropped the VCP
-; connection on-machine -- CNC12 requires the reported spindle speed to track the
-; command -- so the PC-screen DRO stays at the command scale (2x true RPM). Coupled to
-; the spindle calibration: if CfgMax/P65/P863 are ever retuned so commanded == actual,
-; drop the /2. See docs/plc-spec/gear-shift.md ("Ratio scaling") and
-; docs/testing/spindle-speed-calibration.md.
+; Acroloc: DISPLAY-ONLY /2 for this cosmetic VCP word. Do NOT divide SpinSpeedCommand_FW
+; or SV_PLC_SPINDLE_SPEED -- docs/plc-spec/gear-shift.md ("Ratio scaling").
 IF True_M THEN SpinRPM_W = SpinSpeedCommand_FW / 2.0
 
 ;-------------------------------------------------------------------------------
-; Acroloc: VCP machine-coordinate readout (plc_word 11/12/13, type Float)
-; cncm.hom pulses HomeSync_SV (M94/6 .. M95/6) right after its last M26, when
-; every axis sits at machine zero; the encoder counts are latched there and
-; positions are counts relative to that, scaled by the CNC12 axis config:
-; 8000 counts/turn x 5 turns/inch = 40000 counts/inch, X +, Y/Z reversed (-).
-; Display-only; shows 0.0 until the machine is homed.
+; Acroloc: VCP machine-coordinate readout (plc_word 11/12/13), counts relative to the
+; HomeSync_SV latch in cncm.hom -- docs/plc-spec/main-stage.md.
 ;-------------------------------------------------------------------------------
 IF True_M THEN AbsX_FW = SV_MPU11_ABS_POS_0,
                AbsY_FW = SV_MPU11_ABS_POS_1,
@@ -2410,20 +2363,12 @@ IF TwelveBitSpeed_W > 4095 THEN TwelveBitSpeed_W = 4095
 ; Output to DAC
 IF True_M THEN WTB TwelveBitSpeed_W SpinAnalogOutBit0_O 12
 
-; Display calculated RPM value on PC. Acroloc: intentionally left = SpinSpeedCommand_FW
-; (NOT /2). Halving this dropped the VCP connection on-machine -- CNC12 requires the
-; PLC-reported spindle speed to track the commanded speed. So the PC-screen spindle DRO
-; reads the command scale (2x true RPM); only the cosmetic VCP word (SpinRPM_W) is
-; corrected. Fixing the PC DRO would need the root-cause re-commission (P863 -> ~1.0 plus
-; an F510 max-frequency retune so full DAC = 3500 spindle), not a display divide here.
+; Display calculated RPM value on PC. Acroloc: intentionally NOT /2 -- halving this
+; dropped the VCP connection on-machine. docs/plc-spec/gear-shift.md
 IF True_M THEN SV_PLC_SPINDLE_SPEED = SpinSpeedCommand_FW
 
-; Acroloc: clutch truth table (low=OUT19, high=OUT20): exactly one on = that
-; gear; both on = NEUTRAL (freewheel); BOTH OFF = mechanical LOCKUP (belts fight)
-; -- forbidden, never command it. Backstop: if both are ever read off, STOP the
-; spindle immediately (drop enable; the DAC is forced to 0 by the rung above) and
-; command neutral (both on) to release the lockup. EngagedRange_W = 0 marks the
-; gear unknown so the next demand re-triggers a full shift, not a stale value.
+; Acroloc: both clutches on = neutral; BOTH OFF = mechanical LOCKUP, never command it.
+; This rung is the backstop that stops the spindle and forces neutral. gear-shift.md
 IF !Spindle_Low_gear_O && !Spindle_High_gear_O THEN
   RST SpindleEnableOut_O,
   SET Spindle_Low_gear_O,
@@ -2884,11 +2829,8 @@ IF Initialize_T && !LubeOk_I && !SV_PROGRAM_RUNNING
 
 IF !LubeOk_I && SV_PROGRAM_RUNNING THEN InfoMsg_W = LUBE_WARNING_MSG_C
 
-; Acroloc oil pump: power OUT2 only while a G-code program is actively
-; executing. Off in MDI, at idle, on feed-hold, and on any stop
-; (cycle-cancel/reset, E-stop, program end). Coil form = no latch: OUT2
-; drops the same scan any term clears. EStopOk_M mirrors the stock E-stop
-; cutoff. Replaces the retired Parameter-179 lube-timer stages.
+; Acroloc oil pump: OUT2 powered only while a program is actively executing; coil form,
+; so it drops the same scan any term clears. docs/plc-spec/main-stage.md
 IF SV_JOB_IN_PROGRESS && !SV_MDI_MODE && !FeedHoldLED_O && EStopOk_M THEN (Lube_O)
 
 IF Initialize_T && !SpindleInverterOk_I
@@ -2944,13 +2886,8 @@ IF TriggerPause_T THEN RST TriggerPause_T, RST ActivateFeedHold_M
 IF True_M THEN RST OnAtPowerUp_M
 
 ; Acroloc tool stage start
-; Acroloc -- enhanced ATC (P160=1): CNC12 looks the requested tool up in its Tool
-; Library and M107 sends that tool's BIN in SV_TOOL_NUMBER. Guard it: anything
-; outside 1..P161 (an unassigned tool, a bad library, P161 unset) faults here and
-; never starts the carousel. The 9xxx fault cancels the job during mfunc6's G4 P1
-; dwell, so CNC12 does not record the change as complete.
-; This guard runs BEFORE the arm rung below and RSTs M6_SV, so a rejected bin never
-; reaches it: nothing moved, so the known carousel position is kept, not zeroed.
+; Acroloc -- enhanced ATC (P160=1): SV_TOOL_NUMBER is a BIN. Out of 1..P161 faults 9067
+; here, before the arm rung, so a rejected bin keeps the known position. atc.md
 IF M6_SV && !ATCStage && (SV_TOOL_NUMBER < 1 || SV_TOOL_NUMBER > MaxToolBins_W) THEN
   FaultMsg_W = ATC_BIN_RANGE_MSG_C,
   SET ShowFaultStage,
@@ -2958,10 +2895,8 @@ IF M6_SV && !ATCStage && (SV_TOOL_NUMBER < 1 || SV_TOOL_NUMBER > MaxToolBins_W) 
   RST M6_SV,
   RST ATCSpin_T,
   TargetToolBinDisp_W = SV_TOOL_NUMBER
-; Acroloc: once per change (before SET ATCStage below, so !ATCStage is true only on the
-; first scan): arm the carousel search watchdog, AND clear CurrentToolBin_W so a stale
-; value from the previous change cannot cause an immediate match -- the carousel always
-; re-indexes to the requested bin.
+; Acroloc: once per change -- arm the search watchdog and clear the stale bin so it
+; cannot immediate-match. docs/plc-spec/main-stage.md
 IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CurrentToolBin_W = 0, RST ToolSelected_M
 ; Bin in range: latch it as the search target and arm ATCStage (its search/decode/
 ; match logic is unchanged). TargetToolBinDisp_W feeds the retro VCP TOOL BIN readout.
@@ -2970,32 +2905,17 @@ IF M6_SV && !ATCStage THEN
   TargetToolBinDisp_W = SV_TOOL_NUMBER,
   SET ATCStage
 
-; Acroloc -- enhanced ATC handshake: report the SETTLED carousel bin to CNC12.
-; Latched only while no change is running, so mid-spin partial sums never reach
-; CNC12. CNC12 records this value as the new tool's putback bin at the end of M6,
-; so it must be right the moment ATCStage clears -- and it is: the match rung
-; leaves CurrentToolBin_W = the matched bin, and every abort path zeroes it.
-; 0 is reported honestly whenever the bin is unknown.
+; Acroloc -- enhanced ATC handshake: report the SETTLED bin (0 = unknown); CNC12 records
+; it as the new tool's putback at the end of M6. docs/plc-spec/atc.md
 IF !ATCStage THEN ReportedToolBin_W = CurrentToolBin_W
 IF True_M THEN SV_PLC_CAROUSEL_POSITION = ReportedToolBin_W
 
-; Acroloc -- VCP TOOL readout. mfunc6 writes the requested tool number to P700
-; with G10 only AFTER M95 /8 (change complete): a G10 issued mid-M6 made CNC12
-; commit the tool library early and record the new tool's putback from the
-; carousel position BEFORE the move (on-machine 2026-09-08: T15 went to the
-; previous tool's bin). ToolSelected_M = a change completed since the last
-; kickoff / hand move / ATC Reset, so this tracks P700 only then.
+; Acroloc -- VCP TOOL readout from P700, which mfunc6 writes with G10 only AFTER M95 /8
+; (a G10 mid-M6 commits putback early). docs/plc-spec/atc.md
 IF ToolSelected_M && !M6_SV && !CarouselMovedByHand_M THEN ToolInSpindleDisp_W = SV_MACHINE_PARAMETER_700
 
-; Acroloc -- enhanced ATC reset: CNC12's F2 ATC Reset (P164=1) sends the operator-
-; entered carousel position in SV_ATC_CAROUSEL_POSITION and then runs mfunc18.mac,
-; which pulses M18_SV. Re-seed the known bin from it.
-; This is an OPERATOR ASSERTION, not a proof: no carousel motion happens, the PLC
-; just adopts the position the operator typed. The PLC cannot tell F2 from a bare
-; M18, so !SV_PROGRAM_RUNNING keeps a part program containing M18 from silently
-; clearing the interlock mid-job. F2 runs from the Tool Library screen, not a
-; program, so it is unaffected. A motor-driven proof is what M20 / an ATCStage
-; match give you.
+; Acroloc -- enhanced ATC reset (M18, CNC12's F2): an operator ASSERTION, not a proof.
+; !SV_PROGRAM_RUNNING stops a program's M18 clearing the interlock. docs/plc-spec/atc.md
 IF M18_SV && !ATCStage && !SV_PROGRAM_RUNNING THEN
   CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION,
   TargetToolBinDisp_W = SV_ATC_CAROUSEL_POSITION,   ; Acroloc VCP BIN readout shows the declared bin
@@ -3004,21 +2924,15 @@ IF M18_SV && !ATCStage && !SV_PROGRAM_RUNNING THEN
   ToolInSpindleDisp_W = SV_ATC_TOOL_IN_SPINDLE   ; Acroloc the tool the operator declared in the reset
 
 ; Acroloc manual tool changes
-; Manual unlock lets the operator hand-spin the carousel to ANY bin, forward or
-; backward. The PLC does not track hand rotation (the position decode only runs
-; under ATCMotor_O), so the known bin is now stale -> force it to 0 = UNKNOWN.
-; The VCP TOOL BIN readout (TargetToolBinDisp_W) then shows 0 instead of a stale
-; value, and the next M6 re-derives the bin by absolute-switch search anyway.
+; Hand rotation is not tracked (the decode runs only under ATCMotor_O), so force the
+; known bin to 0 = UNKNOWN. docs/plc-spec/atc.md
 IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O,
   CurrentToolBin_W = 0,
   TargetToolBinDisp_W = 0
 IF !ATCManualUnlock_I && !ATCStage THEN RST ATCUnlocked_O
 
-; Acroloc: gated on !HandMoveMsgHold_M. One of these two rungs is true on EVERY
-; scan, so this echo owns FaultMsg_W permanently -- which is also why InfoMsg_W
-; and ErrorMsg_W never display on this machine (MessageStage only routes to them
-; when FaultMsg_W == 0). The hand-move status below therefore posts on FaultMsg_W
-; too, and holds this echo off for a few seconds so the operator can read it.
+; Acroloc: one of these two rungs is true EVERY scan, so this echo owns FaultMsg_W --
+; which is why InfoMsg_W/ErrorMsg_W never display. docs/plc-spec/faults-and-messages.md
 IF ATCManualUnlock_I && !HandMoveMsgHold_M THEN
   FaultMsg_W = ATC_Lock_Not_Released_C,
   SET ShowFaultStage
@@ -3029,17 +2943,8 @@ IF !ATCManualUnlock_I && !HandMoveMsgHold_M THEN
 ;=============================================================================
 ; Acroloc -- Spindle-in-changer feed-hold interlock (single unified rule)
 ;=============================================================================
-; Danger zone = !ATC_Z_ClearedToolChanger_I  (INP26 FALSE = spindle in changer).
-; ANY programmed or MDI move driving Z into the changer is held while the
-; spindle is commanded off and reaches zero (confirmed by ZeroSpeed_I, INP12),
-; then auto-resumed. The spindle is held OFF the whole time Z is in the zone and
-; resumes at its commanded speed only after Z exits. Replaces the stock always-on
-; stop block, KEEPING its unconditional zone spindle-kill. Resume is signal-
-; driven: the instant ZeroSpeed_I confirms a stop; a 5 s timeout with the spindle
-; still turning faults instead. Timer idiom: a bare timer is true WHEN EXPIRED.
-; ActivateFeedHold_M is a self-clearing trigger (stock code RSTs it ~100 ms after
-; set and SETs FeedHoldLED_O while set); DoCycleStart_SV clears FeedHoldLED_O to
-; resume -- so no RST of ActivateFeedHold_M is needed here.
+; Danger zone = !ATC_Z_ClearedToolChanger_I. Z is held out of the changer until the
+; spindle is confirmed stopped (ZeroSpeed_I), then auto-resumed. docs/plc-spec/atc.md
 
 ; -- 1. clear the once-per-entry latch whenever Z is clear of the changer
 IF ATC_Z_ClearedToolChanger_I THEN RST ChangerHoldDone_M
@@ -3079,17 +2984,8 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
 ;=============================================================================
 ; Acroloc -- hand-moved carousel interlock (enhanced ATC)
 ;=============================================================================
-; Rule (owner, 2026-09-08): CNC12 only knows a bin after it has put the tool
-; there. If the carousel moves without the motor -- a hand spin at Z0 to add,
-; swap or remove tools -- or the control has just booted, assume the tool was
-; put away and NOTHING is in the spindle until proven otherwise.
-; The carousel parks in the all-switches-off gap, so at rest the switches read
-; nothing and a hand move cannot be decoded; but it can always be detected: any
-; position switch asserting while ATCMotor_O is off. CNC12 still believes its old
-; tool is in the spindle and will even SKIP an M6 for that tool, so the PLC must
-; refuse the spindle until a motor-driven search (ATCStage match) or an ATC Reset
-; (M18) re-establishes the position. Recovery needs no E-stop: ErrorFlag_M cancels
-; the job and clears itself; the operator then runs ATC Reset or an M6.
+; A position switch asserting while ATCMotor_O is off means the carousel moved by hand:
+; assume nothing is in the spindle until proven. docs/plc-spec/atc.md
 IF (ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I) && !ATCMotor_O THEN
   SET CarouselMovedByHand_M,
   RST ToolSelected_M,
@@ -3103,27 +2999,8 @@ IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
   SET ShowFaultStage,
   SET ErrorFlag_M
 
-; Acroloc -- tell the operator without waiting for a refused spindle start:
-; post "PRESS ATC RESET" once when the position becomes unverified (a hand
-; move, or power-up) and "POSITION RE-ESTABLISHED" once when a carousel
-; search or an ATC Reset proves it again. Both are async (type 2) so neither
-; halts a job, and the two numbers alternate, which satisfies CNC12's refusal
-; to re-send the same message number twice in a row.
-; These MUST post on FaultMsg_W, not InfoMsg_W: the carousel lock echo above
-; assigns FaultMsg_W every scan, so MessageStage never routes to the info or
-; error channels. These rungs sit AFTER that echo, so they win the scan they
-; fire on, and HandMoveMsgHold_M gates the echo off for 3 s so it stays up.
-; The lit ATC RESET button (plc_memory 454) is the persistent indicator.
-; Acroloc: post only when CNC12 can actually show it. At power-up the PLC runs
-; before the CNC12 software is ready (SoftwareNotReady_M), and E-stop is normally
-; still engaged -- ShowFaultStage zeroes FaultMsg_W every scan while !EStopOk_M.
-; Posting on the boot scan spent this one-shot with nobody able to see it
-; (on-machine 2026-09-10: button lit, no 175 message). Waiting keeps it owed
-; until it can be read; a hand move with E-stop down likewise posts on release.
-; !OtherFault_M too: an aborted change (search timeout, spindle not stopped, Z not
-; parked) latches this same interlock, and that abort's own 9xxx fault must stay on
-; screen rather than be overwritten here. OtherFault_M clears on E-stop, so the 175
-; posts on release, as above.
+; Acroloc: the 175/176 status pair posts on FaultMsg_W after the lock echo, and only once
+; CNC12 can show it. docs/plc-spec/faults-and-messages.md ("The 175/176 gates")
 IF CarouselMovedByHand_M && !HandMoveMsgShown_M &&
    !SoftwareNotReady_M && EStopOk_M && !OtherFault_M THEN
   FaultMsg_W = ATC_NEEDS_RESET_MSG_C,
@@ -3230,9 +3107,8 @@ IF !InBinDecode_M && CurrentToolBin_W == TargetToolBin_W THEN
   RST ATCSpin_T,
   RST ATCStage
 
-; Acroloc: carousel never found the tool within ATC_SPIN_TIMEOUT_MS_C ->
-; fault, stop the motor, relock. Placed after the match rung so a genuine
-; match on the same scan wins (it RSTs ATCStage/ATCSpin_T first).
+; Acroloc: search timeout -- fault, stop, relock. After the match rung so a genuine
+; match on the same scan wins. docs/plc-spec/atc.md
 IF ATCStage && ATCSpin_T THEN
   FaultMsg_W = CAROUSEL_TIMEOUT_MSG_C,
   SET ShowFaultStage,

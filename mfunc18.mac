@@ -2,11 +2,8 @@
 ; File: mfunc18.mac
 ; Desc: ATC Reset (enhanced ATC, P160=1)
 ;
-; Run by CNC12's F2 ATC Reset (Tool Library, P164=1) after the operator has
-; entered the carousel position, the tool in the spindle and its putback bin.
-; CNC12 has already sent the position in SV_ATC_CAROUSEL_POSITION; pulsing
-; M18_SV (bit 18) tells the PLC to re-seed CurrentToolBin_W from it.
-; Do not run M18 from MDI.
+; Run by CNC12's F2 ATC Reset (Tool Library, P164=1): pulses M18_SV so the PLC
+; adopts the position CNC12 sent in SV_ATC_CAROUSEL_POSITION. docs/plc-spec/atc.md
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;Skip if graphing or searching
