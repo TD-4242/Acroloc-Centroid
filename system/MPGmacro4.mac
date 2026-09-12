@@ -1,0 +1,14 @@
+;
+; Filename: MPGmacro4.mac
+; Description: ATC Reset -- wireless MPG Aux Key 4
+; Requires: CNC12; tools 199 and 200 assigned the same bin in the Tool Library
+;
+; CNC12 runs this for wireless MPG macro button 4. The code MUST sit between N100 and
+; N1000, and the stock M225 example message must be gone. The reset action lives in
+; mfunc20.mac (M20), shared with the VCP ATC RESET button.
+;
+IF #50001                        ; Prevent lookahead from parsing past here
+IF #4201 || #4202 THEN GOTO 1000 ; Skip macro if graphing or searching
+N100                             ; ---- code must live between N100 and N1000 ----
+M20                              ; ATC Reset
+N1000                            ; End of Macro

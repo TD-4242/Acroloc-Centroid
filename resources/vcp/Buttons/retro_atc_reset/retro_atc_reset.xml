@@ -1,0 +1,10 @@
+<vcp_button>
+	<run>
+		<line>M20</line>
+	</run>
+	<plc_memory>
+		<number>454</number>
+		<image_on>retro_atc_reset_on.svg</image_on>
+		<image_off>retro_atc_reset.svg</image_off>
+	</plc_memory>
+</vcp_button>

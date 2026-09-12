@@ -75,6 +75,13 @@ Field-validated behavior (from on-machine work; consistent with the manual's SVG
   378x349.9) -- copy a same-span stock SVG to get these right. To show a normal-size button
   centered in a taller span, declare the full-span artboard and pad around the normal-size art
   (do not stretch it).
+- **Content is fitted, not the artboard -- a small drawing is scaled UP.** The declared size
+  holds only while the art reaches the artboard edges. Measured on-machine: a lone small polygon
+  in a 252x233 artboard was blown up to fill the cell, so drawing a pointer *smaller* rendered
+  it BIGGER (7.5 artboard units came out as 252). Stock buttons escape this only because they
+  paint a full-bleed bezel. To draw something small, give the SVG a full-artboard anchor rect
+  (transparent or near-invisible) so the content extent matches the artboard -- the feedrate
+  needles in `resources/vcp/Buttons/` do exactly that.
 - **`text-anchor` is effectively ignored.** Position button text with an explicit `x`: either
   convert fonts to paths ("Object to Path" in Inkscape), or keep live text and compute the
   left-edge `x` from character advance widths for a font actually installed on the control PC

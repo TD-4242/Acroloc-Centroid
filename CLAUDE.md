@@ -22,11 +22,15 @@ to find every custom addition (definitions and logic alike).
   Do not hand-edit.
 - `mfunc*.mac` — M-code macros (G-code-like) executed by the CNC when an M-function fires.
   - `mfunc3/4` = spindle CW/CCW, `mfunc6` = **tool change (M6)**, `mfunc7/8` = mist/flood
-    coolant, `mfunc10/11` = clamp on/off.
+    coolant, `mfunc10/11` = clamp on/off, `mfunc18` = ATC Reset handshake (M18),
+    `mfunc20` = **the ATC reset action** (M20).
+- `system/MPGmacro4.mac` — run by CNC12 when the PLC sets `SV_SYS_MACRO = 4` (wireless MPG
+  macro button 4). One line: `M20`. The repo root is the live `cncm` directory, so
+  `.gitignore` un-ignores only `/system/MPGmacro*.mac`.
 - `resources/vcp/` — **generated** operator panel (retro VCP). Emitted by `tools/vcpgen.py`;
   do not hand-edit. `resources/colors/` holds the color themes.
 - **Customized CNC12 control-PC files** — `language.msg` (parameter/UI labels: P860-863 gear
-  shift, P701-712 ATC tool->bin map), `plcmsg.txt` (custom ATC/spindle operator messages, keyed
+  shift), `plcmsg.txt` (custom ATC/spindle operator messages, keyed
   to the `.src` message constants), `cncm.hom` (homing + HomeSync latch). These look stock but
   are ours, and a **CNC12 upgrade can overwrite them** — see
   `docs/control-pc-customizations.md` for what is customized and how to restore it.
@@ -83,14 +87,14 @@ Understand this before touching tool-change logic; it spans `mfunc6.mac`, `MainS
 1. `M6` runs `mfunc6.mac`: stops spindle/coolant, moves Z to the tool-change position via
    `G53 Z0`, sends the target tool with `M107`, then sets `M6_SV` (`M94 /8`) to kick off the
    tool-change stage and resets it (`M95 /8`) when `ATCStage` clears.
-2. `MainStage` sees `M6_SV` and **maps the requested tool to a carousel bin**: machine
-   parameters `P701-P712` hold the tool loaded in bins 1-12 (cached in
-   `ToolInBin1_W..ToolInBin12_W` at `LoadParametersStage`, re-read every scan). It sets
-   `TargetToolBin_W` to the bin whose loaded tool equals `SV_TOOL_NUMBER` — or `99`, an
-   unreachable bin, if the tool is in no bin, so it faults on the watchdog instead of
-   false-matching — then `SET ATCStage`. While Z has not cleared the tool changer
-   (`ATC_Z_ClearedToolChanger_I` low) it drops spindle enable; `ATCStage` posts the "spindle
-   not parked" fault.
+2. `MainStage` sees `M6_SV`. The machine runs CNC12's **non-random enhanced ATC**
+   (`P160 = 1`, `P161 = 12`, `P6 = 1`, `P164 = 1`): the operator assigns each tool a
+   carousel bin in the **Tool Library Bin column**, and `M107` sends that **bin**, not the
+   tool number, in `SV_TOOL_NUMBER`. `MainStage` range-guards it (1..`P161`, cached in
+   `MaxToolBins_W`; anything else faults `9067 ATC BIN OUT OF RANGE` and never starts the
+   carousel), latches it into `TargetToolBin_W`, then `SET ATCStage`. While Z has not
+   cleared the tool changer (`ATC_Z_ClearedToolChanger_I` low) it drops spindle enable;
+   `ATCStage` posts the "spindle not parked" fault.
 3. `ATCStage` spins the carousel (`ATCMotor_O`, `ATCUnlocked_O`) and reads the **5 position
    switches** (`ATC_Pos1_I`..`ATC_Pos5_I`, INP32..INP28). These encode the **carousel bin
    (physical position)**, not the tool number — **base-16 as decimal** across those 5 bits
@@ -98,20 +102,49 @@ Understand this before touching tool-change logic; it spans `mfunc6.mac`, `MainS
    `TargetToolBin_W`; on match it stops the motor, relocks, and `RST M6_SV` / `RST ATCStage`
    to finish.
 
-**Naming rule:** anything `...ToolBin...` holds a **carousel bin**; `ToolInBinN_W` holds a
-**tool number**. CNC12's own enhanced-ATC modes are deliberately unused (`P160 = 0`) — they
-either reshuffle the map (random) or force tool == bin (non-random).
+**Naming rule:** anything `...ToolBin...` holds a **carousel bin**. Tool numbers never reach
+the PLC; CNC12 owns the tool->bin map. **CNC12 handshake:** the PLC reports the settled bin
+every scan in `SV_PLC_CAROUSEL_POSITION` (`ReportedToolBin_W`, 0 = unknown) — CNC12 will not
+run a change without it and records it as the new tool's putback bin at the end of M6 — and
+seeds `CurrentToolBin_W` from `SV_ATC_CAROUSEL_POSITION` on `M18` (`mfunc18.mac`, run by the
+Tool Library's **F2** ATC Reset). At power-up it is **not** seeded: the carousel can be turned
+with the control off, so the bin starts unknown (0) with the interlock latched. Random mode (`P160 = 2`) is wrong for this
+fixed-pocket carousel: it reshuffles bins after every change.
+
+**Hand-moved carousel (safety interlock, never remove).** At Z0 the carousel can be turned by
+hand. The PLC detects it (a position switch asserting while `ATCMotor_O` is off), latches
+`CarouselMovedByHand_M` (MEM454, also set at power-up), reports position 0, holds spindle
+enable off, and cancels a program/MDI spindle start with `9068`. Only an `ATCStage` match or
+`M18` clears it. Recovery is **`M20`** (`mfunc20.mac`), bound to the VCP **ATC RESET** button
+and wireless MPG macro button 4 (`system/MPGmacro4.mac`): it changes to whichever of the dummy
+tools **199/200** CNC12 does *not* believe is loaded, because CNC12 *skips* an M6 for the tool
+its status window names and that tool is read-only to us. Two dummies, because after one reset
+the loaded tool is the dummy. The button lights red while a reset is owed; the PLC posts `175` once CNC12 is up and E-stop
+is released, and `176` once the position is proven.
 
 Custom ATC I/O (all marked `; Acroloc`): inputs `INP24`,`INP26`,`INP27`,`INP28..32`;
 outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71` (`CurrentToolBin_W`),
 `W72` (`TargetToolBin_W`), `W8` (`TargetToolBinDisp_W`, the VCP `TOOL BIN` readout), and
-`W78-W89` (`ToolInBin1_W..12_W`).
+`W78` (`ReportedToolBin_W`), `W79` (`MaxToolBins_W`, P161).
 
 ## Conventions & cautions
 
 - **Match the surrounding style.** Centroid's stock code uses fixed-column alignment for
-  `Name IS Resource` and heavy `;` comments. Keep new definitions aligned and tag custom
-  ones with `; Acroloc`.
+  `Name IS Resource`. Keep new definitions aligned and tag custom ones with `; Acroloc`.
+- **Comments are 1-2 lines.** A comment exists to clarify code that is confusing to read.
+  The rationale — why it exists, what was rejected, what the on-machine finding was — goes
+  in the commit message and in the design documents (`docs/plc-spec/`, or a spec under
+  `docs/superpowers/specs/`), and the comment carries a **pointer** to it. This repo has no
+  issue tracker, so the document path *is* the pointer. Before cutting a sentence out of a
+  comment, confirm the fact is recorded in a document; if it is not, put it there in the
+  same change. Measurements and load-bearing orderings keep their 1-2 lines — state the
+  value, not the derivation. File headers (`.mac`, `.cnc`) are doc comments: sized to the
+  contract they document, which for an NC program includes its safety envelope and
+  preconditions.
+- **Centroid's stock comments are read-only.** Only comments tagged `; Acroloc`, and our own
+  files, are ours to edit — leaving the vendor's alone keeps the `.src` diffable against
+  Centroid's reference source after a CNC12 upgrade. `;===`/`;---` dividers and the vendor
+  parameter table are structure, not narrative: keep their shape.
 - Every M-function macro guards against graph/search mode with
   `IF #4201 || #4202 THEN GOTO 1000` and ends at the `N1000` label — preserve this pattern.
 - Macro PLC variables: a PLC `OUT`/`MEM` is read from a macro as `#(60000 + n)` (e.g.

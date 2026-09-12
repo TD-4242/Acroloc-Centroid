@@ -34,10 +34,8 @@ STYLES = {
 }
 
 # ------------------------------------------------------------ text metrics -
-# Arial Bold advance widths (fraction of font size, from the standard AFM
-# metrics). The CNC12 renderer ignores text-anchor, so every <text> gets an
-# explicit left-edge x. Font is plain Arial: the control PC lacks Arial
-# Narrow and the silent fallback made all legends render right of center.
+# Arial Bold advance widths (AFM metrics); plain Arial only -- the control PC has no
+# Arial Narrow. The renderer ignores text-anchor, so every <text> needs an explicit x.
 CHAR_W = {
     'A': 0.722, 'B': 0.722, 'C': 0.722, 'D': 0.722, 'E': 0.667, 'F': 0.611,
     'G': 0.778, 'H': 0.722, 'I': 0.278, 'J': 0.556, 'K': 0.722, 'L': 0.611,
@@ -70,11 +68,8 @@ def text_el(s, cx, y, fs, fill):
             % (x, y, fs, fill, s))
 
 
-# The VCP's SVG converter (Svg2Xaml) only proves out a narrow feature set in
-# the stock skins: paths/shapes/polygons/text, gradients with ABSOLUTE
-# userSpaceOnUse coordinates, and NO <filter> primitives. Percentage
-# gradient coordinates and feGaussianBlur/feMerge crash the panel silently,
-# so everything below sticks to the proven subset.
+# Svg2Xaml renders only a narrow subset: no <filter>, gradients must be absolute
+# userSpaceOnUse. Violations crash the panel silently -- centroid-vcp/troubleshooting.md.
 def _grad(gid, kind, stops, geom):
     body = ''.join('<stop offset="%s" stop-color="%s"/>' % st for st in stops)
     if kind == 'radial':
@@ -167,9 +162,8 @@ def render_button_svg(lines, style, icon='', fs=15, text_y=None, text_x=None,
 # ------------------------------------------------------------- icons ------
 # Content coordinate system: cap center (58,58); FILL -> state text color,
 # CX -> horizontal center.
-# NOTE: in the stock tortoise_hare.svg the FIRST path is the hare and the
-# SECOND the tortoise (verified on-machine 2026-07-14; the animals are
-# stylized enough that the original top/bottom reading was backwards).
+# NOTE: in the stock tortoise_hare.svg the FIRST path is the hare, the SECOND the
+# tortoise (verified on-machine 2026-07-14).
 HARE_PATH = 'M54.08,66.76s12.71,3,12.29,4.28S66,73,57.53,71,41,68.24,38.34,69.5c0,0-1.24-4.53-3.73-5.22s-4.83,0-5.52,1.38.28,4.83,2.35,5.93a57.86,57.86,0,0,0-4.84,5.8c-1.79,2.63-6.21,7-14.63,8.15s-7.46,7.73-.69,5.25,17.53-6.49,27.34-6.08,21.26,4.56,30.93.14c4.83,3.73,9.41,6.61,11.89,7s13.65,0,13.65,0,.82-2.12-3.73-2.6c-1.13-.12-9-1.25-9-1.25S74.52,83.88,74,82.36s.41-3.72.41-3.72,9.52,1.1,11.6,1a4.07,4.07,0,0,0,3.2-1.84l.1-.15c.67-1-2.92-8.11-6.48-9.37-3.35-1.19-4.8-2-6.76-1.38-1,.3-2.63,1.24-3.73,1.24S66.1,63.72,61.4,63.45,44.14,66.21,54.08,66.76Z'
 TORT_PATH = 'M90.89,29.61a3.73,3.73,0,0,0,1.88-2.31,3.38,3.38,0,0,0,1-1.72c-.11-1.56-1.81-2.81-3.61-3.11a6.75,6.75,0,0,0-4.33-.42A33.18,33.18,0,0,0,79,24.27c-.49.06-2.62,1.55-2.76.92S69.66,15.58,60.34,10.3s-21.26,0-21.26,0c-8.89,3.47-15.15,16.84-16.17,18.33s-5.79-3.44-5.79-3.44c.62,5.81,8.7,8.06,8.7,8.06l-.43,6.94h7.28a20.09,20.09,0,0,1,.43-4C33.54,34.41,36,34.9,36,34.9l.43,5.29h6.41l2-6.28c2,1.16,11.15-.66,11.15-.66l-.44,6.94h6.41s3.93-6.94,4.51-6.77S66,40.19,66,40.19h6.11s1.75-5.12,2-6.75,7-1.45,7.64-1.71a7,7,0,0,1,3.72-1.09,16,16,0,0,0,5.38-1'
 
@@ -328,10 +322,8 @@ def render_nameplate_svg():
 
 # ------------------------------------------------------- round RESET ------
 def render_reset_svg(tripped):
-    # Stock reset.svg artboard is 378x349.9 for this same 3x3 span and the
-    # VCP renders an image at its declared size - matching it exactly is
-    # what makes the graphic fill the spanned area (a smaller artboard
-    # leaves a gap; seen as a band above the tripped reset on-machine).
+    # Match the stock reset.svg artboard (378x349.9) for this 3x3 span: the VCP draws
+    # an image at its declared size, so a smaller artboard leaves a visible gap.
     W, H = 378, 350
     cx, cy = W / 2.0, 190
     dome_r = 92 if tripped else 105
@@ -463,19 +455,10 @@ def render_knob_svg(on, title, labels):
 
 
 # --------------------------------------------- feedrate preset knob -------
-# A 2x2 dial: one continuous face drawn by a skin <image>, with the pointer for
-# the selected preset drawn by whichever of the four buttons sits over it.
-#
-# Everything is expressed in FACE coordinates (a 232x232 artboard, dial centre at
-# 116,116). Each needle SVG then declares a viewBox that is exactly the window of
-# face space its button covers, so face and needle share one coordinate system
-# and line up by construction -- no per-cell pivot arithmetic, and no letterbox,
-# because each window's aspect equals its button's aspect.
-#
-# Calibrated from machine screenshots (2026-08-07): buttons measure 79x63 px on a
-# 111 px column pitch and 107 px row pitch, and the face image letterboxes to
-# 214x214 inside a 222x214 region (4 px of padding each side). If the VCP is ever
-# resized or the grid changes, these five numbers are what to re-measure.
+# A 2x2 dial: a continuous face from a skin <image>, the selected preset's pointer drawn
+# by whichever button sits over it. Geometry is in FACE coordinates (the FK_* constants
+# below), so face and needles align by construction. Re-measure those if the grid changes.
+# docs/superpowers/specs/2026-08-07-feedrate-knob-design.md
 FK_FACE_VB = 232.0      # face artboard, square; dial centre at FK_FACE_C
 FK_FACE_C = 116.0
 FK_PX_PER_UNIT = 214.0 / FK_FACE_VB     # face units -> screen px
@@ -483,12 +466,8 @@ FK_BTN_PX = (79.0, 63.0)                # measured button size
 FK_COL_PITCH, FK_ROW_PITCH = 111.0, 107.0
 FK_PAD_PX = 4.0                         # face letterbox padding, x only
 
-# The gaps between VCP buttons are large -- ~40% of the row pitch -- so a button
-# window does not reach the dial centre. A needle must therefore point along its
-# window's diagonal or it falls outside the drawable area entirely (a 255 deg
-# needle for 25% missed its window completely). So the presets sit on the four
-# diagonals, 90 deg apart, which puts the 90 deg dead zone at the bottom like a
-# real knob stop. theta = 3.6 * value + 135, clockwise from straight up.
+# Presets sit on the four diagonals: a button window does not reach the dial centre, so
+# a needle must point along its own diagonal. theta = 3.6*value + 135, clockwise from up.
 FKNOB_THETA0 = 135.0    # theta at value 0 (in the dead zone; not drawn)
 FKNOB_SWEEP = 360.0     # 3.6 deg per percent
 FKNOB_TICK_LO = 25      # scale is drawn from 25 to 100; below 25 is the stop gap
@@ -497,10 +476,8 @@ FKNOB_R_DISK = 76.0     # silver skirt, out to the tick marks
 FKNOB_R_TICK_IN = 78.0
 FKNOB_R_FACE = 88.0     # tick outer radius, on the dark panel
 FKNOB_R_LABEL = 101.0
-# Short skirt pointer, not a full-length gauge hand. The tip sits at 83.6, which
-# is the centre of every button's window (all four are equidistant by symmetry),
-# so the arrow ends mid-button with its base on the skirt and its point reaching
-# into the tick ring -- the way a skirted knob indicates.
+# Short skirt pointer: the tip sits at 83.6, the centre of every button's window (all
+# four equidistant by symmetry), so it ends mid-button like a skirted knob.
 FKNOB_R_NEEDLE = 74.0   # tip at the skirt edge, aimed at the tick ring
 FKNOB_NEEDLE_LEN = 18.0   # length, face units
 FKNOB_NEEDLE_HW = 3.2     # half-width at the base
@@ -598,14 +575,8 @@ def render_feedrate_needle_svg(quadrant, on):
     p = ['<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
          'viewBox="%.2f %.2f %.2f %.2f">'
          % (int(FK_BTN_PX[0]), int(FK_BTN_PX[1]), x, y, w, h),
-         # Full-artboard anchor rect, all but invisible. Measured on-machine:
-         # the VCP scales a button's SVG *content* to fill the button, ignoring
-         # the declared size and the viewBox, so a lone small polygon gets blown
-         # up to fill the cell -- drawing the pointer smaller made it render
-         # BIGGER (7.5 units rendered as 252). Every other button in this panel
-         # escapes that only because it paints a full-bleed bezel. This rect
-         # gives the pointer the same full-artboard extent without hiding the
-         # dial face <image> behind it.
+         # Full-artboard anchor rect, all but invisible: the VCP fits drawn CONTENT,
+         # not the artboard, so a lone polygon is scaled up -- button-anatomy.md.
          '<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="#000000" '
          'fill-opacity="0.01"/>' % (x, y, w, h)]
     if on:
@@ -682,11 +653,14 @@ BUTTONS = [
     dict(name='single_block', row=9, col=2, lines=['SINGLE', 'BLOCK'],
          fs=13),
     dict(name='tool_check', row=10, col=6, lines=['TOOL', 'CHECK']),
+    # ATC RESET: recovery after a hand-moved carousel, a boot, or an aborted change.
+    # M20 changes to whichever dummy tool (199/200) CNC12 does not believe is loaded --
+    # docs/plc-spec/atc.md. Runs a line directly, so it only fires from the main menu.
+    dict(name='atc_reset', row=11, col=6, lines=['ATC', 'RESET'], fs=13,
+         run_line='M20', led_mem=454, style_on='lit'),
     dict(name='feed_hold', row=11, col=3, lines=['FEED', 'HOLD']),
-    # FEEDRATE preset dial: four 1x1 buttons tiled 2x2 whose sectors join into
-    # one knob. Each keeps its stock skin event and LED bit, so the PLC is
-    # untouched; only the artwork changes. See
-    # docs/superpowers/specs/2026-08-07-feedrate-knob-design.md
+    # FEEDRATE preset dial: four 1x1 buttons tiled 2x2 into one knob, each keeping its
+    # stock skin event and LED bit. specs/2026-08-07-feedrate-knob-design.md
     dict(name='feedrate_50', row=13, col=4,
          special='fknob', fknob_quadrant='NW'),
     dict(name='feedrate_75', row=13, col=5,
@@ -695,9 +669,8 @@ BUTTONS = [
          special='fknob', fknob_quadrant='SW'),
     dict(name='feedrate_100', row=14, col=5,
          special='fknob', fknob_quadrant='SE'),
-    # stacked: + on top, - below, so the up arrow is the upper button. These
-    # were side by side (- left, + right) before the dial went in; carrying that
-    # order straight into a vertical stack put the down arrow on top.
+    # stacked: + on top, - below, so the up arrow is the upper button (they were side
+    # by side before the dial went in).
     dict(name='feedrate_positive', row=13, col=6, lines=['+'], fs=20,
          icon='up', text_y=[79]),
     dict(name='feedrate_negative', row=14, col=6, lines=['-'], fs=20,
@@ -750,9 +723,8 @@ def emit_buttons(out_dir):
                    render_knob_svg(True, title, labels))
             continue
         if b.get('special') == 'fknob':
-            # one sector of the 2x2 feedrate dial; XML is the stock button's
-            # (skin event + LED number), which _retro_xml turns into an
-            # image_on/image_off swap pointing at the two SVGs below
+            # one sector of the 2x2 feedrate dial; XML is the stock button's (skin
+            # event + LED number), turned into an image_on/image_off swap
             _write(os.path.join(d, rn + '.xml'),
                    _retro_xml(name, stock_xml(name)))
             q = b['fknob_quadrant']
@@ -764,15 +736,22 @@ def emit_buttons(out_dir):
         if b.get('run_line'):
             # from-scratch action button: no stock XML to derive from. Runs a
             # line of G-code directly (CNC12 v5.08+). Graphic is the folder SVG.
+            led = ''
+            if b.get('led_mem'):
+                # also an indicator: swap graphics on a PLC MEM bit, so the
+                # button lights while the action it runs is the one needed
+                led = ('\t<plc_memory>\n\t\t<number>%d</number>\n'
+                       '\t\t<image_on>%s_on.svg</image_on>\n'
+                       '\t\t<image_off>%s.svg</image_off>\n'
+                       '\t</plc_memory>\n' % (b['led_mem'], rn, rn))
             xml = ('<vcp_button>\n\t<run>\n\t\t<line>%s</line>\n'
-                   '\t</run>\n</vcp_button>\n' % b['run_line'])
+                   '\t</run>\n%s</vcp_button>\n' % (b['run_line'], led))
             _write(os.path.join(d, rn + '.xml'), xml)
         else:
             xml = stock_xml(name)
             if b.get('led'):
-                # watch a different PLC bit than the stock button (e.g. PUMP
-                # watches the real pump output OUT4, not the mist LED, so it
-                # lights whenever the pump runs for any reason)
+                # watch a different PLC bit than the stock button (PUMP watches the
+                # real pump output OUT4, not the mist LED)
                 xml = re.sub(r'(<plc_output>\s*<number>)\d+(</number>)',
                              r'\g<1>%d\g<2>' % b['led'], xml, count=1)
             _write(os.path.join(d, rn + '.xml'), _retro_xml(name, xml))
@@ -824,10 +803,8 @@ def _border(col, colspan, row, rowspan, label=None, fill='Transparent',
                lab, extra))
 
 
-# Live override digits in a seven-segment face (DSEG7 Classic must be
-# installed on the control PC; Windows falls back to the default font if
-# not). The % sign is a separate normal-font label - 7-seg fonts have no
-# percent glyph.
+# Live override digits in a seven-segment face (DSEG7 Classic must be installed on the
+# control PC). The % sign is a separate normal-font label -- 7-seg fonts have no glyph.
 def _seg_word(number, fs=24, marginright=None, font='DSEG7 Classic'):
     # marginright None = centered; else right-aligned marginright units in
     # from the border's right edge (same scheme the feedrate % label uses)
@@ -861,30 +838,25 @@ def _seg_label(content, fs, marginright):
 
 FEEDRATE_WORD = _seg_word(4)               # FinalFeedOverride_W, centered
 FEEDRATE_PCT = _seg_label('%', 16, 68)
-# spindle readout: [ XXX% XXXXRPM ] in one window, same 3-cell bezel as the
-# feedrate display; every element is right-aligned so the group keeps its
-# internal spacing (margins are right-edge offsets, per the feedrate %).
-# One element per <border>: the VCP renders a single plc_word/text per
-# border (stacking them in one border dropped the RPM half on-machine).
+# spindle readout: [ XXX% XXXXRPM ], same 3-cell bezel as the feedrate display. One
+# element per <border>, right-aligned -- centroid-vcp skill, advanced.md.
 SPIN_ELEMENTS = (
     _seg_word(76, 18, 164),                # SpinOverride_W  -> "XXX"
     _seg_label('%', 13, 150),              # "%" hugging the override digits
     _seg_word(77, 18, 48),                 # SpinRPM_W       -> "XXXX"
     _seg_label('RPM', 12, 18))
 
-# carousel tool-bin readout: TargetToolBinDisp_W (W8) is latched to the mapped
-# bin on every M6 and held. Non-modal, always visible -- this replaces the
-# modal M225 popup so the operator can see which bin the tool->bin map picked.
-# Reads "TOOL BIN #": label on the left, number on the right (both right-
-# aligned, ordered by marginright, like the spindle readout).
+# tool / bin readout: [ TOOL XX  BIN XX ]. W80 = the verified tool (0 = nothing
+# verified), W8 = the bin the last M6 asked for. docs/plc-spec/atc.md
 BIN_ELEMENTS = (
-    _seg_label('TOOL BIN', 12, 55),        # "TOOL BIN" label on the left
-    _seg_word(8, 22, 18))                  # TargetToolBinDisp_W -> bin number
+    _seg_label('TOOL', 12, 158),           # "TOOL" label
+    _seg_word(80, 18, 118),                # ToolInSpindleDisp_W -> "XX"
+    _seg_label('BIN', 12, 56),             # "BIN" label
+    _seg_word(8, 18, 18))                  # TargetToolBinDisp_W -> "XX"
 
 
-# machine-coordinate readout: X/Y/Z stacked in a 3x2-cell bezel. plc_word
-# type Float reads the FW register of the same number (FW11/12/13 = machine
-# inches, fed by the PLC's HomeSync latch). One element per border.
+# machine-coordinate readout: X/Y/Z in a 3x2-cell bezel. plc_word type Float reads the
+# FW register of the same number (FW11/12/13, fed by the PLC's HomeSync latch).
 def _dro_word(number, valign, vmargin=0):
     vm = ('\t\t\t<margin%s>%d</margin%s>\n' % (valign, vmargin, valign)
           if vmargin else '')
@@ -953,10 +925,8 @@ def render_skin():
     p = ['<vcp_skin>\n']
     p.append('\t<background>#141210</background>\n')
     p.append(_border(4, 3, 13, 2, label='FEEDRATE'))
-    # continuous dial face behind the four preset buttons. It has to be an
-    # <image> rather than button art: separate buttons are always drawn with
-    # gaps between them, so a face split across four button images can never
-    # join up. The buttons on top are transparent apart from their needle.
+    # continuous dial face behind the four preset buttons; must be a skin <image>
+    # because separate buttons are always drawn with gaps.
     p.append('\t<image>\n'
              '\t\t<column_span>2</column_span>\n'
              '\t\t<column_start>4</column_start>\n'
@@ -988,8 +958,8 @@ def render_skin():
              '\t</image>\n')
     for el in SPIN_ELEMENTS:
         p.append(_border(4, 3, 2, 1, outline='Transparent', extra=el))
-    # carousel BIN readout on row 2 cols 1-3 (mirrors the spindle readout at
-    # cols 4-6); TargetToolBinDisp_W (W8) = the bin the last M6 mapped to
+    # TOOL / BIN readout on row 2 cols 1-3 (mirrors the spindle readout at
+    # cols 4-6); ToolInSpindleDisp_W (W80) + TargetToolBinDisp_W (W8)
     p.append('\t<image>\n'
              '\t\t<column_span>3</column_span>\n'
              '\t\t<column_start>1</column_start>\n'

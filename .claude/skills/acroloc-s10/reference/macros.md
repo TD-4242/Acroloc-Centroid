@@ -18,10 +18,25 @@ assert/deassert PLC bits (`M94 /bit`, `M95 /bit`), see the general skill's
 > On this machine OUT4 (`CoolantPump_O`) is the coolant pump and OUT3 (`FloodValve_O`) is the flood valve. The macros just select the mode; the PLC derives the outputs — `M8` = flood (pump + valve), `M7` = wash/hose (pump only). See [main-stage.md](../../../docs/plc-spec/main-stage.md).
 | `mfunc10`  | M10      | Sets clamp on (`M94 /4`) |
 | `mfunc11`  | M11      | Clears clamp (`M95 /4`) |
+| `mfunc20`  | M20      | **ATC Reset** -- the reset action itself. Changes to whichever of the dummy tools 199/200 `#4203` says is *not* loaded, so it can never be skipped. Called by the VCP ATC RESET button and by `MPGmacro4` |
+| `MPGmacro4`| MPG macro button 4 | One line: `M20`. Lives in `system/`, run by CNC12 for wireless MPG Aux Key 4 (the PLC also requests it via `SV_SYS_MACRO = 4`); only fires from the main menu |
+| `mfunc18`  | M18      | ATC Reset (enhanced ATC): pulses `M94 /18` / `M95 /18` so the PLC re-seeds the carousel bin from `SV_ATC_CAROUSEL_POSITION`. Run by CNC12's F2 ATC Reset in the Tool Library (P164 = 1); never from MDI |
+
+## Wireless MPG macros are `system/MPGmacro1..4.mac`
+
+**Not** `plcmacroN.mac` — that name appears in the PLC programming manual for the generic
+`SV_SYS_MACRO` mechanism, but on this control the four wireless-MPG Aux Keys read
+`cncm\system\MPGmacro1.mac` .. `MPGmacro4.mac` (operator manual: "Wireless MPG Macros are
+found in the C:\cncm\system directory"; the `.src` comment at the `SV_SYS_MACRO` block says
+the same). Two rules the manual is explicit about, both learned the hard way on 2026-09-09:
+
+- the code must sit **between `N100` and `N1000`**, and
+- the stock `M225` example message line must be **removed** — an unedited file pops
+  "This is an example macro run from the Macro1 button..." and does nothing else.
 
 ## Shared guard — preserve when editing
 
-All seven macros skip execution in graph/search mode using the following guard at the top of
+All nine macros skip execution in graph/search mode using the following guard at the top of
 the file, and they all terminate at the `N1000` label:
 
 ```
@@ -36,7 +51,7 @@ graphic/search mode will otherwise execute side-effectful hardware commands duri
 ### mfunc6 guard note
 
 `mfunc6.mac` uses reversed operand order (`IF #4202 || #4201`) and omits the inline comment
-— functionally identical to the other six macros, but visually different. Do not "correct"
+— functionally identical to the other eight macros, but visually different. Do not "correct"
 the order; the logic is fine as written.
 
 ## mfunc6 key steps (abbreviated)
@@ -50,10 +65,14 @@ The full flow is in [atc-flow.md](./atc-flow.md). The macro's sequence is:
    during G74/G84 tapping cycles — a tap fed at a reduced override will break.
 3. `S0` / `M5` / `M9` — zero spindle speed, stop spindle, turn off coolant
 4. `G53 Z0` — retract Z to machine home (tool-change position)
-5. `M107` — send target tool number to PLC
+5. `M107` — send the requested tool's **bin** to the PLC (`SV_TOOL_NUMBER`; at P160 = 1 CNC12 looks the bin up in the Tool Library)
 6. `M94 /8` — assert `M6_SV` (bit 8) to trigger `ATCStage` in the PLC
 7. `M100 /93016` — block until `ATCStage` (STG16) resets (carousel cycle complete)
+7a. `G4 P2` — **required dwell.** CNC12 records the new tool's putback from the carousel
+   position it last observed on its own schedule; ending the M6 within ~100 ms of the match
+   left the putback on the previous tool's bin intermittently (2026-09-08). Do not remove.
 8. `M95 /8` — deassert `M6_SV` to close out the tool-change handshake
+8a. `G10 P700 R[#4120]` — hand the PLC the requested **tool number** (P700, the macro-to-PLC parameter) for the VCP `TOOL` readout. **Must stay after `M95 /8`:** a G10 mid-M6 makes CNC12 commit the tool library early and record the new tool's putback from the pre-move carousel position (on-machine 2026-09-08)
 9. `M108 /1/2` — re-enables the overrides disabled in step 2. Placed before the `N1000`
    label so the graph/search guard skips it together with the `M109`, keeping the pair
    balanced in every execution path.

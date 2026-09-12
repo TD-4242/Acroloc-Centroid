@@ -6,9 +6,8 @@ M91/X
 M26/X
 M92/Y
 M26/Y
-; Acroloc: every axis now sits exactly at machine zero. Pulse HomeSync_SV
-; (SV_M94_M95_6) so the PLC latches the encoder counts here; the VCP
-; machine-coordinate readout measures from this latch.
+; Acroloc: every axis is at machine zero here -- pulse HomeSync_SV so the PLC latches
+; the encoder counts the VCP machine-coordinate readout measures from.
 M94 /6
 G4 P0.25
 M95 /6

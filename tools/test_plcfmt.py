@@ -175,9 +175,8 @@ def test_non_if_lines_unchanged_by_continuation():
 
 
 def test_continuation_mid_block_comment_documented_behavior():
-    # Known limitation: a full-line comment inside a block is re-indented to
-    # the target column and terminates the block (rest left untouched).
-    # Semantically safe and idempotent; no occurrences in the real source.
+    # Known limitation: a full-line comment inside a block is re-indented and ends the
+    # block. Semantically safe and idempotent; no occurrences in the real source.
     src = ("IF A THEN X = 1,\r\n"
            "; note\r\n"
            "      Y = 2\r\n")

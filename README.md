@@ -82,12 +82,13 @@ tool's bin. A 20 s watchdog faults the search if the bin is never found. All of 
 work tagged `; Acroloc`.
 
 **Tool-to-bin mapping.** Tool numbers are decoupled from bins, so a tool numbered above the 12
-physical bins can be used: machine parameters **P701-P712** hold the tool loaded in bins 1-12,
-and `MainStage` translates the requested tool to its bin. The map is fixed and operator-owned
-(CNC12's own enhanced-ATC modes are deliberately not used — `P160 = 0`). See
-[`docs/superpowers/specs/2026-07-22-tool-bin-mapping-design.md`](docs/superpowers/specs/2026-07-22-tool-bin-mapping-design.md)
+physical bins can be used. The map lives in CNC12's **Tool Library Bin column** (non-random
+enhanced ATC, `P160 = 1`): `M107` sends the requested tool's bin to the PLC, which
+range-guards it and indexes the carousel, and reports its settled position back so CNC12 can
+keep the library's bin fields current. See
+[`docs/superpowers/specs/2026-09-06-enhanced-atc-nonrandom-design.md`](docs/superpowers/specs/2026-09-06-enhanced-atc-nonrandom-design.md)
 and the on-machine procedure in
-[`docs/testing/tool-bin-mapping-test.md`](docs/testing/tool-bin-mapping-test.md).
+[`docs/testing/enhanced-atc-nonrandom-test.md`](docs/testing/enhanced-atc-nonrandom-test.md).
 
 Full line-referenced detail — the three-piece flow, the I/O table, the carousel position
 encoding, and manual unlock — is in [`docs/plc-spec/atc.md`](docs/plc-spec/atc.md) (pinned to

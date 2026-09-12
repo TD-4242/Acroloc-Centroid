@@ -1,5 +1,13 @@
 # Tool-to-Bin Mapping (tools > 12) Implementation Plan
 
+> **Superseded 2026-09-08.** This plan built the P701-P712 PLC map. That map has been
+> removed; the tool->bin map now lives in CNC12's Tool Library under non-random enhanced
+> ATC (`P160 = 1`). **The Architecture line below repeats the claim that "non-random
+> P160=1 forces tool==bin" — that was an inference, never a machine test, and it is
+> false:** any tool can be assigned any bin, and this was verified on the machine on
+> 2026-09-08. See `docs/superpowers/specs/2026-09-06-enhanced-atc-nonrandom-design.md`.
+> Kept as the historical record of what was built and why.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement task-by-task. Steps use checkbox (`- [ ]`) syntax.
 
 **Goal:** `M6T<n>` for any tool number (including n > 12) indexes the carousel to the bin that tool is assigned to, via a fixed operator-editable tool->bin map held in the PLC.

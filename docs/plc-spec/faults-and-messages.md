@@ -109,7 +109,8 @@ for anything that doesn't have its own dedicated bit (`AxisFault_M`, `SpindleFau
 `LubeFault_M`, `ProbeFault_M`, `PLCFault_M`). Producers seen across this file and
 main-stage.md: JogBoard link/online failures (src:2554,
 src:2558), MiniPLC board mismatches (src:2574-2588), and the
-ATC clutch double-engagement interlock (main-stage.md, src:2396-2405).
+ATC clutch double-engagement interlock (main-stage.md, src:2396-2405), the ATC kickoff bin
+guard (`ATC_BIN_RANGE_MSG_C`, 9067, unpinned) and the three `ATCStage` abort rungs (atc.md).
 `OtherFault_M` participates in the same central OR-gate as every other fault bit
 (main-stage.md, `SV_STOP` rung at src:2841) and the same blanket recovery rung
 (main-stage.md, src:2872-2875) — it has no separate clear/recovery path of its
@@ -117,6 +118,10 @@ own in this file; clearing it requires the aggregate recovery conditions in main
 all hold simultaneously.
 
 ## Fault bits
+
+`ErrorFlag_M` (MEM46, "error but not a fault") is also set by the hand-moved carousel interlock
+(`ATC_HAND_MOVED_MSG_C`, 9068, unpinned): it drives the cycle-cancel coil and clears itself after
+`ErrorFlag_T`, so recovery is an ATC Reset or an M6, not an E-stop. See atc.md.
 
 Summary table of the fault-class memory bits that feed `MainStage`'s `SV_STOP` OR-gate
 (main-stage.md, src:2840-2882). "Producer" cites where each bit is set; "Recovery"
@@ -130,7 +135,7 @@ main-stage.md's blanket recovery rung, src:2872-2875).
 | `SpindleFault_M` | (see definitions.md) | Spindle-inverter-not-ok, gated on `Initialize_T` (main-stage.md, src:2891-2892) | Aggregate only |
 | `LubeFault_M` | (see definitions.md) | Lube-not-ok while not running, gated on `Initialize_T` (main-stage.md, src:2853-2854) | Aggregate only |
 | `ProbeFault_M` | (see definitions.md) | Probe-tripped-while-jogging (main-stage.md, src:2711-2718) | Aggregate only (message-sent guard `ProbeMsgSent_M` per main-stage.md's own noted gotcha, src:2881-2882) |
-| `OtherFault_M` | MEM57, definitions.md src:506 | JogBoard link/online (src:2587-2591), MiniPLC board mismatch (src:2607-2621), spindle transmission clutch both-off lockup backstop (OUT19/OUT20; also posts `SPINDLE_FAULT_MSG_C`, main-stage.md, src:2431-2438) | Aggregate only |
+| `OtherFault_M` | MEM57, definitions.md src:506 | JogBoard link/online (src:2587-2591), MiniPLC board mismatch (src:2607-2621), spindle transmission clutch both-off lockup backstop (OUT19/OUT20; also posts `SPINDLE_FAULT_MSG_C`, main-stage.md, src:2431-2438), the ATC kickoff bin guard (`ATC_BIN_RANGE_MSG_C`, 9067, unpinned) and the three `ATCStage` abort rungs (atc.md) | Aggregate only |
 | `SV_STALL_ERROR` | CNC12 system variable, not a PLC-defined bit | Set by CNC12's own servo-stall detection, outside this file | Aggregate only |
 | `SoftwareNotReady_M` / `PLCExecutorFault_M` | (see definitions.md) | Set during `WatchDogStage`/`InitialStage` boot sequencing (boot.md) | Checked only in the aggregate recovery rung (main-stage.md, src:2872-2875); not part of the `SET SV_STOP` OR itself |
 
@@ -229,6 +234,25 @@ suppresses error/info display entirely until it clears.
 - (src:3055-3057): once `MsgClear_T` expires, zero `ErrorMsg_W`, drop the
   timer, and `RST ShowErrorStage` — unlike `ShowFaultStage`, this is a timed auto-clear, not
   gated on any operator action.
+
+> ⚠️ **`InfoMsg_W` and `ErrorMsg_W` never display on this machine.** Routing is
+> `IF FaultMsg_W == 0 && ErrorMsg_W == 0 && InfoMsg_W != 0 THEN SET ShowInfoStage`, but the
+> carousel lock echo in `MainStage` (`IF ATCManualUnlock_I THEN FaultMsg_W = ...` /
+> `IF !ATCManualUnlock_I THEN FaultMsg_W = ...`) has one rung true on **every** scan, so
+> `FaultMsg_W` is never 0. Anything that must be seen has to post on `FaultMsg_W`. The
+> hand-move status pair does exactly that, and gates the echo off for 3 s
+> (`HandMoveMsgHold_M`/`HandMoveMsgHold_T`) so its message can be read. Found on-machine
+> 2026-09-09, when messages 175/176 posted to `InfoMsg_W` never appeared.
+
+**The 175/176 gates.** Both are async (type 2), so neither halts a job, and the two numbers
+**alternate**: CNC12 refuses to re-send the same message number twice in a row, so a single
+number would go silent on the second event. `175` posts only once
+`!SoftwareNotReady_M && EStopOk_M && !OtherFault_M` holds. At power-up the PLC runs before
+CNC12 is ready and E-stop is normally still engaged — which makes `ShowFaultStage` zero
+`FaultMsg_W` every scan — so an unguarded one-shot was spent unseen (on-machine 2026-09-10:
+button lit, no message). An aborted change latches the same interlock, and that abort's own
+9xxx fault must stay on screen; `OtherFault_M` clears on E-stop, so `175` posts on release.
+The lit **ATC RESET** button (`plc_memory` 454) is the persistent cue.
 
 ### `ShowInfoStage` (STG93, src:1220, banner src:3059-3061)
 

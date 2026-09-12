@@ -219,12 +219,27 @@ Full ATC carousel state-machine detail (position-switch decode, base-16-as-decim
 motor/lock outputs) lives in [atc.md](atc.md) — this section only covers the
 hand-off rungs inside `MainStage` that arm `ATCStage`.
 
-- **Tool-change entry** (src:2911, tagged "Acroloc tool stage start" at
-  src:2910): `IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage` — the moment
-  `mfunc6.mac` sets `M6_SV`, `MainStage` latches the requested tool number into
-  `ChangeToTool_W` and arms `ATCStage`. Because `ATCStage` (STG16, src:1207)
-  appears **after** `MainStage` (STG4) in file order, per `scan-model.md` this `SET` takes
-  effect **in this same scan** — `ATCStage`'s body runs immediately.
+- **Tool-change entry** (tagged "Acroloc tool stage start" at src:2910; the pinned rung
+  src:2911 `IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage` is now three rungs,
+  no pinned lines): fault `ATC_BIN_RANGE_MSG_C` (9067) if `SV_TOOL_NUMBER` is outside
+  1..`MaxToolBins_W` (P161) — this guard runs **first** and `RST`s `M6_SV`, so a rejected bin
+  never reaches the arm rung and the known carousel position is kept; otherwise arm the 20 s
+  watchdog and clear `CurrentToolBin_W`, then latch the bin into `TargetToolBin_W` and
+  `TargetToolBinDisp_W` and arm `ATCStage`.
+  `SV_TOOL_NUMBER` is the requested tool's **bin** (CNC12 non-random enhanced ATC,
+  `P160 = 1`). Directly after: the position report (`ReportedToolBin_W` ->
+  `SV_PLC_CAROUSEL_POSITION`, latched only while `ATCStage` is idle) and the `M18_SV` reset
+  re-seed from `SV_ATC_CAROUSEL_POSITION`. Because `ATCStage` (STG16, src:1207) appears
+  **after** `MainStage` (STG4) in file order, per `scan-model.md` the `SET` takes effect
+  **in this same scan** — `ATCStage`'s body runs immediately. Full detail in
+  [atc.md](atc.md).
+- **Hand-moved carousel interlock** (tagged "Acroloc -- hand-moved carousel interlock",
+  after the spindle-in-changer interlock; no pinned lines): any position switch true while
+  `ATCMotor_O` is off sets `CarouselMovedByHand_M` (MEM454, also set at power-up) and zeroes
+  the known bin; while set, `RST SpindleEnableOut_O` every scan, and a program/MDI spindle
+  start (`SpinStart_M || M3_SV || M4_SV`) posts `ATC_HAND_MOVED_MSG_C` (9068) and sets
+  `ErrorFlag_M` (job cancel, self-clearing). Also set at power-up and by every `ATCStage`
+  abort; cleared only by the `ATCStage` match rung or M18. See [atc.md](atc.md).
 - **Manual carousel unlock** (src:2913-2922, tagged "Acroloc manual tool changes"):
   `ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage` drives `SET ATCUnlocked_O`
   (src:2914); the mirror, `!ATCManualUnlock_I && !ATCStage`, drives

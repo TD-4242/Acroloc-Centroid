@@ -11,16 +11,15 @@ Line numbers as of commit 41f3fd6.
 > they remain pointers into 41f3fd6, so search by symbol rather than jumping to the cited line
 > when reading current source. Lines with no reference are ones added after the pin.
 
-> ⚠️ **Superseded by the tool→bin mapping change (PR #22).** The tool change was reworked:
-> a fixed **tool→bin map** (machine parameters **P701–712**, at `P160 = 0`) now
-> translates `SV_TOOL_NUMBER` to a carousel bin in `MainStage`, and the ATC variables were
-> renamed for tool-vs-bin clarity — `CarouselToolID_W → CurrentToolBin_W`,
-> `ChangeToTool_W → TargetToolBin_W`, `InstToolID_W → InstBinID_W`,
-> `InToolSelect_M → InBinDecode_M` (plus `ToolInBin1_W..12_W`, `TargetToolBinDisp_W`).
-> The line numbers **and** variable names below reflect the 41f3fd6 snapshot and no longer
-> match the current program. For the current flow and the map, see
+> ⚠️ **Variable names below are the 41f3fd6 snapshot's.** Current names:
+> `CarouselToolID_W → CurrentToolBin_W`, `ChangeToTool_W → TargetToolBin_W`,
+> `InstToolID_W → InstBinID_W`, `InToolSelect_M → InBinDecode_M`; added since the pin:
+> `TargetToolBinDisp_W` (W8, VCP readout), `ReportedToolBin_W` (W78, position report),
+> `MaxToolBins_W` (W79, P161), `M18_SV`. The tool->bin map is CNC12's Tool Library
+> (non-random enhanced ATC, `P160 = 1`); `SV_TOOL_NUMBER` arrives as a **bin**. For the
+> current flow see
 > [`../../.claude/skills/acroloc-s10/reference/atc-flow.md`](../../.claude/skills/acroloc-s10/reference/atc-flow.md).
-> This pinned spec should be re-based to the merge commit as a dedicated pass (re-deriving
+> This pinned spec should be re-based to a current commit as a dedicated pass (re-deriving
 > the citations), per the "don't re-baseline line refs piecemeal" convention.
 
 Resource name -> definition-line lookups are in [definitions.md](definitions.md); stage sweep
@@ -81,17 +80,85 @@ edit.
 
 Summarized in [main-stage.md#atc-kickoff](main-stage.md#atc-kickoff); full detail here.
 
-**Kickoff** (`src:2910-2911`, tagged `; Acroloc tool stage start` at `src:2910`):
+**Kickoff** (tagged `; Acroloc tool stage start`; the 41f3fd6 rung at `src:2910-2911` was
+`IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage`). The current program has
+three rungs here, none with a pinned line:
 ```plc
-IF M6_SV THEN ChangeToTool_W = SV_TOOL_NUMBER, SET ATCStage
+IF M6_SV && !ATCStage && (SV_TOOL_NUMBER < 1 || SV_TOOL_NUMBER > MaxToolBins_W) THEN
+  FaultMsg_W = ATC_BIN_RANGE_MSG_C, SET ShowFaultStage, SET OtherFault_M,
+  RST M6_SV, RST ATCSpin_T, TargetToolBinDisp_W = SV_TOOL_NUMBER
+IF M6_SV && !ATCStage THEN ATCSpin_T = ATC_SPIN_TIMEOUT_MS_C, SET ATCSpin_T, CurrentToolBin_W = 0, RST ToolSelected_M
+IF M6_SV && !ATCStage THEN
+  TargetToolBin_W = SV_TOOL_NUMBER, TargetToolBinDisp_W = SV_TOOL_NUMBER, SET ATCStage
 ```
-The instant `mfunc6.mac`'s `M94 /8` sets `M6_SV` (`SV_M94_M95_8`, `M6_SV` (src:1036)),
-this rung latches the CNC's currently-selected tool number (`SV_TOOL_NUMBER`, the system
-variable `M107` populated) into `ChangeToTool_W` (`W72`, `ChangeToTool_W` (src:1094))
-and `SET`s `ATCStage`. Because `ATCStage` (`STG16`, `ATCStage` (src:1207)) is swept
-**after** `MainStage` (`STG4`) in file order, per `scan-model.md` this `SET` takes effect in
-the **same scan** — `ATCStage`'s body runs immediately on the same pass that saw `M6_SV`
-go true.
+The machine runs CNC12's non-random enhanced ATC (`P160 = 1`), so `SV_TOOL_NUMBER` (the
+system variable `M107` populates) is the requested tool's **carousel bin** as assigned in the
+Tool Library, not the tool number. The first rung faults `ATC_BIN_RANGE_MSG_C` (9067) for a
+bin outside 1..P161 (`MaxToolBins_W`) without starting the carousel; it `RST`s `M6_SV`, and
+because later rungs in the same scan see that, a rejected bin never reaches the arm rung —
+nothing moved, so the known carousel position is kept rather than zeroed. The second arms the
+20 s watchdog and clears the stale bin; the third latches the bin into
+`TargetToolBin_W` (`W72`; `ChangeToTool_W` (src:1094) at the pin) and the VCP readout word
+and `SET`s `ATCStage`. All three are gated on `M6_SV` (`SV_M94_M95_8`, `M6_SV` (src:1036)),
+which `mfunc6.mac`'s `M94 /8` sets. Because `ATCStage`
+(`STG16`, `ATCStage` (src:1207)) is swept **after** `MainStage` (`STG4`) in file order, per
+`scan-model.md` this `SET` takes effect in the **same scan**.
+
+**Position report and reset** (tagged `; Acroloc -- enhanced ATC handshake` and
+`; Acroloc -- enhanced ATC reset`, directly after the kickoff; no pinned line):
+```plc
+IF !ATCStage THEN ReportedToolBin_W = CurrentToolBin_W
+IF True_M THEN SV_PLC_CAROUSEL_POSITION = ReportedToolBin_W
+IF M18_SV && !ATCStage THEN CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION
+```
+CNC12 will not run a tool change until the PLC reports a carousel position, monitors it
+continuously, and at the end of every M6 records it as the new tool's putback bin. The report
+is latched only while `ATCStage` is idle so mid-spin partial sums never reach CNC12; every
+`ATCStage` abort rung zeroes `CurrentToolBin_W` **and** sets `CarouselMovedByHand_M`, so a
+fault reports 0 (unknown) *and* holds spindle enable off until the position is proven again —
+as does a manual unlock. `InitialStage` does **not** seed the bin: at power-up the carousel
+may have been turned with the control off, so it starts at 0 with the interlock latched. Only
+`M18` (`mfunc18.mac`, run by the Tool Library's F2 ATC Reset at `P164 = 1`) seeds it from
+`SV_ATC_CAROUSEL_POSITION`, after the operator declares the true position.
+
+**Hand-moved carousel interlock** (tagged `; Acroloc -- hand-moved carousel interlock`,
+placed after the spindle-in-changer interlock; no pinned line):
+```plc
+IF (ATC_Pos1_I || ATC_Pos2_I || ATC_Pos3_I || ATC_Pos4_I || ATC_Pos5_I) && !ATCMotor_O THEN
+  SET CarouselMovedByHand_M, CurrentToolBin_W = 0, TargetToolBinDisp_W = 0
+IF CarouselMovedByHand_M THEN RST SpindleEnableOut_O
+IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
+   (SpinStart_M || M3_SV || M4_SV) && !ErrorFlag_M THEN
+  FaultMsg_W = ATC_HAND_MOVED_MSG_C, SET ShowFaultStage, SET ErrorFlag_M
+```
+The carousel parks in the all-switches-off gap, so a hand move at Z0 cannot be decoded at
+rest but is always detectable. CNC12 keeps believing its old tool is in the spindle and
+skips an M6 for it, so `CarouselMovedByHand_M` (MEM454) holds spindle enable off and cancels
+a program/MDI spindle start with message 68 (`ATC_HAND_MOVED_MSG_C`, 17410) until the
+`ATCStage` match rung or the M18 rung clears it. `InitialStage` also sets it at power-up.
+
+Two async status messages ride the same latch (tagged `; Acroloc -- tell the operator`,
+unpinned): `ATC_NEEDS_RESET_MSG_C` (175) is posted once after `CarouselMovedByHand_M` sets (not necessarily on the same scan; see the gate below), and `ATC_RESET_DONE_MSG_C` (176) once when it clears;
+`HandMoveMsgShown_M` (MEM455) is the one-shot latch between them. Both post on
+**`FaultMsg_W`**, not `InfoMsg_W`: the carousel lock echo owns `FaultMsg_W` every scan, so the
+info and error channels never display (see
+[faults-and-messages.md](faults-and-messages.md)); these rungs sit after the echo and hold it
+off for 3 s via `HandMoveMsgHold_M`/`HandMoveMsgHold_T`. The **persistent** indicator is the
+VCP ATC RESET button, which swaps graphics on MEM454 and lights red while a reset is owed. The 175 post waits for `!SoftwareNotReady_M && EStopOk_M`: at power-up the PLC runs before CNC12 is ready and E-stop clears `FaultMsg_W` every scan, so posting on the boot scan spent the one-shot unseen (found on-machine 2026-09-10). It now appears once CNC12 is up and E-stop is released. Recovery is the
+**ATC RESET** button or wireless MPG macro button 4, both running `M20` (`mfunc20.mac`),
+which changes to whichever of the dummy tools 199/200 CNC12 does *not* believe is loaded, so
+the M6 can never be skipped -- including on a second reset in a row.
+
+**VCP `TOOL` readout.** `ToolInSpindleDisp_W` (W80) tracks `SV_MACHINE_PARAMETER_700` in a
+`MainStage` rung gated on `ToolSelected_M && !M6_SV && !CarouselMovedByHand_M` (mfunc6 writes
+the requested tool there with `G10 P700 R[#4120]` after `M95 /8`; `ToolSelected_M` is set by the
+match rung and reset at the kickoff, by the hand-move rung and by M18), is set from
+`SV_ATC_TOOL_IN_SPINDLE` in the M18 rung, and to 0 by the hand-move rung. The retro VCP shows
+it as `TOOL XX` beside `BIN XX` (plc_words 80 and 8). The G10 must not run mid-M6: it made
+CNC12 record the new tool's putback from the pre-move position. `mfunc6.mac` also dwells
+`G4 P2` between `M100 /93016` and `M95 /8`: CNC12 records the putback from the position it
+last observed on its own monitoring schedule, and ending the M6 within ~100 ms of the match
+left it intermittently on the previous tool's bin (10 of 10 correct with the dwell).
 
 **Manual carousel unlock** (`src:2913-2922`, tagged `; Acroloc manual tool changes`):
 ```plc
@@ -140,23 +207,30 @@ Banner at `src:2934-2936` (`ATCStage` (src:2935), tagged `; Acroloc`).
 matched within `ATC_SPIN_TIMEOUT_MS_C` (20 s), `ATCStage` faults `CAROUSEL MOVE TIME OUT`
 (message 63) and stops/relocks the carousel. See [Search timeout](#search-timeout) below.
 
-**Entry safety guards.** `ATCStage` has **two** aborts, and (since 2026-07-09) both perform the
-same full cleanup the match/finish rung does — stop the motor, relock, drop the M6 request:
+**Entry safety guards.** `ATCStage` has **two** aborts. Since 2026-07-09 both perform the
+same full cleanup the match/finish rung does — stop the motor, relock, drop the M6 request —
+and since 2026-09-12 both also mark the carousel position **unverified**:
 
 ```plc
 ; zero-speed guard (new, src:3014)
 IF ATCStage && !ZeroSpeed_I THEN
   FaultMsg_W = SPINDLE_FAULT_MSG_C,
   SET ShowFaultStage, SET OtherFault_M,
-  RST ATCMotor_O, RST ATCUnlocked_O, RST M6_SV, ChangeToTool_W = 0,
-  RST ATCStage
+  RST ATCMotor_O, RST ATCUnlocked_O, RST M6_SV,
+  TargetToolBin_W = 0, CurrentToolBin_W = 0,
+  TargetToolBinDisp_W = 0, ToolInSpindleDisp_W = 0,
+  SET CarouselMovedByHand_M, RST ToolSelected_M,
+  RST ATCSpin_T, RST ATCStage
 
 ; Z-parked guard
 IF !ATC_Z_Zero_Release_I THEN
   FaultMsg_W = ATC_Spindle_Not_Parked_C,
   SET ShowFaultStage, SET OtherFault_M,
-  RST ATCMotor_O, RST ATCUnlocked_O, RST M6_SV, ChangeToTool_W = 0,
-  RST ATCStage
+  RST ATCMotor_O, RST ATCUnlocked_O, RST M6_SV,
+  TargetToolBin_W = 0, CurrentToolBin_W = 0,
+  TargetToolBinDisp_W = 0, ToolInSpindleDisp_W = 0,
+  SET CarouselMovedByHand_M, RST ToolSelected_M,
+  RST ATCSpin_T, RST ATCStage
 ```
 
 - **Zero-speed guard** (`ZeroSpeed_I`, `INP12`): the carousel never indexes against a turning
@@ -305,7 +379,10 @@ wrong tool or an infinite spin), so they are safe:
 **Maintenance caution:** the 20 s watchdog is disarmed by `RST ATCSpin_T` in **all four**
 `ATCStage` exits (both entry aborts, the match rung, and the timeout rung). They must stay in
 sync — dropping the `RST` from any one exit could leave a stale-expired timer that
-immediate-faults the next change.
+immediate-faults the next change. The same applies to the position invariant: the three
+**abort** exits all zero the bin *and* `SET CarouselMovedByHand_M`; the match exit is the only
+one that clears it. An abort that zeroes the bin without latching the interlock would let the
+spindle run against an unverified carousel once the fault was cleared.
 
 ## Known gaps
 

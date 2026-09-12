@@ -1,9 +1,17 @@
 # Tool-to-Bin Mapping (tools numbered > 12) - Design
 
 Date: 2026-07-22
-Status: implemented (P160=0 PLC map); pending on-machine verification
+Status: superseded 2026-09-06 by `2026-09-06-enhanced-atc-nonrandom-design.md` (see note below); the P701-P712 PLC map shipped in PR #22 and is being replaced
 
 ## Revision history (why the approach changed)
+
+> **2026-09-06 correction.** The bullet below, "Non-random (P160=1) forces tool == bin",
+> entered this spec in commit 190f737 as an inference from the example configs in
+> `docs/official`; P160 = 1 was never set on the machine. The only on-machine trials were
+> at P160 = 2. Centroid's docs say the opposite (operator manual 15.4.118: "An M107 command
+> sends the bin number for the specified tool number"; ATC3 instructions: "Any of the 200
+> tools can be specified as belonging to one of the carousel bins"). Non-random mode is now
+> being adopted; see the 2026-09-06 spec.
 
 The first two drafts of this spec chased CNC12's built-in "enhanced ATC" modes.
 On-machine testing ruled both out for this machine, so the shipped design is a

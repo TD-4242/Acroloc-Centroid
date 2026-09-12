@@ -169,14 +169,52 @@
 		<outline_color>Transparent</outline_color>
 		<outline_thickness>1</outline_thickness>
 		<text>
-			<content>TOOL BIN</content>
+			<content>TOOL</content>
 			<fontsize>12</fontsize>
 			<color>#ff3333</color>
 			<font>Arial</font>
 			<fontstyle>bold</fontstyle>
 			<horizontalalignment>right</horizontalalignment>
 			<verticalalignment>center</verticalalignment>
-			<marginright>55</marginright>
+			<marginright>158</marginright>
+		</text>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>1</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<plc_word>
+			<number>80</number>
+			<color>#ff3333</color>
+			<fontsize>18</fontsize>
+			<font>DSEG7 Classic</font>
+			<fontstyle>bold</fontstyle>
+			<verticalalignment>center</verticalalignment>
+			<horizontalalignment>right</horizontalalignment>
+			<marginright>118</marginright>
+		</plc_word>
+	</border>
+	<border>
+		<column_span>3</column_span>
+		<column_start>1</column_start>
+		<fill>Transparent</fill>
+		<row_span>1</row_span>
+		<row_start>2</row_start>
+		<outline_color>Transparent</outline_color>
+		<outline_thickness>1</outline_thickness>
+		<text>
+			<content>BIN</content>
+			<fontsize>12</fontsize>
+			<color>#ff3333</color>
+			<font>Arial</font>
+			<fontstyle>bold</fontstyle>
+			<horizontalalignment>right</horizontalalignment>
+			<verticalalignment>center</verticalalignment>
+			<marginright>56</marginright>
 		</text>
 	</border>
 	<border>
@@ -190,7 +228,7 @@
 		<plc_word>
 			<number>8</number>
 			<color>#ff3333</color>
-			<fontsize>22</fontsize>
+			<fontsize>18</fontsize>
 			<font>DSEG7 Classic</font>
 			<fontstyle>bold</fontstyle>
 			<verticalalignment>center</verticalalignment>
@@ -373,6 +411,7 @@
 	<button row="11" column="1">retro_cycle_start</button>
 	<button row="11" column="2">retro_cycle_cancel</button>
 	<button row="11" column="3">retro_feed_hold</button>
+	<button row="11" column="6">retro_atc_reset</button>
 	<button row="12" column="1" column_span="3" row_span="3">retro_reset</button>
 	<button row="13" column="4">retro_feedrate_50</button>
 	<button row="13" column="5">retro_feedrate_75</button>
