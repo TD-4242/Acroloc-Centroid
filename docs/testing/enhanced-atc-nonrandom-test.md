@@ -111,11 +111,25 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
       read 0/unknown, matching the VCP — not the bin it was parked on before the
       power-cycle. (Until 2026-09-12 the PLC seeded CNC12 with the persisted
       position while the VCP showed 0, so the two disagreed at boot.)
-- [ ] **Aborted change latches the interlock:** start an `M6` and force an abort
-      (easiest: jog Z off the change position first, so the Z-parked guard
-      fires). The fault message is the abort's own, **not** 175. Then: VCP reads
-      `TOOL 0  BIN 0`, the ATC RESET button is lit, and `M3 S500` is refused
-      until an ATC Reset or a successful `M6`.
+- [ ] **Aborted change latches the interlock.** Jogging Z away first does *not*
+      work: `mfunc6.mac` runs `G53 Z0` before it asserts `M6_SV`, so the Z-parked
+      guard cannot fail after kickoff. Force the **search timeout** instead --
+      set `P161 = 13`, assign a spare tool to bin 13 in the Tool Library, and
+      `M6` to it. The bin clears the range guard, the carousel searches every
+      real bin, never sees a bin-13 code, and faults `63 CAROUSEL MOVE TIME OUT`
+      at 20 s. Check, in order:
+      - the message is the timeout fault, **not** 175
+      - VCP reads `TOOL 0  BIN 0` and the ATC RESET button is lit
+      - `M3 S500` is refused until an ATC Reset or a successful `M6`
+      - press E-stop and release: `175 CAROUSEL MOVED - PRESS ATC RESET` posts now
+      Then **restore `P161 = 12` and clear the bin-13 assignment**. If the search
+      instead matches a bin, stop and report it -- that is a position-decode
+      finding, not an abort-path finding.
+- [ ] **F2 ATC Reset still works** (regression check for the `!SV_PROGRAM_RUNNING`
+      gate added to the M18 rung): from the Tool Library, F2 ATC Reset must still
+      clear the latch and adopt the declared position exactly as before. If it no
+      longer does, report it -- F2 is evidently running with `SV_PROGRAM_RUNNING`
+      set and the gate needs a different condition.
 
 ## 4. Phase D - readout
 

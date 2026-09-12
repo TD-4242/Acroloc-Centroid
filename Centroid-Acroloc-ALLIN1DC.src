@@ -2990,7 +2990,13 @@ IF ToolSelected_M && !M6_SV && !CarouselMovedByHand_M THEN ToolInSpindleDisp_W =
 ; Acroloc -- enhanced ATC reset: CNC12's F2 ATC Reset (P164=1) sends the operator-
 ; entered carousel position in SV_ATC_CAROUSEL_POSITION and then runs mfunc18.mac,
 ; which pulses M18_SV. Re-seed the known bin from it.
-IF M18_SV && !ATCStage THEN
+; This is an OPERATOR ASSERTION, not a proof: no carousel motion happens, the PLC
+; just adopts the position the operator typed. The PLC cannot tell F2 from a bare
+; M18, so !SV_PROGRAM_RUNNING keeps a part program containing M18 from silently
+; clearing the interlock mid-job. F2 runs from the Tool Library screen, not a
+; program, so it is unaffected. A motor-driven proof is what M20 / an ATCStage
+; match give you.
+IF M18_SV && !ATCStage && !SV_PROGRAM_RUNNING THEN
   CurrentToolBin_W = SV_ATC_CAROUSEL_POSITION,
   TargetToolBinDisp_W = SV_ATC_CAROUSEL_POSITION,   ; Acroloc VCP BIN readout shows the declared bin
   RST CarouselMovedByHand_M,
