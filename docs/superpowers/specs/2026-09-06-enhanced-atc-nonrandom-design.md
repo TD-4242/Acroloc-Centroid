@@ -3,7 +3,7 @@
 Date: 2026-09-06
 Status: implemented on branch; validated end to end on the machine 2026-09-11 (Phases 0 and A-E; putback soak 0 wrong of 10; real job clean twice) on build 345b197. Still to confirm: the boot-time 175 message fix (7613c96), which landed after that build.
 Branch: `feature/enhanced-atc-nonrandom` (worktree `.worktrees/enhanced-atc-nonrandom`, from `main`)
-Supersedes: `2026-07-22-tool-bin-mapping-design.md` (the P701-P712 PLC map) once verified on-machine
+Supersedes: `2026-07-22-tool-bin-mapping-design.md` (the P701-P712 PLC map); verified on-machine 2026-09-11
 
 ## Why this exists (correction of the July finding)
 

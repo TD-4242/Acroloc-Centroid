@@ -28,7 +28,8 @@ Things learned on 2026-09-07/08 that this procedure now assumes:
 - [ ] Parameters (F1 Setup > F3 Config > F3 Parms): record **P6, P160, P161,
       P164**. Expected on this machine now: 1, 1, 12, 1.
 - [ ] Control PC, cncm directory: `git pull` on `feature/enhanced-atc-nonrandom`;
-      record the commit (must be 467b640 or later, for the ATC RESET button).
+      record the commit (must be 98275e0 or later: the boot-message fix and the
+      Phase E test program).
 - [ ] Compile/reload the `.plc` (expect: no errors). Restart CNC12 (macros, the
       skin and the P700 label reload).
 - [ ] After the restart, before anything else: the VCP row-2 bezel reads

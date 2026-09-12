@@ -118,8 +118,8 @@ enable off, and cancels a program/MDI spindle start with `9068`. Only an `ATCSta
 and wireless MPG macro button 4 (`system/MPGmacro4.mac`): it changes to whichever of the dummy
 tools **199/200** CNC12 does *not* believe is loaded, because CNC12 *skips* an M6 for the tool
 its status window names and that tool is read-only to us. Two dummies, because after one reset
-the loaded tool is the dummy. The button lights red while a reset is owed; the PLC posts `175`
-then and `176` once proven.
+the loaded tool is the dummy. The button lights red while a reset is owed; the PLC posts `175` once CNC12 is up and E-stop
+is released, and `176` once the position is proven.
 
 Custom ATC I/O (all marked `; Acroloc`): inputs `INP24`,`INP26`,`INP27`,`INP28..32`;
 outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71` (`CurrentToolBin_W`),

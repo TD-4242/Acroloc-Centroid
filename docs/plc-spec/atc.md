@@ -134,7 +134,7 @@ a program/MDI spindle start with message 68 (`ATC_HAND_MOVED_MSG_C`, 17410) unti
 `ATCStage` match rung or the M18 rung clears it. `InitialStage` also sets it at power-up.
 
 Two async status messages ride the same latch (tagged `; Acroloc -- tell the operator`,
-unpinned): `ATC_NEEDS_RESET_MSG_C` (175) is posted once when `CarouselMovedByHand_M` sets, and `ATC_RESET_DONE_MSG_C` (176) once when it clears;
+unpinned): `ATC_NEEDS_RESET_MSG_C` (175) is posted once after `CarouselMovedByHand_M` sets (not necessarily on the same scan; see the gate below), and `ATC_RESET_DONE_MSG_C` (176) once when it clears;
 `HandMoveMsgShown_M` (MEM455) is the one-shot latch between them. Both post on
 **`FaultMsg_W`**, not `InfoMsg_W`: the carousel lock echo owns `FaultMsg_W` every scan, so the
 info and error channels never display (see

@@ -144,7 +144,7 @@ which is why the offsets are zero.
 
 The **ATC RESET button lights red** (it swaps graphics on MEM454) the whole time a
 reset is owed -- that is the persistent cue. The PLC also posts
-`175 CAROUSEL MOVED - PRESS ATC RESET` the moment the position becomes unverified
+`175 CAROUSEL MOVED - PRESS ATC RESET` once the position becomes unverified
 and `176 ATC POSITION RE-ESTABLISHED` when it is proven again. Both go on
 `FaultMsg_W`, because the carousel lock echo assigns that word every scan and so
 the info/error channels never display on this machine; the rungs sit after the
