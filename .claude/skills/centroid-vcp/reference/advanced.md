@@ -39,6 +39,12 @@ node set:
 </plc_word>
 ```
 
+**One live element per `<border>`.** The VCP renders a single `<plc_word>` (or `<text>`) per
+border; stacking two in one border silently dropped the second on-machine (the RPM half of a
+`[ XXX% XXXXRPM ]` readout vanished). Build a multi-element readout as one border per element,
+each right-aligned with margins used as right-edge offsets -- `SPIN_ELEMENTS` / `BIN_ELEMENTS`
+in `tools/vcpgen.py` do this.
+
 `<number>` is a PLC word index, found in the PLC source's "Word Definitions" section. Common
 stock words:
 

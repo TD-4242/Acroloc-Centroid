@@ -130,8 +130,21 @@ outputs `OUT17` (`ATCMotor_O`), `OUT18` (`ATCUnlocked_O`); words `W71` (`Current
 ## Conventions & cautions
 
 - **Match the surrounding style.** Centroid's stock code uses fixed-column alignment for
-  `Name IS Resource` and heavy `;` comments. Keep new definitions aligned and tag custom
-  ones with `; Acroloc`.
+  `Name IS Resource`. Keep new definitions aligned and tag custom ones with `; Acroloc`.
+- **Comments are 1-2 lines.** A comment exists to clarify code that is confusing to read.
+  The rationale — why it exists, what was rejected, what the on-machine finding was — goes
+  in the commit message and in the design documents (`docs/plc-spec/`, or a spec under
+  `docs/superpowers/specs/`), and the comment carries a **pointer** to it. This repo has no
+  issue tracker, so the document path *is* the pointer. Before cutting a sentence out of a
+  comment, confirm the fact is recorded in a document; if it is not, put it there in the
+  same change. Measurements and load-bearing orderings keep their 1-2 lines — state the
+  value, not the derivation. File headers (`.mac`, `.cnc`) are doc comments: sized to the
+  contract they document, which for an NC program includes its safety envelope and
+  preconditions.
+- **Centroid's stock comments are read-only.** Only comments tagged `; Acroloc`, and our own
+  files, are ours to edit — leaving the vendor's alone keeps the `.src` diffable against
+  Centroid's reference source after a CNC12 upgrade. `;===`/`;---` dividers and the vendor
+  parameter table are structure, not narrative: keep their shape.
 - Every M-function macro guards against graph/search mode with
   `IF #4201 || #4202 THEN GOTO 1000` and ends at the `N1000` label — preserve this pattern.
 - Macro PLC variables: a PLC `OUT`/`MEM` is read from a macro as `#(60000 + n)` (e.g.

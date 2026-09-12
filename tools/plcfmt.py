@@ -243,9 +243,8 @@ def verify_compile_identical(path, original, formatted):
     RuntimeError.
     """
     cwd = os.path.dirname(os.path.abspath(path)) or "."
-    # compile.sh cd's to its own directory and compiles the hardcoded SRC name,
-    # so verifying any other file would compile the wrong source and pass
-    # vacuously. Refuse rather than pretend to verify.
+    # compile.sh compiles a hardcoded SRC name, so verifying any other file would
+    # compile the wrong source and pass vacuously. Refuse rather than pretend.
     if os.path.basename(path) != SRC:
         raise RuntimeError(
             "cannot verify %r: compile.sh only compiles %s -- "

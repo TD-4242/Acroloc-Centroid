@@ -138,10 +138,8 @@ class TestFeedrateKnob(unittest.TestCase):
                 self.assertNotIn('fill="#141210"', svg)
 
     def test_needle_tip_lands_inside_its_own_window(self):
-        # The whole design rests on this. A button can only draw inside its own
-        # window, and the VCP's gaps are wide enough that the windows do not
-        # reach the dial centre -- an earlier 255-degree pointer for 25% missed
-        # its window entirely and would have been invisible.
+        # A button can only draw inside its own window, and the gaps are wide enough
+        # that windows do not reach the dial centre -- so needles ride the diagonals.
         c = vcpgen.FK_FACE_C
         for q in self.QUADS:
             x0, y0, w, h = vcpgen._fk_window(q)
