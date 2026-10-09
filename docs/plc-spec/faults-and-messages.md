@@ -243,6 +243,15 @@ suppresses error/info display entirely until it clears.
 > hand-move status pair does exactly that, and gates the echo off for 3 s
 > (`HandMoveMsgHold_M`/`HandMoveMsgHold_T`) so its message can be read. Found on-machine
 > 2026-09-09, when messages 175/176 posted to `InfoMsg_W` never appeared.
+>
+> **The echo stands down while any fault latch is set** (`PLCFault_M`, `SpindleFault_M`,
+> `LubeFault_M`, `AxisFault_M`, `ProbeFault_M`, `OtherFault_M`). Rungs run in file order, so
+> without that gate every fault posted earlier in the scan — PLC I/O, jog board, mini-PLC,
+> axis, lube, spindle inverter, probe, and `9067 ATC BIN OUT OF RANGE` — was overwritten by
+> "Tool Carousel locked." in the same scan and never shown. Found 2026-10-08: 9067 had a
+> lifetime display count of 0 while it was cancelling jobs, leaving only `313` then `327`.
+> The latches clear on E-stop, so the fault message stays up until then. `9068` (which sets
+> the self-clearing `ErrorFlag_M`, not a latch) takes the 3 s `HandMoveMsgHold_M` hold instead.
 
 **The 175/176 gates.** Both are async (type 2), so neither halts a job, and the two numbers
 **alternate**: CNC12 refuses to re-send the same message number twice in a row, so a single

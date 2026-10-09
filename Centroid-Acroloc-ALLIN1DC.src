@@ -2931,12 +2931,14 @@ IF ATCManualUnlock_I && ATC_Z_Zero_Release_I && !ATCStage THEN SET ATCUnlocked_O
   TargetToolBinDisp_W = 0
 IF !ATCManualUnlock_I && !ATCStage THEN RST ATCUnlocked_O
 
-; Acroloc: one of these two rungs is true EVERY scan, so this echo owns FaultMsg_W --
-; which is why InfoMsg_W/ErrorMsg_W never display. docs/plc-spec/faults-and-messages.md
-IF ATCManualUnlock_I && !HandMoveMsgHold_M THEN
+; Acroloc: this echo owns FaultMsg_W every scan, so it must stand down while any fault
+; latch is set or it overwrites that fault's message. docs/plc-spec/faults-and-messages.md
+IF ATCManualUnlock_I && !HandMoveMsgHold_M &&
+   !PLCFault_M && !SpindleFault_M && !LubeFault_M && !AxisFault_M && !ProbeFault_M && !OtherFault_M THEN
   FaultMsg_W = ATC_Lock_Not_Released_C,
   SET ShowFaultStage
-IF !ATCManualUnlock_I && !HandMoveMsgHold_M THEN
+IF !ATCManualUnlock_I && !HandMoveMsgHold_M &&
+   !PLCFault_M && !SpindleFault_M && !LubeFault_M && !AxisFault_M && !ProbeFault_M && !OtherFault_M THEN
   FaultMsg_W = ATC_Lock_Released_C,
   SET ShowFaultStage
 
@@ -2997,7 +2999,10 @@ IF CarouselMovedByHand_M && (SV_PROGRAM_RUNNING || SV_MDI_MODE) &&
    (SpinStart_M || M3_SV || M4_SV) && !ErrorFlag_M THEN
   FaultMsg_W = ATC_HAND_MOVED_MSG_C,
   SET ShowFaultStage,
-  SET ErrorFlag_M
+  SET ErrorFlag_M,
+  SET HandMoveMsgHold_M,      ; Acroloc: ErrorFlag_M self-clears, so hold the echo off 3 s
+  HandMoveMsgHold_T = 3000,
+  SET HandMoveMsgHold_T
 
 ; Acroloc: the 175/176 status pair posts on FaultMsg_W after the lock echo, and only once
 ; CNC12 can show it. docs/plc-spec/faults-and-messages.md ("The 175/176 gates")
