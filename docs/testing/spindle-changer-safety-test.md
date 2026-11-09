@@ -43,7 +43,9 @@ is trustworthy until it passes.**
 | OUT7  | `SpindleEnableOut_O` | spindle enable command (0 = spindle commanded off) |
 | OUT1104 | `FeedHoldLED_O` | feed hold active |
 | MEM448 | `ChangerHoldActive_M` | interlock feed-hold armed & waiting for zero |
+| MEM453 | `ChangerResume_M` | auto-resume cycle-start request (pulses ~100 ms after zero confirms) |
 | T23 | `ChangerStopTimer_T` | interlock 5 s timeout |
+| T26 | `ChangerResumeTimer_T` | width of the auto-resume cycle-start pulse |
 
 If the temporary `; DEBUG` messages are loaded, they echo three of these to the message line
 (*"spindle in changer zone"*, *"Z cleared tool ring"*, *"changer feed-hold armed"*). Remove them
@@ -96,10 +98,22 @@ changer while INP12 = 0 is a **FAIL — E-stop.**
 L1 only covers the M6 macro. This checks the PLC interlock that guards a **direct** move — a
 program or a hand-typed `G53`. **Hand on feed-hold/E-stop.**
 
+The common real-world shape is the tail of a job: a canned cycle (drill, tap) with a modal `M3`
+still active, then `G53 Z0` to park. The spindle is still spinning down as Z enters the zone, so
+the interlock arms and must release itself. Test it here in MDI first.
+
 - [ ] `G53 Z-4`, `M3 S2000`, up to speed. Then hand-type **`G53 Z0`** in MDI (a direct move, not
       an M6). Expected: as Z enters the zone (INP26 -> 0) the interlock **feed-holds** —
       `ChangerHoldActive_M` (MEM448) = 1, `FeedHoldLED_O` = 1, Z stops — spindle commanded off,
       and motion **auto-resumes** once INP12 -> 1. Result: ______
+- [ ] **The resume actually resumes (regression check).** Watch that when INP12 -> 1 the move
+      *completes on its own* — `FeedHoldLED_O` goes out **and** Z finishes travelling to Z0
+      without anyone touching Cycle Start. `ChangerResume_M` (MEM453) pulses for ~100 ms right
+      after MEM448 drops. Result: ______
+- [ ] If instead the feed-hold lamp goes out but **Z stays parked mid-move** until you press
+      Cycle Start, the auto-resume handshake is broken — the cycle-start request is reaching
+      CNC12 in the same exchange as the feed hold (or is being cleared by the stock cycle-start
+      coil) and is being discarded. Result: ______
 - [ ] If instead Z drives straight through without pausing (MEM448 never sets): the interlock does
       **not** net direct moves either — record this; the interlock needs rework and L1 is your
       only protection. **E-stop if the spindle is still turning near the changer.** Result: ______

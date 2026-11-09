@@ -184,8 +184,12 @@ IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I
   SET ChangerHoldActive_M, SET ActivateFeedHold_M,
   ChangerStopTimer_T = 5000, SET ChangerStopTimer_T
 
-; resume the instant zero confirms
-IF ChangerHoldActive_M && ZeroSpeed_I THEN ... SET DoCycleStart_SV
+; resume the instant zero confirms -- release the hold NOW, request the start NEXT scan
+IF ChangerHoldActive_M && ZeroSpeed_I THEN ...
+  RST ActivateFeedHold_M, RST TriggerPause_T,
+  RST FeedHoldLED_O, SET ChangerResume_M,
+  ChangerResumeTimer_T = 100, SET ChangerResumeTimer_T
+IF ChangerResumeTimer_T THEN RST ChangerResumeTimer_T, RST ChangerResume_M
 
 ; 5 s timeout, spindle still turning -> fault; motion stays held
 IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN ... SPINDLE_FAULT_MSG_C
@@ -196,9 +200,19 @@ IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN ... SPINDLE_FA
   a bare timer is true **when expired** (`== 0` would mean "just armed").
 - Normal M6 takes **no hold**: mfunc6 runs `M5` before the `G53 Z0` park move, so `ZeroSpeed_I`
   already reads stopped at zone entry and the arm rung never fires.
-- If the spindle is still coasting at entry: feed hold engages and motion auto-resumes
-  (`SET DoCycleStart_SV`) the instant `ZeroSpeed_I` asserts. If it never stops within 5 s:
-  `SPINDLE_FAULT_MSG_C`, motion stays held, no auto-resume.
+- If the spindle is still coasting at entry: feed hold engages and motion auto-resumes the
+  instant `ZeroSpeed_I` asserts. If it never stops within 5 s: `SPINDLE_FAULT_MSG_C`, motion
+  stays held, no auto-resume.
+- **The auto-resume must not write `DoCycleStart_SV` directly.** `ChangerResume_M` (MEM453) is
+  an input to the stock cycle-start coil in `JogPanelStage` instead, for two reasons.
+  (1) That coil runs earlier in the scan than this interlock, so a `SET DoCycleStart_SV` placed
+  here is rewritten to false by the coil on the next scan. (2) `FeedHoldLED_O` is still set at
+  that point in the scan, so `DoFeedHold_SV` was already asserted — CNC12 would get feed-hold and
+  cycle-start in the same exchange, keep the hold, and drop the start. So the resume drops
+  `FeedHoldLED_O` in the confirming scan and lets the start reach CNC12 on the next one, held
+  ~100 ms by `ChangerResumeTimer_T` (T26) so the PC cannot miss the pulse. It also RSTs
+  `ActivateFeedHold_M` early, which would otherwise re-SET `FeedHoldLED_O` on that next scan if
+  the spindle stopped within the trigger's own ~100 ms window.
 - `ZeroSpeed_I` (INP12) is the F510 VFD zero-speed output — wired and tested.
 
 **Manual unlock (outside M6):**

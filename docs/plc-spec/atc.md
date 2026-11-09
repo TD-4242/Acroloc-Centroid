@@ -191,7 +191,8 @@ It **keeps** the unconditional zone spindle-kill -- `IF !ATC_Z_ClearedToolChange
 RST SpindleEnableOut_O`, every scan, all modes, so the spindle can never run while Z is in the
 changer -- and **adds**, for any program/MDI move driving Z into the changer with the spindle
 still turning: feed hold (`SET ActivateFeedHold_M`) + spindle off, then resume the instant
-`ZeroSpeed_I` (INP12) confirms a stop (`SET DoCycleStart_SV`), with a **5 s timeout ->
+`ZeroSpeed_I` (INP12) confirms a stop (drop the hold, then pulse `ChangerResume_M` into the stock cycle-start coil
+on the next scan -- see [main-stage.md](main-stage.md)), with a **5 s timeout ->
 `SPINDLE_FAULT_MSG_C`** if the spindle never stops. If the spindle is already stopped at entry
 (normal M6 -- mfunc6 runs `M5` before the park move) the hold never arms and motion proceeds.
 The dead `StopSpinBeforATC_T` timer was renamed **`ChangerStopTimer_T`** (`T23`, src:1206) and

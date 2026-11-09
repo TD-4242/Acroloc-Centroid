@@ -269,16 +269,31 @@ hand-off rungs inside `MainStage` that arm `ATCStage`.
      by this interlock. This rung catches errant *direct* moves (a hand-typed `G53 Z0`, a program
      bug).
   5. **Resume** the instant zero is confirmed: `IF ChangerHoldActive_M && ZeroSpeed_I THEN`
-     `SET DoCycleStart_SV` (a pulse, not a coil — a coil would clobber the stock operator
-     cycle-start).
+     clear the latches, `RST ActivateFeedHold_M` / `RST TriggerPause_T`, `RST FeedHoldLED_O`, and `SET ChangerResume_M` (MEM453) with
+     `ChangerResumeTimer_T = 100`. The resume is a **two-scan handshake**, and it has to be:
+     the feed hold is released in *this* scan, and the cycle start only reaches CNC12 on the
+     *next* one, because `ChangerResume_M` is an input to the stock cycle-start coil
+     (src:2039-2040) rather than a write to `DoCycleStart_SV`. Rung 5a
+     (`IF ChangerResumeTimer_T THEN RST ChangerResumeTimer_T, RST ChangerResume_M`) ends the
+     ~100 ms pulse; the width matches the stock `TriggerPause_T` idiom so the PC cannot miss it.
   6. **Timeout -> fault**: `IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN`
      post `SPINDLE_FAULT_MSG_C`, `SET OtherFault_M`; motion stays held, no auto-resume.
 
   Timer idiom: a bare timer is true **when expired**, so rung 6 fires only at the 5 s deadline.
   Feed-hold handshake: `ActivateFeedHold_M` (MEM45) is a self-clearing trigger (stock code RSTs
   it ~100 ms after set, src:2937-2938) that SETs `FeedHoldLED_O` (src:1866-1868) driving
-  `DoFeedHold_SV`; `DoCycleStart_SV` clears `FeedHoldLED_O` (src:1869-1872) to resume — so the
-  interlock deliberately does not RST `ActivateFeedHold_M`. Unlike the block it replaced, this
+  `DoFeedHold_SV`; `DoCycleStart_SV` clears `FeedHoldLED_O` (src:1869-1872) to resume. Rung 5
+  RSTs `ActivateFeedHold_M` early: if zero confirms inside its ~100 ms window it would otherwise
+  re-SET `FeedHoldLED_O` on the next scan, alongside the cycle start.
+
+  **Why the resume cannot be a `SET DoCycleStart_SV` here** (two independent reasons, both
+  fatal): `DoCycleStart_SV` is written by an output *coil* at src:2039-2040, which runs earlier in
+  the scan than this interlock — so a `SET` placed here is unconditionally rewritten to false by
+  that coil on the very next scan, before anything downstream can act on it. And even within the
+  scan it is set, `FeedHoldLED_O` is still true, so `DoFeedHold_SV` (src:2084) was already
+  asserted earlier in that same scan: CNC12 receives feed-hold and cycle-start together in one
+  exchange, keeps the hold, and discards the start. Releasing the hold first and routing the
+  request through the stock coil avoids both. Unlike the block it replaced, this
   one **does** fault on a spindle that never reaches zero. See [atc.md](atc.md) for the
   companion `ATCStage` zero-speed guard.
 

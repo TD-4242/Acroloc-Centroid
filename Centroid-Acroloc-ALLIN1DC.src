@@ -724,9 +724,10 @@ InBinDecode_M                   IS MEM443 ; Acroloc 0=false, 1=true
 ToolSelected_M                  IS MEM452 ; Acroloc 0=false, 1=true (moved off MEM444; it collided with KbAux13Key_M)
 ChangerHoldActive_M             IS MEM448 ; Acroloc feed-hold active while spindle stops in changer zone
 ChangerHoldDone_M               IS MEM449 ; Acroloc once-per-entry latch, cleared when Z clears changer
+ChangerResume_M                 IS MEM453 ; Acroloc auto-resume cycle-start request after the changer-entry hold
 HandMoveMsgHold_M               IS MEM456 ; Acroloc holds the message channel for the hand-move status long enough to read it (the carousel lock echo below would otherwise overwrite it on the very next scan)
 HandMoveMsgShown_M              IS MEM455 ; Acroloc the "press ATC RESET" status has been posted for this hand move; drives the one-shot "re-established" message when the position is proven again
-CarouselMovedByHand_M           IS MEM454 ; Acroloc carousel moved without the motor (or just booted): tool under the spindle unverified, spindle refused until an ATCStage match or ATC Reset (M18). MEM453 is reserved for the changer-resume work.
+CarouselMovedByHand_M           IS MEM454 ; Acroloc carousel moved without the motor (or just booted): tool under the spindle unverified, spindle refused until an ATCStage match or ATC Reset (M18).
 ;------------------------------------------------------------------------------
 ;                     ---------SYSTEM VARIABLES--------
 ;
@@ -1212,8 +1213,9 @@ NoMacroKeyPressedTimer_T        IS T18
 
 ChangerStopTimer_T              IS T23    ; Acroloc spindle-stop timeout backstop for changer-entry hold
 ATCSpin_T                       IS T24 ; used to detect fault if unable to find position
-HandMoveMsgHold_T               IS T27 ; Acroloc how long the hand-move status message keeps the message channel (T26 is reserved for the changer-resume work)
+HandMoveMsgHold_T               IS T27 ; Acroloc how long the hand-move status message keeps the message channel
 GearCoast_T                     IS T25 ; Acroloc gear-shift coast dwell (neutral) before engage
+ChangerResumeTimer_T            IS T26 ; Acroloc pulse width for the changer-entry auto-resume cycle start
 ;------------------------------------------------------------------------------
 ;                       Stage Definitions
 ;------------------------------------------------------------------------------
@@ -1973,7 +1975,10 @@ IF OnAtPowerUp_M THEN SET SelectRapidOverride_SV
 IF (CycleCancelKey_I || KbCycleCancel_M || MpgResetKey_M || SkinCycleCancel_M_SV) || ErrorFlag_M
    THEN (DoCycleCancel_SV)
 
-IF (CycleStartKey_I || KbCycleStart_M || MpgCycleStart_M || SkinCycleStart_M_SV)
+; Acroloc: ChangerResume_M is the changer-entry hold's auto-resume; it must feed this
+; coil, since a SET DoCycleStart_SV elsewhere is wiped here on the next scan.
+IF (CycleStartKey_I || KbCycleStart_M || MpgCycleStart_M || SkinCycleStart_M_SV ||
+   ChangerResume_M)
    THEN (DoCycleStart_SV)
 
 ; First and second axis jogging is in configuration-specific
@@ -2957,7 +2962,8 @@ IF !ATC_Z_ClearedToolChanger_I THEN
 
 ; -- 3. clean bail-out if the program is stopped/canceled mid-hold
 IF !(SV_PROGRAM_RUNNING || SV_MDI_MODE) THEN
-  RST ChangerHoldActive_M, RST ChangerStopTimer_T, RST ChangerHoldDone_M
+  RST ChangerHoldActive_M, RST ChangerStopTimer_T, RST ChangerHoldDone_M,
+  RST ChangerResume_M, RST ChangerResumeTimer_T
 
 ; -- 4. arm: program/MDI move into the zone with spindle NOT already stopped
 IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I
@@ -2968,11 +2974,21 @@ IF (SV_PROGRAM_RUNNING || SV_MDI_MODE) && !ATC_Z_ClearedToolChanger_I
   SET ChangerStopTimer_T
 
 ; -- 5. resume the instant zero is confirmed (signal-driven)
+; Drop the hold this scan and request the start next scan: CNC12 discards a cycle
+; start that arrives in the same exchange as DoFeedHold_SV.
 IF ChangerHoldActive_M && ZeroSpeed_I THEN
   SET ChangerHoldDone_M,
   RST ChangerHoldActive_M,
   RST ChangerStopTimer_T,
-  SET DoCycleStart_SV
+  RST ActivateFeedHold_M,
+  RST TriggerPause_T,
+  RST FeedHoldLED_O,
+  SET ChangerResume_M,
+  ChangerResumeTimer_T = 100,
+  SET ChangerResumeTimer_T
+
+; -- 5a. drop the resume request once the pulse has been sent (bare timer = expired)
+IF ChangerResumeTimer_T THEN RST ChangerResumeTimer_T, RST ChangerResume_M
 
 ; -- 6. timeout with spindle still turning -> fault; motion stays held
 IF ChangerHoldActive_M && ChangerStopTimer_T && !ZeroSpeed_I THEN
