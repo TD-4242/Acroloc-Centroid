@@ -230,6 +230,7 @@ writes the same formula with reversed field names, `msgNumber + 256*msgFile`, wh
 | `ToolSelected_M` | MEM444 | 711 | Acroloc | 0 = false, 1 = true — carousel has matched the target tool. [atc.md](atc.md) |
 | `ChangerHoldActive_M` | MEM448 | 729 | Acroloc | Latched while feed is held and the interlock waits for `ZeroSpeed_I`. [main-stage.md](main-stage.md) |
 | `ChangerHoldDone_M` | MEM449 | 730 | Acroloc | Once-per-entry latch (set on resume *and* on fault); blocks re-arming until Z clears the changer. [main-stage.md](main-stage.md) |
+| `ChangerResume_M` | MEM453 | — | Acroloc | Auto-resume cycle-start request raised when the interlock releases; feeds the stock cycle-start coil rather than writing `DoCycleStart_SV` directly. [main-stage.md](main-stage.md) |
 | `CarouselMovedByHand_M` | MEM454 | — | Acroloc | Carousel moved without the motor, or just booted: tool under the spindle unverified; spindle refused until an `ATCStage` match or M18. [atc.md](atc.md) |
 | `HandMoveMsgShown_M` | MEM455 | — | Acroloc | One-shot latch for the hand-move status pair: set when `CAROUSEL MOVED - PRESS ATC RESET` (175) is posted, cleared when `ATC POSITION RE-ESTABLISHED` (176) is. [atc.md](atc.md) |
 | `HandMoveMsgHold_M` | MEM456 | — | Acroloc | Gates the carousel lock echo off while a hand-move status message is on screen. [atc.md](atc.md), [faults-and-messages.md](faults-and-messages.md) |
@@ -327,8 +328,9 @@ significance beyond "one-shot edge of the same-named key/event".
 | `NoMacroKeyPressedTimer_T` | T18 | 1185 | | No-macro-key-pressed timer (WMPG macro key reset delay). [jog-and-mpg.md](jog-and-mpg.md) |
 | `ChangerStopTimer_T` | T23 | 1206 | Acroloc | 5 s timeout backstop for the spindle-in-changer feed-hold interlock; faults if the spindle never reaches zero. Renamed from `StopSpinBeforATC_T` (which was dead — armed, never read). Set point assigned at arm time, not at boot. [main-stage.md](main-stage.md), [atc.md](atc.md) |
 | `ATCSpin_T` | T24 | 1188 | Acroloc | Carousel search watchdog: armed at M6 kickoff (`= ATC_SPIN_TIMEOUT_MS_C`, 20 s); if the tool is never matched, `ATCStage` faults `CAROUSEL MOVE TIME OUT`. [atc.md](atc.md#search-timeout) |
-| `HandMoveMsgHold_T` | T27 | — | Acroloc | 3 s hold for the hand-move status message (T26 is reserved for the changer-resume work). [atc.md](atc.md) |
+| `HandMoveMsgHold_T` | T27 | — | Acroloc | 3 s hold for the hand-move status message. [atc.md](atc.md) |
 | `GearCoast_T` | T25 | 1189 | Acroloc | Gear-shift coast dwell (neutral) before engaging the new gear; loaded from `SV_MACHINE_PARAMETER_943` or a 1500ms default. [gear-shift.md](gear-shift.md) |
+| `ChangerResumeTimer_T` | T26 | — | Acroloc | Holds `ChangerResume_M` ~100 ms so the auto-resume cycle-start pulse cannot be missed by the PC. [main-stage.md](main-stage.md) |
 
 ## System variables
 
